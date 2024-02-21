@@ -1,0 +1,22 @@
+[package]
+name = "dot15d4"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dot15d4-macros = { path = "../dot15d4-macros" }
+tracing = "0.1.38"
+
+bitflags = "2.4.2"
+heapless = "0.8.0"
+critical-section = "1.1"
+
+[dev-dependencies]
+tracing-subscriber = "0.3"
+critical-section = { version = "1.1", features = ["std"] }
+
+[features]
+std = []
+default = ["std"]
