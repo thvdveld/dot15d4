@@ -333,6 +333,15 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
         w.set_frame_version(fc.frame_version);
     }
 
+    /// Set the Sequence Number field value in the buffer.
+    pub fn set_sequence_number(&mut self, sequence_number: u8) {
+        // Set the sequence number suppression bit to false.
+        let mut w = FrameControl::new(&mut self.buffer.as_mut()[..2]);
+        w.set_sequence_number_suppression(false);
+
+        self.buffer.as_mut()[2] = sequence_number;
+    }
+
     /// Set the Addressing field values in the buffer, based on the given [`AddressingFieldsRepr`].
     pub fn set_addressing_fields(&mut self, addressing_fields: &AddressingFieldsRepr) {
         let start = 2 + (!self.frame_control().sequence_number_suppression() as usize);
