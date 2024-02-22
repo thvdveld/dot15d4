@@ -429,17 +429,22 @@ impl<'r, 'f: 'r> FrameRepr<'f> {
         Self {
             frame_control: FrameControlRepr::parse(frame.frame_control()),
             sequence_number: frame.sequence_number(),
-            addressing_fields: AddressingFieldsRepr::parse(frame.addressing(), frame.frame_control()),
+            addressing_fields: AddressingFieldsRepr::parse(
+                frame.addressing(),
+                frame.frame_control(),
+            ),
             information_elements: frame.information_elements().map(|ie| {
                 let mut header_information_elements = Vec::new();
                 let mut payload_information_elements = Vec::new();
 
                 for header_ie in ie.header_information_elements() {
-                    header_information_elements.push(HeaderInformationElementRepr::parse(header_ie));
+                    header_information_elements
+                        .push(HeaderInformationElementRepr::parse(header_ie));
                 }
 
                 for payload_ie in ie.payload_information_elements() {
-                    payload_information_elements.push(PayloadInformationElementRepr::parse(payload_ie));
+                    payload_information_elements
+                        .push(PayloadInformationElementRepr::parse(payload_ie));
                 }
 
                 InformationElementsRepr {
@@ -459,7 +464,8 @@ mod tests {
     #[test]
     fn ack_frame() {
         let frame = [
-            0x02, 0x2e, 0x37, 0xcd, 0xab, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x0f, 0xe1, 0x8f,
+            0x02, 0x2e, 0x37, 0xcd, 0xab, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02,
+            0x0f, 0xe1, 0x8f,
         ];
 
         let frame = Frame::new(&frame).unwrap();
@@ -482,7 +488,9 @@ mod tests {
         assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
         assert_eq!(
             addressing.dst_address(&fc),
-            Some(Address::Extended([0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02]))
+            Some(Address::Extended([
+                0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02
+            ]))
         );
         assert_eq!(addressing.src_pan_id(&fc), None);
         assert_eq!(addressing.src_address(&fc), Some(Address::Absent));
@@ -491,19 +499,25 @@ mod tests {
         let mut headers = ie.header_information_elements();
 
         let time_correction = headers.next().unwrap();
-        assert_eq!(time_correction.element_id(), HeaderElementId::TimeCorrection);
+        assert_eq!(
+            time_correction.element_id(),
+            HeaderElementId::TimeCorrection
+        );
 
         let time_correction = TimeCorrection::new(time_correction.content());
         assert_eq!(time_correction.len(), 2);
-        assert_eq!(time_correction.time_correction(), crate::time::Duration::from_us(-31));
+        assert_eq!(
+            time_correction.time_correction(),
+            crate::time::Duration::from_us(-31)
+        );
         assert!(time_correction.nack());
     }
 
     #[test]
     fn data_frame() {
         let frame = [
-            0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12, 0x00, 0x2b, 0x00, 0x00,
-            0x00,
+            0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12,
+            0x00, 0x2b, 0x00, 0x00, 0x00,
         ];
 
         let frame = Frame::new(&frame).unwrap();
@@ -525,8 +539,9 @@ mod tests {
     #[test]
     fn enhanced_beacon() {
         let frame: [u8; 35] = [
-            0x40, 0xeb, 0xcd, 0xab, 0xff, 0xff, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x3f, 0x11, 0x88,
-            0x06, 0x1a, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1c, 0x00, 0x01, 0xc8, 0x00, 0x01, 0x1b, 0x00,
+            0x40, 0xeb, 0xcd, 0xab, 0xff, 0xff, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00,
+            0x00, 0x3f, 0x11, 0x88, 0x06, 0x1a, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1c,
+            0x00, 0x01, 0xc8, 0x00, 0x01, 0x1b, 0x00,
         ];
 
         let frame = Frame::new(&frame).unwrap();
@@ -548,7 +563,9 @@ mod tests {
         assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));
         assert_eq!(
             addressing.src_address(&fc),
-            Some(Address::Extended([0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01]))
+            Some(Address::Extended([
+                0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01
+            ]))
         );
         assert_eq!(addressing.len(&fc), 12);
 
@@ -575,8 +592,14 @@ mod tests {
             tsch_sync.sub_id(),
             NestedSubId::Short(NestedSubIdShort::TschSynchronization)
         );
-        assert_eq!(TschSynchronization::new(tsch_sync.content()).absolute_slot_number(), 14);
-        assert_eq!(TschSynchronization::new(tsch_sync.content()).join_metric(), 0);
+        assert_eq!(
+            TschSynchronization::new(tsch_sync.content()).absolute_slot_number(),
+            14
+        );
+        assert_eq!(
+            TschSynchronization::new(tsch_sync.content()).join_metric(),
+            0
+        );
 
         let tsch_timeslot = nested_iterator.next().unwrap();
         assert_eq!(
@@ -590,7 +613,10 @@ mod tests {
             channel_hopping.sub_id(),
             NestedSubId::Long(NestedSubIdLong::ChannelHopping)
         );
-        assert_eq!(ChannelHopping::new(channel_hopping.content()).hopping_sequence_id(), 0);
+        assert_eq!(
+            ChannelHopping::new(channel_hopping.content()).hopping_sequence_id(),
+            0
+        );
 
         let slotframe = nested_iterator.next().unwrap();
         assert_eq!(

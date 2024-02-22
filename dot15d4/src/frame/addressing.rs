@@ -167,38 +167,45 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
         }
     }
 
-    fn address_present_flags(&self, fc: &FrameControl<T>) -> Option<(bool, AddressingMode, bool, AddressingMode)> {
+    fn address_present_flags(
+        &self,
+        fc: &FrameControl<T>,
+    ) -> Option<(bool, AddressingMode, bool, AddressingMode)> {
         let dst_addr_mode = fc.dst_addressing_mode();
         let src_addr_mode = fc.src_addressing_mode();
         let pan_id_compression = fc.pan_id_compression();
 
         use AddressingMode::*;
         match fc.frame_version() {
-            FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006 => match (dst_addr_mode, src_addr_mode) {
-                (Absent, src) => Some((false, Absent, true, src)),
-                (dst, Absent) => Some((true, dst, false, Absent)),
+            FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006 => {
+                match (dst_addr_mode, src_addr_mode) {
+                    (Absent, src) => Some((false, Absent, true, src)),
+                    (dst, Absent) => Some((true, dst, false, Absent)),
 
-                (dst, src) if pan_id_compression => Some((true, dst, false, src)),
-                (dst, src) if !pan_id_compression => Some((true, dst, true, src)),
-                _ => None,
-            },
-            FrameVersion::Ieee802154 => Some(match (dst_addr_mode, src_addr_mode, pan_id_compression) {
-                (Absent, Absent, false) => (false, Absent, false, Absent),
-                (Absent, Absent, true) => (true, Absent, false, Absent),
-                (dst, Absent, false) if !matches!(dst, Absent) => (true, dst, false, Absent),
-                (dst, Absent, true) if !matches!(dst, Absent) => (false, dst, false, Absent),
-                (Absent, src, false) if !matches!(src, Absent) => (false, Absent, true, src),
-                (Absent, src, true) if !matches!(src, Absent) => (false, Absent, true, src),
-                (Extended, Extended, false) => (true, Extended, false, Extended),
-                (Extended, Extended, true) => (false, Extended, false, Extended),
-                (Short, Short, false) => (true, Short, true, Short),
-                (Short, Extended, false) => (true, Short, true, Extended),
-                (Extended, Short, false) => (true, Extended, true, Short),
-                (Short, Extended, true) => (true, Short, false, Extended),
-                (Extended, Short, true) => (true, Extended, false, Short),
-                (Short, Short, true) => (true, Short, false, Short),
-                _ => return None,
-            }),
+                    (dst, src) if pan_id_compression => Some((true, dst, false, src)),
+                    (dst, src) if !pan_id_compression => Some((true, dst, true, src)),
+                    _ => None,
+                }
+            }
+            FrameVersion::Ieee802154 => {
+                Some(match (dst_addr_mode, src_addr_mode, pan_id_compression) {
+                    (Absent, Absent, false) => (false, Absent, false, Absent),
+                    (Absent, Absent, true) => (true, Absent, false, Absent),
+                    (dst, Absent, false) if !matches!(dst, Absent) => (true, dst, false, Absent),
+                    (dst, Absent, true) if !matches!(dst, Absent) => (false, dst, false, Absent),
+                    (Absent, src, false) if !matches!(src, Absent) => (false, Absent, true, src),
+                    (Absent, src, true) if !matches!(src, Absent) => (false, Absent, true, src),
+                    (Extended, Extended, false) => (true, Extended, false, Extended),
+                    (Extended, Extended, true) => (false, Extended, false, Extended),
+                    (Short, Short, false) => (true, Short, true, Short),
+                    (Short, Extended, false) => (true, Short, true, Extended),
+                    (Extended, Short, false) => (true, Extended, true, Short),
+                    (Short, Extended, true) => (true, Short, false, Extended),
+                    (Extended, Short, true) => (true, Extended, false, Short),
+                    (Short, Short, true) => (true, Short, false, Short),
+                    _ => return None,
+                })
+            }
             _ => None,
         }
     }
@@ -359,10 +366,22 @@ mod tests {
 
     #[test]
     fn from_bytes() {
-        assert_eq!(Address::from_bytes(&[0xff, 0xff]), Address::Short([0xff, 0xff]));
-        assert_eq!(Address::from_bytes(&[0xff, 0xfe]), Address::Short([0xff, 0xfe]));
-        assert_eq!(Address::from_bytes(&[0xff; 8]), Address::Extended([0xff; 8]));
-        assert_eq!(Address::from_bytes(&[0x01; 8]), Address::Extended([0x01; 8]));
+        assert_eq!(
+            Address::from_bytes(&[0xff, 0xff]),
+            Address::Short([0xff, 0xff])
+        );
+        assert_eq!(
+            Address::from_bytes(&[0xff, 0xfe]),
+            Address::Short([0xff, 0xfe])
+        );
+        assert_eq!(
+            Address::from_bytes(&[0xff; 8]),
+            Address::Extended([0xff; 8])
+        );
+        assert_eq!(
+            Address::from_bytes(&[0x01; 8]),
+            Address::Extended([0x01; 8])
+        );
         assert_eq!(Address::from_bytes(&[]), Address::Absent);
     }
 
