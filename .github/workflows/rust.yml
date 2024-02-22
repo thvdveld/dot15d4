@@ -30,4 +30,4 @@ jobs:
     - name: Lints
       run: cargo clippy --all-features --all-targets
     - name: Fmt
-      run: cargo fmt --verbose
+      run: cargo fmt --check --verbose
