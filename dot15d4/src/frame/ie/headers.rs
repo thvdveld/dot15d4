@@ -43,12 +43,7 @@ impl<T: AsRef<[u8]>> core::fmt::Display for HeaderInformationElement<T> {
                 write!(f, "{:?}", id)
             }
             HeaderElementId::SimplifiedSuperframeSpecification => {
-                write!(
-                    f,
-                    "{} {:?}",
-                    id,
-                    SimplifiedSuperframeSpecification::new(self.content())
-                )
+                write!(f, "{} {:?}", id, SimplifiedSuperframeSpecification::new(self.content()))
             }
             HeaderElementId::TimeCorrection => {
                 write!(f, "{} {}", id, TimeCorrection::new(self.content()))
@@ -276,12 +271,7 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
 
 impl<T: AsRef<[u8]>> core::fmt::Display for TimeCorrection<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}, nack: {}",
-            self.time_correction(),
-            self.nack() as usize
-        )
+        write!(f, "{}, nack: {}", self.time_correction(), self.nack() as usize)
     }
 }
 

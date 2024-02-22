@@ -94,9 +94,7 @@ impl<const MAX_HOPS: usize> HoppingSequence<MAX_HOPS> {
     /// 16, 17, 23, 18, 26, 15, 25, 22, 19, 11, 12, 13, 24, 14, 20, 21
     /// ```
     pub fn sequence_16_16() -> Self {
-        Self::new(&[
-            16, 17, 23, 18, 26, 15, 25, 22, 19, 11, 12, 13, 24, 14, 20, 21,
-        ])
+        Self::new(&[16, 17, 23, 18, 26, 15, 25, 22, 19, 11, 12, 13, 24, 14, 20, 21])
     }
 
     /// Return the default hopping sequences (16 channels, 4 hops):
@@ -104,9 +102,7 @@ impl<const MAX_HOPS: usize> HoppingSequence<MAX_HOPS> {
     /// 20, 26, 25, 26, 15, 15, 25, 20, 26, 15, 26, 25, 20, 15, 20, 25
     /// ```
     pub fn sequence_4_16() -> Self {
-        Self::new(&[
-            20, 26, 25, 26, 15, 15, 25, 20, 26, 15, 26, 25, 20, 15, 20, 25,
-        ])
+        Self::new(&[20, 26, 25, 26, 15, 15, 25, 20, 26, 15, 26, 25, 20, 15, 20, 25])
     }
 
     /// Return the default hopping sequences (4 channels, 4 hops):

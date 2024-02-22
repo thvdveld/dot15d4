@@ -59,8 +59,8 @@ impl<const N: usize> NeighborTable<N> {
     /// Return the best time source based on the amount of Enhanced Beacons we received and the
     /// join priority of the neighbor.
     pub fn get_best_time_source(&self, current: NeighborStats) -> Option<&Neighbor> {
-        self.neighbors.iter().find(|n| {
-            n.stats.rx_count > current.rx_count / 2 && n.stats.join_priority < current.join_priority
-        })
+        self.neighbors
+            .iter()
+            .find(|n| n.stats.rx_count > current.rx_count / 2 && n.stats.join_priority < current.join_priority)
     }
 }

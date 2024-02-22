@@ -47,10 +47,7 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
 
     /// Returns an [`Iterator`] over [`PayloadInformationElement`].
     pub fn payload_information_elements(&self) -> PayloadInformationElementsIterator {
-        let start = self
-            .header_information_elements()
-            .map(|ie| ie.len() + 2)
-            .sum::<usize>();
+        let start = self.header_information_elements().map(|ie| ie.len() + 2).sum::<usize>();
 
         let terminated = start >= self.data.as_ref().len();
 

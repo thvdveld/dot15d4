@@ -75,9 +75,7 @@ impl EnhancedBeacon {
             }
         }
 
-        if let (Some(asn), Some(join_metric), Some(hopping_sequence_id)) =
-            (asn, join_metric, hopping_sequence_id)
-        {
+        if let (Some(asn), Some(join_metric), Some(hopping_sequence_id)) = (asn, join_metric, hopping_sequence_id) {
             Some(Self {
                 asn,
                 join_metric,
