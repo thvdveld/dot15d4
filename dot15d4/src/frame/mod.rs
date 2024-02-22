@@ -510,7 +510,7 @@ mod tests {
             time_correction.time_correction(),
             crate::time::Duration::from_us(-31)
         );
-        assert_eq!(time_correction.nack(), true);
+        assert!(time_correction.nack());
     }
 
     #[test]

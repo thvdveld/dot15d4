@@ -64,6 +64,10 @@ impl Address {
             Address::Extended(_) => 8,
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Address::Absent)
+    }
 }
 
 impl core::fmt::Display for Address {

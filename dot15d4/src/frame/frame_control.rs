@@ -69,7 +69,7 @@ impl<T: AsRef<[u8]>> FrameControl<T> {
     /// Returns `true` when the security enabled field is set.
     pub fn security_enabled(&self) -> bool {
         let b = &self.buffer.as_ref()[..2];
-        u16::from_le_bytes([b[0], b[1]]) & 0b1 << 3 == 1
+        ((u16::from_le_bytes([b[0], b[1]]) >> 3) & 0b1) == 1
     }
 
     /// Returns `true` when the frame pending field is set.
@@ -255,7 +255,7 @@ pub struct FrameControlRepr {
 }
 
 impl FrameControlRepr {
-    pub fn parse<'f>(fc: FrameControl<&'f [u8]>) -> Self {
+    pub fn parse(fc: FrameControl<&[u8]>) -> Self {
         Self {
             frame_type: fc.frame_type(),
             security_enabled: fc.security_enabled(),

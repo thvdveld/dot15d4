@@ -20,3 +20,14 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+  clippy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Lints
+      run: cargo clippy --all-features --all-targets
+    - name: Fmt
+      run: cargo fmt --check --verbose
