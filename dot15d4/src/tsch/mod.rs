@@ -110,7 +110,11 @@ impl TschDeviceInner {
             let j = (i + current_i) % self.slot_frame.slots.len();
 
             if self.slot_frame.slots[j].is_some() {
-                let i = if i == 0 { i + self.slot_frame.slots.len() } else { i };
+                let i = if i == 0 {
+                    i + self.slot_frame.slots.len()
+                } else {
+                    i
+                };
 
                 return now + self.slot_frame.timings.time_slot_length() * i;
             }
@@ -172,7 +176,9 @@ impl TschDeviceInner {
         });
 
         let next_radio_wake = self.next_slot_start(timestamp, eb.asn);
-        self.asn = eb.asn + next_radio_wake.as_us() as u64 / self.slot_frame.timings.time_slot_length().as_us() as u64;
+        self.asn = eb.asn
+            + next_radio_wake.as_us() as u64
+                / self.slot_frame.timings.time_slot_length().as_us() as u64;
         trace!("TSCH next radio wake at {}", next_radio_wake);
         trace!(" --> waking up in {}", next_radio_wake - timestamp);
         trace!(" --> Next ASN {}", self.asn);

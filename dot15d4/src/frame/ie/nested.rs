@@ -349,7 +349,11 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
                     u16::from_le_bytes([b[0], b[1]]) as i64
                 }),
                 time_slot_length: Duration::from_us({
-                    let offset = if self.data.as_ref().len() == 25 { 23 } else { 24 };
+                    let offset = if self.data.as_ref().len() == 25 {
+                        23
+                    } else {
+                        24
+                    };
                     let len = if self.data.as_ref().len() == 25 { 2 } else { 3 };
                     let b = &self.data.as_ref()[offset..][..len];
                     // TODO: handle the case where a 3 byte length is used.
@@ -623,7 +627,10 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
 
     /// Returns an [`Iterator`] over the [`SlotframeDescriptor`]s.
     pub fn slotframe_descriptors(&self) -> SlotframeDescriptorIterator {
-        SlotframeDescriptorIterator::new(self.number_of_slot_frames() as usize, &self.data.as_ref()[1..])
+        SlotframeDescriptorIterator::new(
+            self.number_of_slot_frames() as usize,
+            &self.data.as_ref()[1..],
+        )
     }
 }
 
@@ -907,21 +914,26 @@ impl NestedInformationElementRepr {
         match ie.sub_id() {
             NestedSubId::Short(NestedSubIdShort::TschSynchronization) => {
                 Self::TschSynchronization(TschSynchronizationRepr {
-                    absolute_slot_number: TschSynchronization::new(ie.content()).absolute_slot_number(),
+                    absolute_slot_number: TschSynchronization::new(ie.content())
+                        .absolute_slot_number(),
                     join_metric: TschSynchronization::new(ie.content()).join_metric(),
                 })
             }
-            NestedSubId::Short(NestedSubIdShort::TschTimeslot) => Self::TschTimeslot(TschTimeslotRepr {
-                id: TschTimeslot::new(ie.content()).id(),
-            }),
+            NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
+                Self::TschTimeslot(TschTimeslotRepr {
+                    id: TschTimeslot::new(ie.content()).id(),
+                })
+            }
             NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink) => {
                 Self::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
-                    number_of_slot_frames: TschSlotframeAndLink::new(ie.content()).number_of_slot_frames(),
+                    number_of_slot_frames: TschSlotframeAndLink::new(ie.content())
+                        .number_of_slot_frames(),
                 })
             }
             NestedSubId::Long(NestedSubIdLong::ChannelHopping) => {
                 Self::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
-                    number_of_slot_frames: TschSlotframeAndLink::new(ie.content()).number_of_slot_frames(),
+                    number_of_slot_frames: TschSlotframeAndLink::new(ie.content())
+                        .number_of_slot_frames(),
                 })
             }
             _ => todo!(),
