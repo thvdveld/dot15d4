@@ -210,18 +210,10 @@ impl<T: AsRef<[u8]>> core::fmt::Display for FrameControl<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "Frame Control")?;
         writeln!(f, "  type: {:?}", self.frame_type())?;
-        writeln!(
-            f,
-            "  security enabled: {}",
-            self.security_enabled() as usize
-        )?;
+        writeln!(f, "  security enabled: {}", self.security_enabled() as usize)?;
         writeln!(f, "  frame pending: {}", self.frame_pending() as usize)?;
         writeln!(f, "  ack request: {}", self.ack_request() as usize)?;
-        writeln!(
-            f,
-            "  pan id compression: {}",
-            self.pan_id_compression() as usize
-        )?;
+        writeln!(f, "  pan id compression: {}", self.pan_id_compression() as usize)?;
         writeln!(
             f,
             "  sequence number suppression: {}",
@@ -255,7 +247,7 @@ pub struct FrameControlRepr {
 }
 
 impl FrameControlRepr {
-    pub fn parse<'f>(fc: FrameControl<&'f [u8]>) -> Self {
+    pub fn parse(fc: FrameControl<&[u8]>) -> Self {
         Self {
             frame_type: fc.frame_type(),
             security_enabled: fc.security_enabled(),
