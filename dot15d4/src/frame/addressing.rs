@@ -322,7 +322,19 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
 
         if let Some(addr) = fields.dst_address {
             let b = &mut self.buffer.as_mut()[offset..][..addr.len()];
-            b.copy_from_slice(addr.as_bytes());
+            match addr {
+                Address::Absent => {}
+                Address::Short(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+                Address::Extended(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+            }
             offset += addr.len();
         }
 
@@ -334,7 +346,19 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
 
         if let Some(addr) = fields.src_address {
             let b = &mut self.buffer.as_mut()[offset..][..addr.len()];
-            b.copy_from_slice(addr.as_bytes());
+            match addr {
+                Address::Absent => {}
+                Address::Short(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+                Address::Extended(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+            }
         }
     }
 }
