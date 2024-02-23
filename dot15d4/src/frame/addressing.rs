@@ -1,6 +1,7 @@
 //! Addressing fields readers and writers.
 
 use super::FrameControl;
+use super::FrameControlRepr;
 use super::FrameVersion;
 
 /// An IEEE 802.15.4 address.
@@ -57,6 +58,8 @@ impl Address {
         Self::Extended(a)
     }
 
+    /// Return the length of the address in octets.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         match self {
             Address::Absent => 0,
@@ -132,6 +135,27 @@ impl AddressingFieldsRepr {
             src_pan_id: addressing.src_pan_id(&fc),
             dst_address: addressing.dst_address(&fc),
             src_address: addressing.src_address(&fc),
+        }
+    }
+
+    /// Return the length of the Addressing Fields in octets.
+    pub fn len(&self, fc: &FrameControlRepr) -> usize {
+        (match self.dst_pan_id {
+            Some(_) => 2,
+            None => 0,
+        }) + match fc.dst_addressing_mode {
+            AddressingMode::Absent => 0,
+            AddressingMode::Short => 2,
+            AddressingMode::Extended => 8,
+            _ => unreachable!(),
+        } + match self.src_pan_id {
+            Some(_) => 2,
+            None => 0,
+        } + match fc.src_addressing_mode {
+            AddressingMode::Absent => 0,
+            AddressingMode::Short => 2,
+            AddressingMode::Extended => 8,
+            _ => unreachable!(),
         }
     }
 }
