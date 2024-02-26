@@ -119,47 +119,6 @@ impl From<u8> for AddressingMode {
     }
 }
 
-/// A high-level representation of the IEEE 802.15.4 Addressing Fields.
-#[derive(Debug)]
-pub struct AddressingFieldsRepr {
-    pub dst_pan_id: Option<u16>,
-    pub src_pan_id: Option<u16>,
-    pub dst_address: Option<Address>,
-    pub src_address: Option<Address>,
-}
-
-impl AddressingFieldsRepr {
-    pub fn parse<'f>(addressing: AddressingFields<&'f [u8]>, fc: FrameControl<&'f [u8]>) -> Self {
-        Self {
-            dst_pan_id: addressing.dst_pan_id(&fc),
-            src_pan_id: addressing.src_pan_id(&fc),
-            dst_address: addressing.dst_address(&fc),
-            src_address: addressing.src_address(&fc),
-        }
-    }
-
-    /// Return the length of the Addressing Fields in octets.
-    pub fn len(&self, fc: &FrameControlRepr) -> usize {
-        (match self.dst_pan_id {
-            Some(_) => 2,
-            None => 0,
-        }) + match fc.dst_addressing_mode {
-            AddressingMode::Absent => 0,
-            AddressingMode::Short => 2,
-            AddressingMode::Extended => 8,
-            _ => unreachable!(),
-        } + match self.src_pan_id {
-            Some(_) => 2,
-            None => 0,
-        } + match fc.src_addressing_mode {
-            AddressingMode::Absent => 0,
-            AddressingMode::Short => 2,
-            AddressingMode::Extended => 8,
-            _ => unreachable!(),
-        }
-    }
-}
-
 /// A reader/writer for the IEEE 802.15.4 Addressing Fields.
 pub struct AddressingFields<T: AsRef<[u8]>> {
     buffer: T,
@@ -167,6 +126,10 @@ pub struct AddressingFields<T: AsRef<[u8]>> {
 
 impl<T: AsRef<[u8]>> AddressingFields<T> {
     pub fn new(buffer: T) -> Self {
+        Self::new_unchecked(buffer)
+    }
+
+    pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
 
@@ -335,7 +298,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
-    pub fn write_fields(&mut self, fields: &AddressingFieldsRepr) {
+    pub fn write_fields(&mut self, fields: &super::repr::AddressingFieldsRepr) {
         let mut offset = 0;
 
         if let Some(id) = fields.dst_pan_id {

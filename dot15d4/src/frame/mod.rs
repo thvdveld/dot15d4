@@ -18,6 +18,7 @@
 //! For an incoming frame, use the [`Frame`] structure to read its content.
 //! ```
 //! # use dot15d4::frame::{
+//! #   Buffer,
 //! #   Frame,
 //! #   FrameControl,
 //! #   FrameType,
@@ -170,22 +171,19 @@
 mod tests;
 
 mod frame_control;
-pub use frame_control::FrameControl;
-pub use frame_control::FrameControlRepr;
-pub use frame_control::FrameType;
-pub use frame_control::FrameVersion;
+pub use frame_control::*;
 
 mod aux_sec_header;
-pub use aux_sec_header::AuxiliarySecurityHeader;
+pub use aux_sec_header::*;
 
 mod addressing;
-pub use addressing::Address;
-pub use addressing::AddressingFields;
-pub use addressing::AddressingFieldsRepr;
-pub use addressing::AddressingMode;
+pub use addressing::*;
 
 mod ie;
 pub use ie::*;
+
+mod repr;
+pub use repr::*;
 
 use crate::time::Duration;
 use heapless::Vec;
@@ -197,38 +195,46 @@ pub struct Error;
 /// A type alias for `Result<T, frame::Error>`.
 pub type Result<T> = core::result::Result<T, Error>;
 
+pub trait Buffer: Sized {
+    type T: AsRef<[u8]>;
+
+    /// Create a new reader/writer.
+    ///
+    /// ## Note
+    /// This is a combination of [`Buffer::new_unchecked`] and [`Buffer::check_len`].
+    fn new(buffer: Self::T) -> Result<Self> {
+        let b = Self::new_unchecked(buffer);
+
+        if !b.check_len() {
+            return Err(Error);
+        }
+
+        Ok(b)
+    }
+
+    /// Create a new reader/writer without checking the buffer length.
+    fn new_unchecked(buffer: Self::T) -> Self;
+
+    /// Check if the buffer is long enough to contain valid content.
+    fn check_len(&self) -> bool {
+        true
+    }
+}
+
 /// A reader/writer for an IEEE 802.15.4 frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Frame<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> Frame<T> {
-    /// Create a new IEEE 802.15.4 frame reader/writer.
-    ///
-    /// ## Note
-    /// This is a combination of [`Frame::new_unchecked`] and [`Frame::check_len`].
-    pub fn new(data: T) -> Result<Self> {
-        let frame = Self::new_unchecked(data);
+impl<T: AsRef<[u8]>> Buffer for Frame<T> {
+    type T = T;
 
-        if !frame.check_len() {
-            return Err(Error);
-        }
-
-        Ok(frame)
+    fn new_unchecked(buffer: Self::T) -> Self {
+        Self { buffer }
     }
 
-    /// Create a new IEEE 802.15.4 frame reader/writer, without checking the buffer length.
-    pub fn new_unchecked(data: T) -> Self {
-        Self { buffer: data }
-    }
-
-    /// Check if the buffer is long enough to contain a valid IEEE 802.15.4 frame.
-    ///
-    /// ## Note
-    /// This function does not check the validity of the frame. It only checks if the buffer is
-    /// long enough to contain a valid frame, such that frame accessors do not panic.
-    pub fn check_len(&self) -> bool {
+    fn check_len(&self) -> bool {
         let buffer = self.buffer.as_ref();
 
         if buffer.len() < 2 {
@@ -243,7 +249,9 @@ impl<T: AsRef<[u8]>> Frame<T> {
 
         true
     }
+}
 
+impl<T: AsRef<[u8]>> Frame<T> {
     /// Return a [`FrameControl`] reader.
     pub fn frame_control(&self) -> FrameControl<&'_ [u8]> {
         FrameControl::new(&self.buffer.as_ref()[..2])
@@ -418,54 +426,5 @@ impl<'f, T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&'f T> {
         }
 
         Ok(())
-    }
-}
-
-/// A high-level representation of an IEEE 802.15.4 frame.
-#[derive(Debug)]
-pub struct FrameRepr<'p> {
-    /// The frame control field.
-    pub frame_control: FrameControlRepr,
-    /// The sequence number.
-    pub sequence_number: Option<u8>,
-    /// The addressing fields.
-    pub addressing_fields: AddressingFieldsRepr,
-    /// The information elements.
-    pub information_elements: Option<InformationElementsRepr>,
-    /// The payload.
-    pub payload: &'p [u8],
-}
-
-impl<'r, 'f: 'r> FrameRepr<'f> {
-    /// Parse an IEEE 802.15.4 frame into a high-level representation.
-    pub fn parse(frame: &'r Frame<&'f [u8]>) -> FrameRepr<'f> {
-        Self {
-            frame_control: FrameControlRepr::parse(frame.frame_control()),
-            sequence_number: frame.sequence_number(),
-            addressing_fields: AddressingFieldsRepr::parse(
-                frame.addressing(),
-                frame.frame_control(),
-            ),
-            information_elements: frame.information_elements().map(|ie| {
-                let mut header_information_elements = Vec::new();
-                let mut payload_information_elements = Vec::new();
-
-                for header_ie in ie.header_information_elements() {
-                    header_information_elements
-                        .push(HeaderInformationElementRepr::parse(header_ie));
-                }
-
-                for payload_ie in ie.payload_information_elements() {
-                    payload_information_elements
-                        .push(PayloadInformationElementRepr::parse(payload_ie));
-                }
-
-                InformationElementsRepr {
-                    header_information_elements,
-                    payload_information_elements,
-                }
-            }),
-            payload: frame.payload().unwrap_or(&[]),
-        }
     }
 }

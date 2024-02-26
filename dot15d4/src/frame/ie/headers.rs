@@ -255,6 +255,10 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
         Self { buffer }
     }
 
+    pub fn new_unchecked(buffer: T) -> Self {
+        Self { buffer }
+    }
+
     #[allow(clippy::len_without_is_empty)]
     pub const fn len(&self) -> usize {
         2
@@ -390,42 +394,4 @@ bitflags::bitflags! {
         const DSSS_DQPSK = 0b0010_0000_0000_0000;
         const RESERVED = 0b1100_0000_0000_0000;
     }
-}
-
-/// A high-level representation of a Header Information Element.
-#[derive(Debug)]
-pub enum HeaderInformationElementRepr {
-    TimeCorrection(TimeCorrectionRepr),
-    HeaderTermination1,
-    HeaderTermination2,
-}
-
-impl HeaderInformationElementRepr {
-    pub fn parse(ie: HeaderInformationElement<&[u8]>) -> Self {
-        match ie.element_id() {
-            HeaderElementId::TimeCorrection => Self::TimeCorrection(TimeCorrectionRepr {
-                time_correction: TimeCorrection::new(ie.content()).time_correction(),
-                nack: TimeCorrection::new(ie.content()).nack(),
-            }),
-            HeaderElementId::HeaderTermination1 => Self::HeaderTermination1,
-            HeaderElementId::HeaderTermination2 => Self::HeaderTermination2,
-            element => todo!("Received {element:?}"),
-        }
-    }
-}
-
-/// A high-level representation of a Time Correction Header Information Element.
-#[derive(Debug)]
-pub struct TimeCorrectionRepr {
-    /// The time correction value in microseconds.
-    pub time_correction: Duration,
-    /// The negative acknowledgment flag.
-    pub nack: bool,
-}
-
-/// A high-level representation of a Channel Hopping Header Information Element.
-#[derive(Debug)]
-pub struct ChannelHoppingRepr {
-    /// The hopping sequence ID.
-    pub hopping_sequence_id: u8,
 }
