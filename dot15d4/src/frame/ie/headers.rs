@@ -36,7 +36,7 @@ impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for HeaderInformationElement<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let id = self.element_id();
         match id {
             HeaderElementId::HeaderTermination1 | HeaderElementId::HeaderTermination2 => {
@@ -109,7 +109,7 @@ impl From<u8> for HeaderElementId {
 }
 
 impl core::fmt::Display for HeaderElementId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::TimeCorrection => write!(f, "Time Correction"),
             _ => write!(f, "{:?}", self),
@@ -275,7 +275,7 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for TimeCorrection<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{}, nack: {}",

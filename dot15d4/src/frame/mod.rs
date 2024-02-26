@@ -387,7 +387,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
 }
 
 impl<'f, T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&'f T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let fc = self.frame_control();
         write!(f, "{}", fc)?;
         if !fc.sequence_number_suppression() {

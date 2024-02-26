@@ -40,7 +40,7 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for PayloadInformationElement<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self.group_id() {
             PayloadGroupId::Mlme => {
                 writeln!(f, "{:?}", self.group_id())?;

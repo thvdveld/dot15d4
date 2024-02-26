@@ -74,7 +74,7 @@ impl Address {
 }
 
 impl core::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Address::Absent => write!(f, "absent"),
             Address::Short(value) => write!(f, "{:02x}:{:02x}", value[0], value[1]),

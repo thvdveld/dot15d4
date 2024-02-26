@@ -61,9 +61,8 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<T: AsRef<[u8]>> core::fmt::Display for NestedInformationElement<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self.sub_id() {
             NestedSubId::Short(id) => match id {
                 NestedSubIdShort::TschSynchronization => {
@@ -189,7 +188,7 @@ impl From<u8> for NestedSubIdShort {
 }
 
 impl core::fmt::Display for NestedSubIdShort {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::TschTimeslot => write!(f, "TSCH Timeslot"),
             Self::TschSlotframeAndLink => write!(f, "TSCH Slotframe and Link"),
@@ -218,7 +217,7 @@ impl From<u8> for NestedSubIdLong {
 }
 
 impl core::fmt::Display for NestedSubIdLong {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::ChannelHopping => write!(f, "Channel Hopping"),
             _ => write!(f, "{:?}", self),
@@ -261,7 +260,7 @@ impl<T: AsRef<[u8]>> TschSynchronization<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for TschSynchronization<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "ASN: {}, join metric: {}",
@@ -365,7 +364,7 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for TschTimeslot<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "slot ID: {}", self.id())
     }
 }
@@ -635,7 +634,7 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for TschSlotframeAndLink<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "#slot frames: {}", self.number_of_slot_frames())
     }
 }
@@ -821,7 +820,7 @@ bitflags! {
 }
 
 impl core::fmt::Debug for TschLinkOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         bitflags::parser::to_writer(self, f)
     }
 }
@@ -850,7 +849,7 @@ impl<T: AsRef<[u8]>> ChannelHopping<T> {
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for ChannelHopping<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "sequence ID: {}", self.hopping_sequence_id())
     }
 }
