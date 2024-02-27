@@ -85,7 +85,7 @@ fn emit_ack_frame() {
             ]),
             payload_information_elements: Vec::new(),
         }),
-        payload: &[],
+        payload: None,
     };
 
     let mut buffer = vec![0; frame.buffer_len()];
@@ -135,7 +135,7 @@ fn parse_data_frame() {
 
     assert!(frame.information_elements().is_none());
 
-    assert!(frame.payload().unwrap() == &[0x2b, 0x00, 0x00, 0x00][..]);
+    assert!(frame.payload() == Some(&[0x2b, 0x00, 0x00, 0x00][..]));
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn emit_data_frame() {
             ])),
         },
         information_elements: None,
-        payload: &[0x2b, 0x00, 0x00, 0x00],
+        payload: Some(&[0x2b, 0x00, 0x00, 0x00]),
     };
     println!(
         "buffer len: {}",
@@ -326,7 +326,7 @@ fn emit_enhanced_beacon() {
                 ]),
             )]),
         }),
-        payload: &[],
+        payload: None,
     };
 
     let mut buffer = vec![0; frame.buffer_len()];

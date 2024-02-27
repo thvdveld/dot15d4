@@ -23,7 +23,7 @@ pub struct FrameRepr<'p> {
     /// The information elements.
     pub information_elements: Option<InformationElementsRepr>,
     /// The payload.
-    pub payload: &'p [u8],
+    pub payload: Option<&'p [u8]>,
 }
 
 impl<'f> FrameRepr<'f> {
@@ -34,12 +34,13 @@ impl<'f> FrameRepr<'f> {
             sequence_number: reader.sequence_number(),
             addressing_fields: AddressingFieldsRepr::parse(
                 reader.addressing(),
+                // Frame control is needed to determine the addressing modes
                 reader.frame_control(),
             ),
             information_elements: reader
                 .information_elements()
                 .map(InformationElementsRepr::parse),
-            payload: reader.payload().unwrap_or(&[]),
+            payload: reader.payload(),
         }
     }
 
@@ -56,7 +57,9 @@ impl<'f> FrameRepr<'f> {
             len += ie.buffer_len();
         }
 
-        len += self.payload.len();
+        if let Some(payload) = self.payload {
+            len += payload.len();
+        }
 
         len
     }
@@ -74,8 +77,8 @@ impl<'f> FrameRepr<'f> {
             frame.set_information_elements(ie);
         }
 
-        if !self.payload.is_empty() {
-            frame.set_payload(self.payload);
+        if let Some(payload) = self.payload {
+            frame.set_payload(payload);
         }
     }
 }
