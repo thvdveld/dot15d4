@@ -12,7 +12,7 @@ use super::super::InformationElements;
 use heapless::Vec;
 
 /// A high-level representation of Information Elements.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InformationElementsRepr {
     /// The header information elements.
     pub header_information_elements: Vec<HeaderInformationElementRepr, 16>,

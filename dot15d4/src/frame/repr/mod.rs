@@ -82,3 +82,98 @@ impl<'f> FrameRepr<'f> {
         }
     }
 }
+
+pub struct FrameBuilder<'p> {
+    frame: FrameRepr<'p>,
+}
+
+impl<'p> FrameBuilder<'p> {
+    pub fn new_ack() -> Self {
+        Self {
+            frame: FrameRepr {
+                frame_control: FrameControlRepr {
+                    frame_type: super::FrameType::Ack,
+                    security_enabled: false,
+                    frame_pending: false,
+                    ack_request: false,
+                    pan_id_compression: false,
+                    sequence_number_suppression: true,
+                    information_elements_present: false,
+                    dst_addressing_mode: super::AddressingMode::Absent,
+                    src_addressing_mode: super::AddressingMode::Absent,
+                    frame_version: super::FrameVersion::Ieee802154_2020,
+                },
+                sequence_number: None,
+                addressing_fields: AddressingFieldsRepr {
+                    dst_pan_id: None,
+                    src_pan_id: None,
+                    dst_address: None,
+                    src_address: None,
+                },
+                information_elements: None,
+                payload: None,
+            },
+        }
+    }
+
+    pub fn set_sequence_number(mut self, sequence_number: u8) -> Self {
+        self.frame.sequence_number = Some(sequence_number);
+        self.frame.frame_control.sequence_number_suppression = false;
+        self
+    }
+
+    pub fn set_dst_pan_id(mut self, pan_id: u16) -> Self {
+        self.frame.addressing_fields.dst_pan_id = Some(pan_id);
+        self
+    }
+
+    pub fn set_src_pan_id(mut self, pan_id: u16) -> Self {
+        self.frame.addressing_fields.src_pan_id = Some(pan_id);
+        self
+    }
+
+    pub fn set_dst_address(mut self, address: super::Address) -> Self {
+        self.frame.frame_control.dst_addressing_mode = address.into();
+        self.frame.addressing_fields.dst_address = Some(address);
+        self
+    }
+
+    pub fn set_src_address(mut self, address: super::Address) -> Self {
+        self.frame.frame_control.src_addressing_mode = address.into();
+        self.frame.addressing_fields.src_address = Some(address);
+        self
+    }
+
+    pub fn add_header_information_element(mut self, ie: HeaderInformationElementRepr) -> Self {
+        self.frame.frame_control.information_elements_present = true;
+        self.frame
+            .information_elements
+            .get_or_insert_with(InformationElementsRepr::default)
+            .header_information_elements
+            .push(ie)
+            .unwrap();
+
+        self
+    }
+
+    pub fn add_payload_information_element(mut self, ie: PayloadInformationElementRepr) -> Self {
+        self.frame.frame_control.information_elements_present = true;
+        self.frame
+            .information_elements
+            .get_or_insert_with(InformationElementsRepr::default)
+            .payload_information_elements
+            .push(ie)
+            .unwrap();
+
+        self
+    }
+
+    pub fn set_payload(mut self, payload: &'p [u8]) -> Self {
+        self.frame.payload = Some(payload);
+        self
+    }
+
+    pub fn finalize(self) -> FrameRepr<'p> {
+        self.frame
+    }
+}

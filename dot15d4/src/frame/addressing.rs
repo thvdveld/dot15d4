@@ -73,6 +73,16 @@ impl Address {
     }
 }
 
+impl From<Address> for AddressingMode {
+    fn from(value: Address) -> Self {
+        match value {
+            Address::Absent => AddressingMode::Absent,
+            Address::Short(_) => AddressingMode::Short,
+            Address::Extended(_) => AddressingMode::Extended,
+        }
+    }
+}
+
 impl core::fmt::Display for Address {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {

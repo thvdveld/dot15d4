@@ -54,39 +54,19 @@ fn parse_ack_frame() {
 
 #[test]
 fn emit_ack_frame() {
-    let frame = FrameRepr {
-        frame_control: FrameControlRepr {
-            frame_type: FrameType::Ack,
-            security_enabled: false,
-            frame_pending: false,
-            ack_request: false,
-            pan_id_compression: false,
-            sequence_number_suppression: false,
-            information_elements_present: true,
-            dst_addressing_mode: AddressingMode::Extended,
-            src_addressing_mode: AddressingMode::Absent,
-            frame_version: FrameVersion::Ieee802154_2020,
-        },
-        sequence_number: Some(55),
-        addressing_fields: AddressingFieldsRepr {
-            dst_pan_id: Some(0xabcd),
-            src_pan_id: None,
-            dst_address: Some(Address::Extended([
-                0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02,
-            ])),
-            src_address: None,
-        },
-        information_elements: Some(InformationElementsRepr {
-            header_information_elements: Vec::from_iter([
-                HeaderInformationElementRepr::TimeCorrection(TimeCorrectionRepr {
-                    time_correction: crate::time::Duration::from_us(-31),
-                    nack: true,
-                }),
-            ]),
-            payload_information_elements: Vec::new(),
-        }),
-        payload: None,
-    };
+    let frame = FrameBuilder::new_ack()
+        .set_sequence_number(55)
+        .set_dst_pan_id(0xabcd)
+        .set_dst_address(Address::Extended([
+            0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02,
+        ]))
+        .add_header_information_element(HeaderInformationElementRepr::TimeCorrection(
+            TimeCorrectionRepr {
+                time_correction: Duration::from_us(-31),
+                nack: true,
+            },
+        ))
+        .finalize();
 
     let mut buffer = vec![0; frame.buffer_len()];
     frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
@@ -165,15 +145,6 @@ fn emit_data_frame() {
         information_elements: None,
         payload: Some(&[0x2b, 0x00, 0x00, 0x00]),
     };
-    println!(
-        "buffer len: {}",
-        [
-            0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12,
-            0x00, 0x2b, 0x00, 0x00, 0x00,
-        ]
-        .len()
-    );
-    println!("frame buffer len: {}", frame.buffer_len());
 
     let mut buffer = vec![0; frame.buffer_len()];
 
