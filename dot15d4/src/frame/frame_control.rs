@@ -35,7 +35,7 @@ impl From<u8> for FrameType {
 pub enum FrameVersion {
     Ieee802154_2003 = 0b00,
     Ieee802154_2006 = 0b01,
-    Ieee802154 = 0b10,
+    Ieee802154_2020 = 0b10,
     Unknown,
 }
 
@@ -44,7 +44,7 @@ impl From<u8> for FrameVersion {
         match value {
             0b00 => Self::Ieee802154_2003,
             0b01 => Self::Ieee802154_2006,
-            0b10 => Self::Ieee802154,
+            0b10 => Self::Ieee802154_2020,
             _ => Self::Unknown,
         }
     }

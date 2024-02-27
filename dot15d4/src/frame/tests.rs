@@ -18,7 +18,7 @@ fn parse_ack_frame() {
     assert!(!fc.sequence_number_suppression());
     assert!(fc.information_elements_present());
     assert!(fc.dst_addressing_mode() == AddressingMode::Extended);
-    assert!(fc.frame_version() == FrameVersion::Ieee802154);
+    assert!(fc.frame_version() == FrameVersion::Ieee802154_2020);
     assert!(fc.src_addressing_mode() == AddressingMode::Absent);
 
     assert!(frame.sequence_number() == Some(55));
@@ -49,7 +49,55 @@ fn parse_ack_frame() {
         time_correction.time_correction(),
         crate::time::Duration::from_us(-31)
     );
-    assert_eq!(time_correction.nack(), true);
+    assert!(time_correction.nack());
+}
+
+#[test]
+fn emit_ack_frame() {
+    let frame = FrameRepr {
+        frame_control: FrameControlRepr {
+            frame_type: FrameType::Ack,
+            security_enabled: false,
+            frame_pending: false,
+            ack_request: false,
+            pan_id_compression: false,
+            sequence_number_suppression: false,
+            information_elements_present: true,
+            dst_addressing_mode: AddressingMode::Extended,
+            src_addressing_mode: AddressingMode::Absent,
+            frame_version: FrameVersion::Ieee802154_2020,
+        },
+        sequence_number: Some(55),
+        addressing_fields: AddressingFieldsRepr {
+            dst_pan_id: Some(0xabcd),
+            src_pan_id: None,
+            dst_address: Some(Address::Extended([
+                0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02,
+            ])),
+            src_address: None,
+        },
+        information_elements: Some(InformationElementsRepr {
+            header_information_elements: Vec::from_iter([
+                HeaderInformationElementRepr::TimeCorrection(TimeCorrectionRepr {
+                    time_correction: crate::time::Duration::from_us(-31),
+                    nack: true,
+                }),
+            ]),
+            payload_information_elements: Vec::new(),
+        }),
+        payload: &[],
+    };
+
+    let mut buffer = vec![0; frame.buffer_len()];
+    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+
+    assert_eq!(
+        buffer,
+        [
+            0x02, 0x2e, 0x37, 0xcd, 0xab, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02,
+            0x0f, 0xe1, 0x8f,
+        ]
+    );
 }
 
 #[test]
@@ -72,7 +120,72 @@ fn parse_data_frame() {
     assert!(fc.frame_version() == FrameVersion::Ieee802154_2006);
     assert!(fc.src_addressing_mode() == AddressingMode::Extended);
 
+    assert!(frame.sequence_number() == Some(1));
+
+    let addressing = frame.addressing();
+    assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
+    assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));
+    assert_eq!(addressing.src_pan_id(&fc), None);
+    assert_eq!(
+        addressing.src_address(&fc),
+        Some(Address::Extended([
+            0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7
+        ]))
+    );
+
+    assert!(frame.information_elements().is_none());
+
     assert!(frame.payload().unwrap() == &[0x2b, 0x00, 0x00, 0x00][..]);
+}
+
+#[test]
+fn emit_data_frame() {
+    let frame = FrameRepr {
+        frame_control: FrameControlRepr {
+            frame_type: FrameType::Data,
+            security_enabled: false,
+            frame_pending: false,
+            ack_request: false,
+            pan_id_compression: true,
+            sequence_number_suppression: false,
+            information_elements_present: false,
+            dst_addressing_mode: AddressingMode::Short,
+            src_addressing_mode: AddressingMode::Extended,
+            frame_version: FrameVersion::Ieee802154_2006,
+        },
+        sequence_number: Some(1),
+        addressing_fields: AddressingFieldsRepr {
+            dst_pan_id: Some(0xabcd),
+            src_pan_id: None,
+            dst_address: Some(Address::BROADCAST),
+            src_address: Some(Address::Extended([
+                0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7,
+            ])),
+        },
+        information_elements: None,
+        payload: &[0x2b, 0x00, 0x00, 0x00],
+    };
+    println!(
+        "buffer len: {}",
+        [
+            0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12,
+            0x00, 0x2b, 0x00, 0x00, 0x00,
+        ]
+        .len()
+    );
+    println!("frame buffer len: {}", frame.buffer_len());
+
+    let mut buffer = vec![0; frame.buffer_len()];
+
+    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+
+    assert_eq!(
+        buffer,
+        [
+            0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12,
+            0x00, 0x2b, 0x00, 0x00, 0x00,
+        ]
+    );
 }
 
 #[test]
@@ -94,7 +207,7 @@ fn parse_enhanced_beacon() {
     assert!(fc.information_elements_present());
     assert_eq!(fc.dst_addressing_mode(), AddressingMode::Short);
     assert_eq!(fc.src_addressing_mode(), AddressingMode::Extended);
-    assert_eq!(fc.frame_version(), FrameVersion::Ieee802154);
+    assert_eq!(fc.frame_version(), FrameVersion::Ieee802154_2020);
 
     let addressing = frame.addressing();
     assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd),);
@@ -172,29 +285,59 @@ fn parse_enhanced_beacon() {
 }
 
 #[test]
-fn parse_write_buffer() {
-    let mut buffer = [0u8; 127];
+fn emit_enhanced_beacon() {
+    let frame = FrameRepr {
+        frame_control: FrameControlRepr {
+            frame_type: FrameType::Beacon,
+            security_enabled: false,
+            frame_pending: false,
+            ack_request: false,
+            pan_id_compression: true,
+            sequence_number_suppression: true,
+            information_elements_present: true,
+            dst_addressing_mode: AddressingMode::Short,
+            src_addressing_mode: AddressingMode::Extended,
+            frame_version: FrameVersion::Ieee802154_2020,
+        },
+        sequence_number: None,
+        addressing_fields: AddressingFieldsRepr {
+            dst_pan_id: Some(0xabcd),
+            src_pan_id: None,
+            dst_address: Some(Address::BROADCAST),
+            src_address: Some(Address::Extended([
+                0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01,
+            ])),
+        },
+        information_elements: Some(InformationElementsRepr {
+            header_information_elements: Vec::new(),
+            payload_information_elements: Vec::from_iter([PayloadInformationElementRepr::Mlme(
+                Vec::from_iter([
+                    NestedInformationElementRepr::TschSynchronization(TschSynchronizationRepr {
+                        absolute_slot_number: 14,
+                        join_metric: 0,
+                    }),
+                    NestedInformationElementRepr::TschTimeslot(TschTimeslotRepr { id: 0 }),
+                    NestedInformationElementRepr::ChannelHopping(ChannelHoppingRepr {
+                        hopping_sequence_id: 0,
+                    }),
+                    NestedInformationElementRepr::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
+                        number_of_slot_frames: 0,
+                    }),
+                ]),
+            )]),
+        }),
+        payload: &[],
+    };
 
-    let mut writer = Frame::new_unchecked(&mut buffer);
-    writer.set_frame_control(&FrameControlRepr {
-        frame_type: FrameType::Beacon,
-        security_enabled: false,
-        frame_pending: false,
-        ack_request: false,
-        pan_id_compression: true,
-        sequence_number_suppression: true,
-        information_elements_present: true,
-        dst_addressing_mode: AddressingMode::Short,
-        src_addressing_mode: AddressingMode::Extended,
-        frame_version: FrameVersion::Ieee802154,
-    });
+    let mut buffer = vec![0; frame.buffer_len()];
+    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
 
-    writer.set_addressing_fields(&AddressingFieldsRepr {
-        dst_pan_id: None,
-        src_pan_id: None,
-        dst_address: None,
-        src_address: None,
-    });
-
-    assert_eq!(&buffer[..2], &[0x40, 0xeb]);
+    assert_eq!(
+        buffer,
+        [
+            0x40, 0xeb, 0xcd, 0xab, 0xff, 0xff, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00,
+            0x00, 0x3f, 0x11, 0x88, 0x06, 0x1a, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1c,
+            0x00, 0x01, 0xc8, 0x00, 0x01, 0x1b, 0x00
+        ],
+    );
 }

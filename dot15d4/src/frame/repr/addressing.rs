@@ -43,11 +43,7 @@ impl AddressingFieldsRepr {
     }
 
     /// Emit the Addressing Fields into the given buffer.
-    pub fn emit<'f>(
-        &self,
-        buffer: &AddressingFields<&'f mut [u8]>,
-        fc: &FrameControl<&'f mut [u8]>,
-    ) {
+    pub fn emit(&self, buffer: &AddressingFields<&'_ mut [u8]>, fc: &FrameControl<&'_ [u8]>) {
         todo!();
     }
 }

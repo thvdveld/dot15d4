@@ -10,10 +10,12 @@ pub struct HeaderInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
-    /// Return the length field value.
-    pub fn len(&self) -> usize {
-        let b = &self.data.as_ref()[0..2];
-        u16::from_le_bytes([b[0], b[1]]) as usize & 0b111111
+    pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
+        Self { data }
     }
 
     /// Returns `true` when the length field is 0.
@@ -22,16 +24,55 @@ impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
         self.len() == 0
     }
 
+    /// Return the length field value.
+    pub fn len(&self) -> usize {
+        let b = &self.data.as_ref()[0..2];
+        u16::from_le_bytes([b[0], b[1]]) as usize & 0b1111_1110
+    }
+
     /// Return the [`HeaderElementId`].
     pub fn element_id(&self) -> HeaderElementId {
         let b = &self.data.as_ref()[0..2];
-        let id = (u16::from_le_bytes([b[0], b[1]]) >> 7) & 0b11111111;
+        let id = (u16::from_le_bytes([b[0], b[1]]) >> 7) & 0b1111_1111;
         HeaderElementId::from(id as u8)
     }
 
     /// Return the content of this Header Information Element.
     pub fn content(&self) -> &[u8] {
         &self.data.as_ref()[2..][..self.len()]
+    }
+}
+
+impl<T: AsRef<[u8]> + AsMut<[u8]>> HeaderInformationElement<T> {
+    /// Clear the content of this Header Information Element.
+    pub fn clear(&mut self) {
+        self.data.as_mut().fill(0);
+    }
+
+    /// Set the length field.
+    pub fn set_length(&mut self, len: u16) {
+        const MASK: u16 = 0b1111_1110;
+
+        let b = &mut self.data.as_mut()[0..2];
+        let value = (u16::from_le_bytes([b[0], b[1]]) & !MASK);
+        let value = value | (len & MASK);
+        b[0..2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    /// Set the element ID field.
+    pub fn set_element_id(&mut self, id: HeaderElementId) {
+        const SHIFT: u16 = 7;
+        const MASK: u16 = 0b0111_1111_1000_0000;
+
+        let b = &mut self.data.as_mut()[0..2];
+        let value = (u16::from_le_bytes([b[0], b[1]]) & !MASK);
+        let value = value | (((id as u16) << SHIFT) & MASK);
+        b[0..2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    /// Return the content of this Header Information Element.
+    pub fn content_mut(&mut self) -> &mut [u8] {
+        &mut self.data.as_mut()[2..]
     }
 }
 
@@ -275,6 +316,24 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
     pub fn nack(&self) -> bool {
         let b = &self.buffer.as_ref()[0..2];
         i16::from_le_bytes([b[0], b[1]]) & (0x8000u16 as i16) != 0
+    }
+}
+
+impl<T: AsRef<[u8]> + AsMut<[u8]>> TimeCorrection<T> {
+    pub fn set_time_correction(&mut self, time_correction: Duration) {
+        let time = ((((time_correction.as_us() as i16) << 4) >> 4) & 0x0fff);
+        let b = &mut self.buffer.as_mut()[0..2];
+        b[0..2].copy_from_slice(&time.to_le_bytes());
+    }
+
+    pub fn set_nack(&mut self, nack: bool) {
+        let b = &mut self.buffer.as_mut()[0..2];
+        let value = i16::from_le_bytes([b[0], b[1]]);
+        if nack {
+            b[0..2].copy_from_slice(&((value | (0x8000_u16 as i16)) as u16).to_le_bytes());
+        } else {
+            b[0..2].copy_from_slice(&((value & 0x7fff) as u16).to_le_bytes());
+        }
     }
 }
 

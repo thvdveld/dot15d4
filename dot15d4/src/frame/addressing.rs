@@ -174,7 +174,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
                     _ => None,
                 }
             }
-            FrameVersion::Ieee802154 => {
+            FrameVersion::Ieee802154_2020 => {
                 Some(match (dst_addr_mode, src_addr_mode, pan_id_compression) {
                     (Absent, Absent, false) => (false, Absent, false, Absent),
                     (Absent, Absent, true) => (true, Absent, false, Absent),

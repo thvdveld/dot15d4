@@ -58,4 +58,40 @@ impl<'f> FrameRepr<'f> {
             payload: reader.payload().unwrap_or(&[]),
         }
     }
+
+    pub fn buffer_len(&self) -> usize {
+        let mut len = 2; // Frame control
+
+        if self.sequence_number.is_some() {
+            len += 1;
+        }
+
+        len += self.addressing_fields.buffer_len(&self.frame_control);
+
+        if let Some(ie) = &self.information_elements {
+            len += ie.buffer_len();
+        }
+
+        len += self.payload.len();
+
+        len
+    }
+
+    pub fn emit(&self, frame: &mut Frame<&'_ mut [u8]>) {
+        frame.set_frame_control(&self.frame_control);
+
+        if let Some(sequence_number) = self.sequence_number {
+            frame.set_sequence_number(sequence_number);
+        }
+
+        frame.set_addressing_fields(&self.addressing_fields);
+
+        if let Some(ie) = &self.information_elements {
+            frame.set_information_elements(ie);
+        }
+
+        if !self.payload.is_empty() {
+            frame.set_payload(self.payload);
+        }
+    }
 }

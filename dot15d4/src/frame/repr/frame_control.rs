@@ -16,7 +16,7 @@ pub struct FrameControlRepr {
 }
 
 impl FrameControlRepr {
-    pub fn parse<'f>(fc: FrameControl<&'f [u8]>) -> Self {
+    pub fn parse(fc: FrameControl<&[u8]>) -> Self {
         Self {
             frame_type: fc.frame_type(),
             security_enabled: fc.security_enabled(),
@@ -29,5 +29,13 @@ impl FrameControlRepr {
             src_addressing_mode: fc.src_addressing_mode(),
             frame_version: fc.frame_version(),
         }
+    }
+
+    pub const fn buffer_len(&self) -> usize {
+        2
+    }
+
+    pub fn emit(&self, fc: &FrameControl<&mut [u8]>) {
+        todo!();
     }
 }

@@ -18,6 +18,10 @@ pub struct InformationElements<T: AsRef<[u8]>> {
 
 impl<T: AsRef<[u8]>> InformationElements<T> {
     pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -61,4 +65,3 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
         }
     }
 }
-
