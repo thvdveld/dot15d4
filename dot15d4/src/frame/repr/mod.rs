@@ -36,25 +36,9 @@ impl<'f> FrameRepr<'f> {
                 reader.addressing(),
                 reader.frame_control(),
             ),
-            information_elements: reader.information_elements().map(|ie| {
-                let mut header_information_elements = Vec::new();
-                let mut payload_information_elements = Vec::new();
-
-                for header_ie in ie.header_information_elements() {
-                    header_information_elements
-                        .push(HeaderInformationElementRepr::parse(header_ie));
-                }
-
-                for payload_ie in ie.payload_information_elements() {
-                    payload_information_elements
-                        .push(PayloadInformationElementRepr::parse(payload_ie));
-                }
-
-                InformationElementsRepr {
-                    header_information_elements,
-                    payload_information_elements,
-                }
-            }),
+            information_elements: reader
+                .information_elements()
+                .map(InformationElementsRepr::parse),
             payload: reader.payload().unwrap_or(&[]),
         }
     }
