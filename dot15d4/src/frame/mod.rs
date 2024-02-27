@@ -18,6 +18,7 @@
 //! For an incoming frame, use the [`Frame`] structure to read its content.
 //! ```
 //! # use dot15d4::frame::{
+//! #   Buffer,
 //! #   Frame,
 //! #   FrameControl,
 //! #   FrameType,
@@ -166,23 +167,23 @@
 //! [`payload_information_elements`]: InformationElements::payload_information_elements
 //! [`nested_information_elements`]: PayloadInformationElement::nested_information_elements
 
+#[cfg(test)]
+mod tests;
+
 mod frame_control;
-pub use frame_control::FrameControl;
-pub use frame_control::FrameControlRepr;
-pub use frame_control::FrameType;
-pub use frame_control::FrameVersion;
+pub use frame_control::*;
 
 mod aux_sec_header;
-pub use aux_sec_header::AuxiliarySecurityHeader;
+pub use aux_sec_header::*;
 
 mod addressing;
-pub use addressing::Address;
-pub use addressing::AddressingFields;
-pub use addressing::AddressingFieldsRepr;
-pub use addressing::AddressingMode;
+pub use addressing::*;
 
 mod ie;
 pub use ie::*;
+
+mod repr;
+pub use repr::*;
 
 use crate::time::Duration;
 use heapless::Vec;
@@ -194,38 +195,46 @@ pub struct Error;
 /// A type alias for `Result<T, frame::Error>`.
 pub type Result<T> = core::result::Result<T, Error>;
 
+pub trait Buffer: Sized {
+    type T: AsRef<[u8]>;
+
+    /// Create a new reader/writer.
+    ///
+    /// ## Note
+    /// This is a combination of [`Buffer::new_unchecked`] and [`Buffer::check_len`].
+    fn new(buffer: Self::T) -> Result<Self> {
+        let b = Self::new_unchecked(buffer);
+
+        if !b.check_len() {
+            return Err(Error);
+        }
+
+        Ok(b)
+    }
+
+    /// Create a new reader/writer without checking the buffer length.
+    fn new_unchecked(buffer: Self::T) -> Self;
+
+    /// Check if the buffer is long enough to contain valid content.
+    fn check_len(&self) -> bool {
+        true
+    }
+}
+
 /// A reader/writer for an IEEE 802.15.4 frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Frame<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> Frame<T> {
-    /// Create a new IEEE 802.15.4 frame reader/writer.
-    ///
-    /// ## Note
-    /// This is a combination of [`Frame::new_unchecked`] and [`Frame::check_len`].
-    pub fn new(data: T) -> Result<Self> {
-        let frame = Self::new_unchecked(data);
+impl<T: AsRef<[u8]>> Buffer for Frame<T> {
+    type T = T;
 
-        if !frame.check_len() {
-            return Err(Error);
-        }
-
-        Ok(frame)
+    fn new_unchecked(buffer: Self::T) -> Self {
+        Self { buffer }
     }
 
-    /// Create a new IEEE 802.15.4 frame reader/writer, without checking the buffer length.
-    pub fn new_unchecked(data: T) -> Self {
-        Self { buffer: data }
-    }
-
-    /// Check if the buffer is long enough to contain a valid IEEE 802.15.4 frame.
-    ///
-    /// ## Note
-    /// This function does not check the validity of the frame. It only checks if the buffer is
-    /// long enough to contain a valid frame, such that frame accessors do not panic.
-    pub fn check_len(&self) -> bool {
+    fn check_len(&self) -> bool {
         let buffer = self.buffer.as_ref();
 
         if buffer.len() < 2 {
@@ -240,7 +249,9 @@ impl<T: AsRef<[u8]>> Frame<T> {
 
         true
     }
+}
 
+impl<T: AsRef<[u8]>> Frame<T> {
     /// Return a [`FrameControl`] reader.
     pub fn frame_control(&self) -> FrameControl<&'_ [u8]> {
         FrameControl::new(&self.buffer.as_ref()[..2])
@@ -333,22 +344,34 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
         w.set_frame_version(fc.frame_version);
     }
 
+    /// Set the Sequence Number field value in the buffer.
+    pub fn set_sequence_number(&mut self, sequence_number: u8) {
+        // Set the sequence number suppression bit to false.
+        let mut w = FrameControl::new(&mut self.buffer.as_mut()[..2]);
+        w.set_sequence_number_suppression(false);
+
+        self.buffer.as_mut()[2] = sequence_number;
+    }
+
     /// Set the Addressing field values in the buffer, based on the given [`AddressingFieldsRepr`].
     pub fn set_addressing_fields(&mut self, addressing_fields: &AddressingFieldsRepr) {
         let start = 2 + (!self.frame_control().sequence_number_suppression() as usize);
 
-        let mut writer = AddressingFields::new(&mut self.buffer.as_mut()[start..]);
-        writer.write_fields(addressing_fields);
+        let mut w = AddressingFields::new(&mut self.buffer.as_mut()[start..]);
+        w.write_fields(addressing_fields);
     }
 
     /// Set the Auxiliary Security Header field values in the buffer, based on the given _.
-    pub fn set_aux_secu_header(&mut self) {
+    pub fn set_aux_sec_header(&mut self) {
         todo!();
     }
 
     /// Set the Information Elements field values in the buffer, based on the given _.
-    pub fn set_information_elements(&mut self) {
-        todo!();
+    pub fn set_information_elements(&mut self, ie: &InformationElementsRepr) {
+        let mut offset = 2;
+        offset += (!self.frame_control().sequence_number_suppression() as usize);
+        offset += self.addressing().len(&self.frame_control());
+        ie.emit(&mut self.buffer.as_mut()[offset..]);
     }
 
     /// Set the payload of the frame.
@@ -375,7 +398,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
 }
 
 impl<'f, T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&'f T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let fc = self.frame_control();
         write!(f, "{}", fc)?;
         if !fc.sequence_number_suppression() {
@@ -406,257 +429,5 @@ impl<'f, T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&'f T> {
         }
 
         Ok(())
-    }
-}
-
-/// A high-level representation of an IEEE 802.15.4 frame.
-#[derive(Debug)]
-pub struct FrameRepr<'p> {
-    /// The frame control field.
-    pub frame_control: FrameControlRepr,
-    /// The sequence number.
-    pub sequence_number: Option<u8>,
-    /// The addressing fields.
-    pub addressing_fields: AddressingFieldsRepr,
-    /// The information elements.
-    pub information_elements: Option<InformationElementsRepr>,
-    /// The payload.
-    pub payload: &'p [u8],
-}
-
-impl<'r, 'f: 'r> FrameRepr<'f> {
-    pub fn parse(frame: &'r Frame<&'f [u8]>) -> FrameRepr<'f> {
-        Self {
-            frame_control: FrameControlRepr::parse(frame.frame_control()),
-            sequence_number: frame.sequence_number(),
-            addressing_fields: AddressingFieldsRepr::parse(
-                frame.addressing(),
-                frame.frame_control(),
-            ),
-            information_elements: frame.information_elements().map(|ie| {
-                let mut header_information_elements = Vec::new();
-                let mut payload_information_elements = Vec::new();
-
-                for header_ie in ie.header_information_elements() {
-                    header_information_elements
-                        .push(HeaderInformationElementRepr::parse(header_ie));
-                }
-
-                for payload_ie in ie.payload_information_elements() {
-                    payload_information_elements
-                        .push(PayloadInformationElementRepr::parse(payload_ie));
-                }
-
-                InformationElementsRepr {
-                    header_information_elements,
-                    payload_information_elements,
-                }
-            }),
-            payload: frame.payload().unwrap_or(&[]),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ack_frame() {
-        let frame = [
-            0x02, 0x2e, 0x37, 0xcd, 0xab, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02,
-            0x0f, 0xe1, 0x8f,
-        ];
-
-        let frame = Frame::new(&frame).unwrap();
-
-        let fc = frame.frame_control();
-        assert_eq!(fc.frame_type(), FrameType::Ack);
-        assert!(!fc.security_enabled());
-        assert!(!fc.frame_pending());
-        assert!(!fc.ack_request());
-        assert!(!fc.pan_id_compression());
-        assert!(!fc.sequence_number_suppression());
-        assert!(fc.information_elements_present());
-        assert!(fc.dst_addressing_mode() == AddressingMode::Extended);
-        assert!(fc.frame_version() == FrameVersion::Ieee802154);
-        assert!(fc.src_addressing_mode() == AddressingMode::Absent);
-
-        assert!(frame.sequence_number() == Some(55));
-
-        let addressing = frame.addressing();
-        assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
-        assert_eq!(
-            addressing.dst_address(&fc),
-            Some(Address::Extended([
-                0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02
-            ]))
-        );
-        assert_eq!(addressing.src_pan_id(&fc), None);
-        assert_eq!(addressing.src_address(&fc), Some(Address::Absent));
-
-        let ie = frame.information_elements().unwrap();
-        let mut headers = ie.header_information_elements();
-
-        let time_correction = headers.next().unwrap();
-        assert_eq!(
-            time_correction.element_id(),
-            HeaderElementId::TimeCorrection
-        );
-
-        let time_correction = TimeCorrection::new(time_correction.content());
-        assert_eq!(time_correction.len(), 2);
-        assert_eq!(
-            time_correction.time_correction(),
-            crate::time::Duration::from_us(-31)
-        );
-        assert!(time_correction.nack());
-    }
-
-    #[test]
-    fn data_frame() {
-        let frame = [
-            0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12,
-            0x00, 0x2b, 0x00, 0x00, 0x00,
-        ];
-
-        let frame = Frame::new(&frame).unwrap();
-
-        let fc = frame.frame_control();
-        assert_eq!(fc.frame_type(), FrameType::Data);
-        assert!(!fc.security_enabled());
-        assert!(!fc.frame_pending());
-        assert!(!fc.ack_request());
-        assert!(fc.pan_id_compression());
-
-        assert!(fc.dst_addressing_mode() == AddressingMode::Short);
-        assert!(fc.frame_version() == FrameVersion::Ieee802154_2006);
-        assert!(fc.src_addressing_mode() == AddressingMode::Extended);
-
-        assert!(frame.payload().unwrap() == &[0x2b, 0x00, 0x00, 0x00][..]);
-    }
-
-    #[test]
-    fn enhanced_beacon() {
-        let frame: [u8; 35] = [
-            0x40, 0xeb, 0xcd, 0xab, 0xff, 0xff, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00,
-            0x00, 0x3f, 0x11, 0x88, 0x06, 0x1a, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1c,
-            0x00, 0x01, 0xc8, 0x00, 0x01, 0x1b, 0x00,
-        ];
-
-        let frame = Frame::new(&frame).unwrap();
-        let fc = frame.frame_control();
-        assert_eq!(fc.frame_type(), FrameType::Beacon);
-        assert!(!fc.security_enabled());
-        assert!(!fc.frame_pending());
-        assert!(!fc.ack_request());
-        assert!(fc.pan_id_compression());
-        assert!(fc.sequence_number_suppression());
-        assert!(fc.information_elements_present());
-        assert_eq!(fc.dst_addressing_mode(), AddressingMode::Short);
-        assert_eq!(fc.src_addressing_mode(), AddressingMode::Extended);
-        assert_eq!(fc.frame_version(), FrameVersion::Ieee802154);
-
-        let addressing = frame.addressing();
-        assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd),);
-        assert_eq!(addressing.src_pan_id(&fc), None,);
-        assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));
-        assert_eq!(
-            addressing.src_address(&fc),
-            Some(Address::Extended([
-                0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01
-            ]))
-        );
-        assert_eq!(addressing.len(&fc), 12);
-
-        let ie = frame.information_elements().unwrap();
-
-        let mut headers = ie.header_information_elements();
-        let terminator = headers.next().unwrap();
-        assert_eq!(terminator.element_id(), HeaderElementId::HeaderTermination1);
-        assert_eq!(terminator.len(), 0);
-
-        assert_eq!(headers.next(), None);
-
-        let mut payloads = ie.payload_information_elements();
-
-        let mlme = payloads.next().unwrap();
-        assert_eq!(mlme.group_id(), PayloadGroupId::Mlme);
-        assert_eq!(mlme.len() + 2, 19);
-        assert_eq!(payloads.next(), None);
-
-        let mut nested_iterator = NestedInformationElementsIterator::new(mlme.content());
-
-        let tsch_sync = nested_iterator.next().unwrap();
-        assert_eq!(
-            tsch_sync.sub_id(),
-            NestedSubId::Short(NestedSubIdShort::TschSynchronization)
-        );
-        assert_eq!(
-            TschSynchronization::new(tsch_sync.content()).absolute_slot_number(),
-            14
-        );
-        assert_eq!(
-            TschSynchronization::new(tsch_sync.content()).join_metric(),
-            0
-        );
-
-        let tsch_timeslot = nested_iterator.next().unwrap();
-        assert_eq!(
-            tsch_timeslot.sub_id(),
-            NestedSubId::Short(NestedSubIdShort::TschTimeslot)
-        );
-        assert_eq!(TschTimeslot::new(tsch_timeslot.content()).id(), 0);
-
-        let channel_hopping = nested_iterator.next().unwrap();
-        assert_eq!(
-            channel_hopping.sub_id(),
-            NestedSubId::Long(NestedSubIdLong::ChannelHopping)
-        );
-        assert_eq!(
-            ChannelHopping::new(channel_hopping.content()).hopping_sequence_id(),
-            0
-        );
-
-        let slotframe = nested_iterator.next().unwrap();
-        assert_eq!(
-            slotframe.sub_id(),
-            NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink)
-        );
-        assert_eq!(
-            TschSlotframeAndLink::new(slotframe.content()).number_of_slot_frames(),
-            0
-        );
-
-        assert_eq!(nested_iterator.next(), None);
-        assert!(frame.payload().is_none());
-    }
-
-    #[test]
-    fn write_buffer() {
-        let mut buffer = [0u8; 127];
-
-        let mut writer = Frame::new_unchecked(&mut buffer);
-        writer.set_frame_control(&FrameControlRepr {
-            frame_type: FrameType::Beacon,
-            security_enabled: false,
-            frame_pending: false,
-            ack_request: false,
-            pan_id_compression: true,
-            sequence_number_suppression: true,
-            information_elements_present: true,
-            dst_addressing_mode: AddressingMode::Short,
-            src_addressing_mode: AddressingMode::Extended,
-            frame_version: FrameVersion::Ieee802154,
-        });
-
-        writer.set_addressing_fields(&AddressingFieldsRepr {
-            dst_pan_id: None,
-            src_pan_id: None,
-            dst_address: None,
-            src_address: None,
-        });
-
-        assert_eq!(&buffer[..2], &[0x40, 0xeb]);
     }
 }

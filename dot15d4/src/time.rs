@@ -23,7 +23,7 @@ impl Instant {
 }
 
 impl core::fmt::Display for Instant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:.2}ms", self.as_us() as f32 / 1000.0)
     }
 }
@@ -42,7 +42,7 @@ impl Duration {
 }
 
 impl core::fmt::Display for Duration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:.2}ms", self.as_us() as f32 / 1000.0)
     }
 }

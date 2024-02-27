@@ -23,6 +23,14 @@ pub struct NestedInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> NestedInformationElement<T> {
+    pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
+        Self { data }
+    }
+
     /// Return the length of the Nested Information Element in bytes.
     pub fn length(&self) -> usize {
         let b = &self.data.as_ref()[0..2];
@@ -61,9 +69,48 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
     }
 }
 
-#[cfg(feature = "std")]
+impl<T: AsRef<[u8]> + AsMut<[u8]>> NestedInformationElement<T> {
+    pub fn clear(&mut self) {
+        self.data.as_mut().fill(0);
+    }
+
+    pub fn set_length(&mut self, len: u16, id: NestedSubId) {
+        let mask: u16 = if id.is_short() {
+            0b0000_1111_1111
+        } else {
+            0b0111_1111_1111
+        };
+
+        let b = &mut self.data.as_mut()[0..2];
+        let value = u16::from_le_bytes([b[0], b[1]]) & !mask;
+        let value = value | (len & mask);
+        b[0..2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    pub fn set_sub_id(&mut self, id: NestedSubId) {
+        let mask: u16 = if id.is_short() {
+            0b0111_1111_0000_0000
+        } else {
+            0b0111_1000_0000_0000
+        };
+
+        let b = &mut self.data.as_mut()[0..2];
+        let value = u16::from_le_bytes([b[0], b[1]]) & !mask;
+        let value = value
+            | match id {
+                NestedSubId::Short(id) => (id as u16) << 8,
+                NestedSubId::Long(id) => ((id as u16) << 11) | 0b1000_0000_0000_0000,
+            };
+        b[0..2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    pub fn content_mut(&mut self) -> &mut [u8] {
+        &mut self.data.as_mut()[2..]
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for NestedInformationElement<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self.sub_id() {
             NestedSubId::Short(id) => match id {
                 NestedSubIdShort::TschSynchronization => {
@@ -105,6 +152,16 @@ impl NestedSubId {
     /// Create a long [`NestedSubId`] from a `u8`.
     pub fn from_long(value: u8) -> Self {
         Self::Long(NestedSubIdLong::from(value))
+    }
+
+    /// Returns `true` when the Nested Information Element is a short type.
+    pub fn is_short(&self) -> bool {
+        matches!(self, Self::Short(_))
+    }
+
+    /// Returns `true` when the Nested Information Element is a long type.
+    pub fn is_long(&self) -> bool {
+        matches!(self, Self::Long(_))
     }
 }
 
@@ -189,7 +246,7 @@ impl From<u8> for NestedSubIdShort {
 }
 
 impl core::fmt::Display for NestedSubIdShort {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::TschTimeslot => write!(f, "TSCH Timeslot"),
             Self::TschSlotframeAndLink => write!(f, "TSCH Slotframe and Link"),
@@ -218,7 +275,7 @@ impl From<u8> for NestedSubIdLong {
 }
 
 impl core::fmt::Display for NestedSubIdLong {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::ChannelHopping => write!(f, "Channel Hopping"),
             _ => write!(f, "{:?}", self),
@@ -240,6 +297,10 @@ pub struct TschSynchronization<T: AsRef<[u8]>> {
 
 impl<T: AsRef<[u8]>> TschSynchronization<T> {
     pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -260,8 +321,25 @@ impl<T: AsRef<[u8]>> TschSynchronization<T> {
     }
 }
 
+impl<T: AsRef<[u8]> + AsMut<[u8]>> TschSynchronization<T> {
+    /// Set the absolute slot number field.
+    pub fn set_absolute_slot_number(&mut self, asn: u64) {
+        let data = self.data.as_mut();
+        data[0] = (asn & 0xff) as u8;
+        data[1] = ((asn >> 8) & 0xff) as u8;
+        data[2] = ((asn >> 16) & 0xff) as u8;
+        data[3] = ((asn >> 24) & 0xff) as u8;
+        data[4] = ((asn >> 32) & 0xff) as u8;
+    }
+
+    /// Set the join metric field.
+    pub fn set_join_metric(&mut self, join_metric: u8) {
+        self.data.as_mut()[5] = join_metric;
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for TschSynchronization<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "ASN: {}, join metric: {}",
@@ -287,6 +365,10 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
     pub const DEFAULT_ID: u8 = 0;
 
     pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -364,8 +446,15 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
     }
 }
 
+impl<T: AsRef<[u8]> + AsMut<[u8]>> TschTimeslot<T> {
+    /// Set the TSCH timeslot ID field.
+    pub fn set_time_slot_id(&mut self, id: u8) {
+        self.data.as_mut()[0] = id;
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for TschTimeslot<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "slot ID: {}", self.id())
     }
 }
@@ -617,6 +706,10 @@ pub struct TschSlotframeAndLink<T: AsRef<[u8]>> {
 
 impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
     pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -634,8 +727,15 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
     }
 }
 
+impl<T: AsRef<[u8]> + AsMut<[u8]>> TschSlotframeAndLink<T> {
+    /// Set the number of slotframes field.
+    pub fn set_number_of_slot_frames(&mut self, number_of_slot_frames: u8) {
+        self.data.as_mut()[0] = number_of_slot_frames;
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for TschSlotframeAndLink<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "#slot frames: {}", self.number_of_slot_frames())
     }
 }
@@ -821,7 +921,7 @@ bitflags! {
 }
 
 impl core::fmt::Debug for TschLinkOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         bitflags::parser::to_writer(self, f)
     }
 }
@@ -849,8 +949,15 @@ impl<T: AsRef<[u8]>> ChannelHopping<T> {
     }
 }
 
+impl<T: AsRef<[u8]> + AsMut<[u8]>> ChannelHopping<T> {
+    /// Set the hopping sequence ID field.
+    pub fn set_hopping_sequence_id(&mut self, id: u8) {
+        self.data.as_mut()[0] = id;
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for ChannelHopping<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "sequence ID: {}", self.hopping_sequence_id())
     }
 }
@@ -899,67 +1006,4 @@ impl<'f> Iterator for NestedInformationElementsIterator<'f> {
             Some(nested)
         }
     }
-}
-
-/// A high-level representation of a MLME Payload Information Element.
-#[derive(Debug)]
-pub enum NestedInformationElementRepr {
-    TschSynchronization(TschSynchronizationRepr),
-    TschTimeslot(TschTimeslotRepr),
-    TschSlotframeAndLink(TschSlotframeAndLinkRepr),
-}
-
-impl NestedInformationElementRepr {
-    pub fn parse(ie: NestedInformationElement<&[u8]>) -> Self {
-        match ie.sub_id() {
-            NestedSubId::Short(NestedSubIdShort::TschSynchronization) => {
-                Self::TschSynchronization(TschSynchronizationRepr {
-                    absolute_slot_number: TschSynchronization::new(ie.content())
-                        .absolute_slot_number(),
-                    join_metric: TschSynchronization::new(ie.content()).join_metric(),
-                })
-            }
-            NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-                Self::TschTimeslot(TschTimeslotRepr {
-                    id: TschTimeslot::new(ie.content()).id(),
-                })
-            }
-            NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink) => {
-                Self::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
-                    number_of_slot_frames: TschSlotframeAndLink::new(ie.content())
-                        .number_of_slot_frames(),
-                })
-            }
-            NestedSubId::Long(NestedSubIdLong::ChannelHopping) => {
-                Self::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
-                    number_of_slot_frames: TschSlotframeAndLink::new(ie.content())
-                        .number_of_slot_frames(),
-                })
-            }
-            _ => todo!(),
-        }
-    }
-}
-
-/// A high-level representation of a TSCH Synchronization Nested Information Element.
-#[derive(Debug)]
-pub struct TschSynchronizationRepr {
-    /// The absolute slot number (ASN).
-    pub absolute_slot_number: u64,
-    /// The join metric.
-    pub join_metric: u8,
-}
-
-/// A high-level representation of a TSCH Timeslot Nested Information Element.
-#[derive(Debug)]
-pub struct TschTimeslotRepr {
-    /// The timeslot ID.
-    pub id: u8,
-}
-
-/// A high-level representation of a TSCH Slotframe and Link Nested Information Element.
-#[derive(Debug)]
-pub struct TschSlotframeAndLinkRepr {
-    /// The number of slotframes.
-    pub number_of_slot_frames: u8,
 }

@@ -10,10 +10,12 @@ pub struct HeaderInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
-    /// Return the length field value.
-    pub fn len(&self) -> usize {
-        let b = &self.data.as_ref()[0..2];
-        u16::from_le_bytes([b[0], b[1]]) as usize & 0b111111
+    pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
+        Self { data }
     }
 
     /// Returns `true` when the length field is 0.
@@ -22,10 +24,16 @@ impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
         self.len() == 0
     }
 
+    /// Return the length field value.
+    pub fn len(&self) -> usize {
+        let b = &self.data.as_ref()[0..2];
+        u16::from_le_bytes([b[0], b[1]]) as usize & 0b1111_1110
+    }
+
     /// Return the [`HeaderElementId`].
     pub fn element_id(&self) -> HeaderElementId {
         let b = &self.data.as_ref()[0..2];
-        let id = (u16::from_le_bytes([b[0], b[1]]) >> 7) & 0b11111111;
+        let id = (u16::from_le_bytes([b[0], b[1]]) >> 7) & 0b1111_1111;
         HeaderElementId::from(id as u8)
     }
 
@@ -35,8 +43,41 @@ impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
     }
 }
 
+impl<T: AsRef<[u8]> + AsMut<[u8]>> HeaderInformationElement<T> {
+    /// Clear the content of this Header Information Element.
+    pub fn clear(&mut self) {
+        self.data.as_mut().fill(0);
+    }
+
+    /// Set the length field.
+    pub fn set_length(&mut self, len: u16) {
+        const MASK: u16 = 0b1111_1110;
+
+        let b = &mut self.data.as_mut()[0..2];
+        let value = (u16::from_le_bytes([b[0], b[1]]) & !MASK);
+        let value = value | (len & MASK);
+        b[0..2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    /// Set the element ID field.
+    pub fn set_element_id(&mut self, id: HeaderElementId) {
+        const SHIFT: u16 = 7;
+        const MASK: u16 = 0b0111_1111_1000_0000;
+
+        let b = &mut self.data.as_mut()[0..2];
+        let value = (u16::from_le_bytes([b[0], b[1]]) & !MASK);
+        let value = value | (((id as u16) << SHIFT) & MASK);
+        b[0..2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    /// Return the content of this Header Information Element.
+    pub fn content_mut(&mut self) -> &mut [u8] {
+        &mut self.data.as_mut()[2..]
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for HeaderInformationElement<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let id = self.element_id();
         match id {
             HeaderElementId::HeaderTermination1 | HeaderElementId::HeaderTermination2 => {
@@ -109,7 +150,7 @@ impl From<u8> for HeaderElementId {
 }
 
 impl core::fmt::Display for HeaderElementId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::TimeCorrection => write!(f, "Time Correction"),
             _ => write!(f, "{:?}", self),
@@ -255,6 +296,10 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
         Self { buffer }
     }
 
+    pub fn new_unchecked(buffer: T) -> Self {
+        Self { buffer }
+    }
+
     #[allow(clippy::len_without_is_empty)]
     pub const fn len(&self) -> usize {
         2
@@ -274,8 +319,26 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
     }
 }
 
+impl<T: AsRef<[u8]> + AsMut<[u8]>> TimeCorrection<T> {
+    pub fn set_time_correction(&mut self, time_correction: Duration) {
+        let time = ((((time_correction.as_us() as i16) << 4) >> 4) & 0x0fff);
+        let b = &mut self.buffer.as_mut()[0..2];
+        b[0..2].copy_from_slice(&time.to_le_bytes());
+    }
+
+    pub fn set_nack(&mut self, nack: bool) {
+        let b = &mut self.buffer.as_mut()[0..2];
+        let value = i16::from_le_bytes([b[0], b[1]]);
+        if nack {
+            b[0..2].copy_from_slice(&((value | (0x8000_u16 as i16)) as u16).to_le_bytes());
+        } else {
+            b[0..2].copy_from_slice(&((value & 0x7fff) as u16).to_le_bytes());
+        }
+    }
+}
+
 impl<T: AsRef<[u8]>> core::fmt::Display for TimeCorrection<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{}, nack: {}",
@@ -390,42 +453,4 @@ bitflags::bitflags! {
         const DSSS_DQPSK = 0b0010_0000_0000_0000;
         const RESERVED = 0b1100_0000_0000_0000;
     }
-}
-
-/// A high-level representation of a Header Information Element.
-#[derive(Debug)]
-pub enum HeaderInformationElementRepr {
-    TimeCorrection(TimeCorrectionRepr),
-    HeaderTermination1,
-    HeaderTermination2,
-}
-
-impl HeaderInformationElementRepr {
-    pub fn parse(ie: HeaderInformationElement<&[u8]>) -> Self {
-        match ie.element_id() {
-            HeaderElementId::TimeCorrection => Self::TimeCorrection(TimeCorrectionRepr {
-                time_correction: TimeCorrection::new(ie.content()).time_correction(),
-                nack: TimeCorrection::new(ie.content()).nack(),
-            }),
-            HeaderElementId::HeaderTermination1 => Self::HeaderTermination1,
-            HeaderElementId::HeaderTermination2 => Self::HeaderTermination2,
-            element => todo!("Received {element:?}"),
-        }
-    }
-}
-
-/// A high-level representation of a Time Correction Header Information Element.
-#[derive(Debug)]
-pub struct TimeCorrectionRepr {
-    /// The time correction value in microseconds.
-    pub time_correction: Duration,
-    /// The negative acknowledgment flag.
-    pub nack: bool,
-}
-
-/// A high-level representation of a Channel Hopping Header Information Element.
-#[derive(Debug)]
-pub struct ChannelHoppingRepr {
-    /// The hopping sequence ID.
-    pub hopping_sequence_id: u8,
 }

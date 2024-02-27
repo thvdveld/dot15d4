@@ -18,6 +18,10 @@ pub struct InformationElements<T: AsRef<[u8]>> {
 
 impl<T: AsRef<[u8]>> InformationElements<T> {
     pub fn new(data: T) -> Self {
+        Self::new_unchecked(data)
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -60,13 +64,4 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
             terminated,
         }
     }
-}
-
-/// A high-level representation of Information Elements.
-#[derive(Debug)]
-pub struct InformationElementsRepr {
-    /// The header information elements.
-    pub header_information_elements: Vec<HeaderInformationElementRepr, 16>,
-    /// The payload information elements.
-    pub payload_information_elements: Vec<PayloadInformationElementRepr, 16>,
 }

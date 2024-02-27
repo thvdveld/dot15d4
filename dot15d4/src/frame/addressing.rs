@@ -1,6 +1,7 @@
 //! Addressing fields readers and writers.
 
 use super::FrameControl;
+use super::FrameControlRepr;
 use super::FrameVersion;
 
 /// An IEEE 802.15.4 address.
@@ -57,6 +58,8 @@ impl Address {
         Self::Extended(a)
     }
 
+    /// Return the length of the address in octets.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         match self {
             Address::Absent => 0,
@@ -71,7 +74,7 @@ impl Address {
 }
 
 impl core::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Address::Absent => write!(f, "absent"),
             Address::Short(value) => write!(f, "{:02x}:{:02x}", value[0], value[1]),
@@ -116,26 +119,6 @@ impl From<u8> for AddressingMode {
     }
 }
 
-/// A high-level representation of the IEEE 802.15.4 Addressing Fields.
-#[derive(Debug)]
-pub struct AddressingFieldsRepr {
-    pub dst_pan_id: Option<u16>,
-    pub src_pan_id: Option<u16>,
-    pub dst_address: Option<Address>,
-    pub src_address: Option<Address>,
-}
-
-impl AddressingFieldsRepr {
-    pub fn parse<'f>(addressing: AddressingFields<&'f [u8]>, fc: FrameControl<&'f [u8]>) -> Self {
-        Self {
-            dst_pan_id: addressing.dst_pan_id(&fc),
-            src_pan_id: addressing.src_pan_id(&fc),
-            dst_address: addressing.dst_address(&fc),
-            src_address: addressing.src_address(&fc),
-        }
-    }
-}
-
 /// A reader/writer for the IEEE 802.15.4 Addressing Fields.
 pub struct AddressingFields<T: AsRef<[u8]>> {
     buffer: T,
@@ -143,6 +126,10 @@ pub struct AddressingFields<T: AsRef<[u8]>> {
 
 impl<T: AsRef<[u8]>> AddressingFields<T> {
     pub fn new(buffer: T) -> Self {
+        Self::new_unchecked(buffer)
+    }
+
+    pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
 
@@ -187,7 +174,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
                     _ => None,
                 }
             }
-            FrameVersion::Ieee802154 => {
+            FrameVersion::Ieee802154_2020 => {
                 Some(match (dst_addr_mode, src_addr_mode, pan_id_compression) {
                     (Absent, Absent, false) => (false, Absent, false, Absent),
                     (Absent, Absent, true) => (true, Absent, false, Absent),
@@ -311,7 +298,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
-    pub fn write_fields(&mut self, fields: &AddressingFieldsRepr) {
+    pub fn write_fields(&mut self, fields: &super::repr::AddressingFieldsRepr) {
         let mut offset = 0;
 
         if let Some(id) = fields.dst_pan_id {
@@ -322,7 +309,19 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
 
         if let Some(addr) = fields.dst_address {
             let b = &mut self.buffer.as_mut()[offset..][..addr.len()];
-            b.copy_from_slice(addr.as_bytes());
+            match addr {
+                Address::Absent => {}
+                Address::Short(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+                Address::Extended(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+            }
             offset += addr.len();
         }
 
@@ -334,7 +333,19 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
 
         if let Some(addr) = fields.src_address {
             let b = &mut self.buffer.as_mut()[offset..][..addr.len()];
-            b.copy_from_slice(addr.as_bytes());
+            match addr {
+                Address::Absent => {}
+                Address::Short(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+                Address::Extended(value) => {
+                    let mut addr = value;
+                    addr.reverse();
+                    b.copy_from_slice(&addr);
+                }
+            }
         }
     }
 }

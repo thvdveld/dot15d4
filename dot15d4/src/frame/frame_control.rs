@@ -35,7 +35,7 @@ impl From<u8> for FrameType {
 pub enum FrameVersion {
     Ieee802154_2003 = 0b00,
     Ieee802154_2006 = 0b01,
-    Ieee802154 = 0b10,
+    Ieee802154_2020 = 0b10,
     Unknown,
 }
 
@@ -44,7 +44,7 @@ impl From<u8> for FrameVersion {
         match value {
             0b00 => Self::Ieee802154_2003,
             0b01 => Self::Ieee802154_2006,
-            0b10 => Self::Ieee802154,
+            0b10 => Self::Ieee802154_2020,
             _ => Self::Unknown,
         }
     }
@@ -236,37 +236,5 @@ impl<T: AsRef<[u8]>> core::fmt::Display for FrameControl<T> {
         writeln!(f, "  src addressing mode: {:?}", self.src_addressing_mode())?;
         writeln!(f, "  frame version: {:?}", self.frame_version())?;
         Ok(())
-    }
-}
-
-/// A high-level representation of the IEEE 802.15.4 Frame Control field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FrameControlRepr {
-    pub frame_type: FrameType,
-    pub security_enabled: bool,
-    pub frame_pending: bool,
-    pub ack_request: bool,
-    pub pan_id_compression: bool,
-    pub sequence_number_suppression: bool,
-    pub information_elements_present: bool,
-    pub dst_addressing_mode: AddressingMode,
-    pub src_addressing_mode: AddressingMode,
-    pub frame_version: FrameVersion,
-}
-
-impl FrameControlRepr {
-    pub fn parse(fc: FrameControl<&[u8]>) -> Self {
-        Self {
-            frame_type: fc.frame_type(),
-            security_enabled: fc.security_enabled(),
-            frame_pending: fc.frame_pending(),
-            ack_request: fc.ack_request(),
-            pan_id_compression: fc.pan_id_compression(),
-            sequence_number_suppression: fc.sequence_number_suppression(),
-            information_elements_present: fc.information_elements_present(),
-            dst_addressing_mode: fc.dst_addressing_mode(),
-            src_addressing_mode: fc.src_addressing_mode(),
-            frame_version: fc.frame_version(),
-        }
     }
 }
