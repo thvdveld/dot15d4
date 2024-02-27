@@ -54,7 +54,7 @@ impl<'f> FrameRepr<'f> {
         len += self.addressing_fields.buffer_len(&self.frame_control);
 
         if let Some(ie) = &self.information_elements {
-            len += ie.buffer_len();
+            len += ie.buffer_len(self.payload.is_some());
         }
 
         if let Some(payload) = self.payload {
@@ -74,7 +74,7 @@ impl<'f> FrameRepr<'f> {
         frame.set_addressing_fields(&self.addressing_fields);
 
         if let Some(ie) = &self.information_elements {
-            frame.set_information_elements(ie);
+            frame.set_information_elements(ie, self.payload.is_some());
         }
 
         if let Some(payload) = self.payload {

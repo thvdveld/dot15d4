@@ -8,6 +8,7 @@ use heapless::Vec;
 #[derive(Debug)]
 pub enum PayloadInformationElementRepr {
     Mlme(Vec<NestedInformationElementRepr, 16>),
+    PayloadTermination,
 }
 
 impl PayloadInformationElementRepr {
@@ -44,6 +45,7 @@ impl PayloadInformationElementRepr {
 
                 len
             }
+            Self::PayloadTermination => 0,
         }
     }
 
@@ -63,6 +65,7 @@ impl PayloadInformationElementRepr {
                     offset += ie.buffer_len();
                 }
             }
+            Self::PayloadTermination => todo!(),
         }
     }
 }
@@ -72,6 +75,7 @@ impl From<&PayloadInformationElementRepr> for PayloadGroupId {
         use PayloadInformationElementRepr::*;
         match val {
             Mlme(_) => PayloadGroupId::Mlme,
+            PayloadTermination => PayloadGroupId::PayloadTermination,
         }
     }
 }

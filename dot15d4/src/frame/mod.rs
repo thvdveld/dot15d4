@@ -367,11 +367,15 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     }
 
     /// Set the Information Elements field values in the buffer, based on the given _.
-    pub fn set_information_elements(&mut self, ie: &InformationElementsRepr) {
+    pub fn set_information_elements(
+        &mut self,
+        ie: &InformationElementsRepr,
+        contains_payload: bool,
+    ) {
         let mut offset = 2;
         offset += (!self.frame_control().sequence_number_suppression() as usize);
         offset += self.addressing().len(&self.frame_control());
-        ie.emit(&mut self.buffer.as_mut()[offset..]);
+        ie.emit(&mut self.buffer.as_mut()[offset..], contains_payload);
     }
 
     /// Set the payload of the frame.
