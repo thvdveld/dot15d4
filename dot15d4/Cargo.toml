@@ -13,6 +13,10 @@ bitflags = "2.4.2"
 heapless = "0.8.0"
 critical-section = "1.1"
 
+colored = { version = "2", optional = true }
+clap = { version = "4.5.1", features = ["derive"], optional = true }
+hex = { version = "0.4.3", optional = true }
+
 [dev-dependencies]
 tracing-subscriber = "0.3"
 critical-section = { version = "1.1", features = ["std"] }
@@ -20,3 +24,8 @@ critical-section = { version = "1.1", features = ["std"] }
 [features]
 std = []
 default = ["std"]
+dot15d4-cat = ["std", "colored", "clap", "hex"]
+
+[[bin]]
+name = "dot15d4-cat"
+required-features = ["dot15d4-cat"]
