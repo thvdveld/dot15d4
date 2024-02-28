@@ -1,6 +1,39 @@
 use super::*;
 
 #[test]
+fn parse_imm_ack() {
+    let frame = [0x02, 0x10, 0x01];
+
+    let frame = Frame::new(&frame).unwrap();
+
+    let fc = frame.frame_control();
+    assert_eq!(fc.frame_type(), FrameType::Ack);
+    assert!(!fc.security_enabled());
+    assert!(!fc.frame_pending());
+    assert!(!fc.ack_request());
+    assert!(!fc.pan_id_compression());
+    assert!(!fc.sequence_number_suppression());
+    assert!(!fc.information_elements_present());
+    assert!(fc.dst_addressing_mode() == AddressingMode::Absent);
+    assert!(fc.frame_version() == FrameVersion::Ieee802154_2006);
+    assert!(fc.src_addressing_mode() == AddressingMode::Absent);
+    assert!(frame.sequence_number() == Some(1));
+    assert!(frame.addressing().is_none());
+    assert!(frame.information_elements().is_none());
+    assert!(frame.payload().is_none());
+}
+
+#[test]
+fn emit_imm_ack() {
+    let imm_ack = FrameBuilder::new_imm_ack(1).finalize().unwrap();
+
+    let mut buffer = vec![0; imm_ack.buffer_len()];
+    imm_ack.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+
+    assert_eq!(buffer, [0x02, 0x10, 0x01]);
+}
+
+#[test]
 fn parse_ack_frame() {
     let frame = [
         0x02, 0x2e, 0x37, 0xcd, 0xab, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x0f,
@@ -23,7 +56,7 @@ fn parse_ack_frame() {
 
     assert!(frame.sequence_number() == Some(55));
 
-    let addressing = frame.addressing();
+    let addressing = frame.addressing().unwrap();
     assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
     assert_eq!(
         addressing.dst_address(&fc),
@@ -103,7 +136,7 @@ fn parse_data_frame() {
 
     assert!(frame.sequence_number() == Some(1));
 
-    let addressing = frame.addressing();
+    let addressing = frame.addressing().unwrap();
     assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
     assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));
     assert_eq!(addressing.src_pan_id(&fc), None);
@@ -166,7 +199,7 @@ fn parse_enhanced_beacon() {
     assert_eq!(fc.src_addressing_mode(), AddressingMode::Extended);
     assert_eq!(fc.frame_version(), FrameVersion::Ieee802154_2020);
 
-    let addressing = frame.addressing();
+    let addressing = frame.addressing().unwrap();
     assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd),);
     assert_eq!(addressing.src_pan_id(&fc), None,);
     assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));

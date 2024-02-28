@@ -15,6 +15,31 @@ pub struct FrameBuilder<'p, T> {
 }
 
 impl<'p> FrameBuilder<'p, Ack> {
+    /// Create a new builder for an immediate acknowledgment frame.
+    pub fn new_imm_ack(sequence_number: u8) -> Self {
+        Self {
+            frame: FrameRepr {
+                frame_control: FrameControlRepr {
+                    frame_type: FrameType::Ack,
+                    security_enabled: false,
+                    frame_pending: false,
+                    ack_request: false,
+                    pan_id_compression: false,
+                    sequence_number_suppression: false,
+                    information_elements_present: false,
+                    dst_addressing_mode: AddressingMode::Absent,
+                    src_addressing_mode: AddressingMode::Absent,
+                    frame_version: FrameVersion::Ieee802154_2006,
+                },
+                sequence_number: Some(sequence_number),
+                addressing_fields: None,
+                information_elements: None,
+                payload: None,
+            },
+            r#type: Default::default(),
+        }
+    }
+
     /// Create a new builder for an acknowledgment frame.
     pub fn new_ack() -> Self {
         Self {
@@ -274,6 +299,18 @@ impl<'p, T> FrameBuilder<'p, T> {
                 _ => return Err(Error),
             };
         } else {
+            if matches!(self.frame.frame_control.frame_type, FrameType::Ack) {
+                // The sequence number is required for immediate acknowledgment frames.
+                if self.frame.sequence_number.is_none() {
+                    return Err(Error);
+                }
+
+                // The addressing fields are not present in acknowledgment frames.
+                self.frame.addressing_fields = None;
+
+                return Ok(self.frame);
+            }
+
             // - If both destination and source addresses are present, and the PAN IDs are equal,
             //   then PAN ID compression is possible. In this case, the source PAN ID field is
             //   omitted and the PAN ID compression bit is set to 1.

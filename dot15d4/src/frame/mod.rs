@@ -36,8 +36,8 @@
 //! # ];
 //! let frame = Frame::new(&frame).unwrap();
 //! let fc = frame.frame_control();
-//! let src_addr = frame.addressing().src_address(&fc);
-//! let dst_addr = frame.addressing().dst_address(&fc);
+//! let src_addr = frame.addressing().unwrap().src_address(&fc);
+//! let dst_addr = frame.addressing().unwrap().dst_address(&fc);
 //!
 //! assert_eq!(fc.frame_type(), FrameType::Beacon);
 //!
@@ -267,21 +267,42 @@ impl<T: AsRef<[u8]>> Frame<T> {
     }
 
     /// Return an [`AddressingFields`] reader.
-    pub fn addressing(&self) -> AddressingFields<&'_ [u8]> {
-        if self.frame_control().sequence_number_suppression() {
-            AddressingFields::new(&self.buffer.as_ref()[2..])
+    pub fn addressing(&self) -> Option<AddressingFields<&'_ [u8]>> {
+        let fc = self.frame_control();
+
+        if matches!(fc.frame_type(), FrameType::Ack)
+            && matches!(
+                fc.frame_version(),
+                FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006
+            )
+        {
+            // Immediate Acks don't have addressing fields.
+            return None;
+        }
+
+        if fc.sequence_number_suppression() {
+            Some(AddressingFields::new(&self.buffer.as_ref()[2..]))
         } else {
-            AddressingFields::new(&self.buffer.as_ref()[3..])
+            Some(AddressingFields::new(&self.buffer.as_ref()[3..]))
         }
     }
 
     /// Return an [`AuxiliarySecurityHeader`] reader.
     pub fn auxiliary_security_header(&self) -> Option<AuxiliarySecurityHeader<&'_ [u8]>> {
-        if self.frame_control().security_enabled() {
-            let start = 2
-                + (!self.frame_control().sequence_number_suppression() as usize)
-                + self.addressing().len(&self.frame_control());
-            Some(AuxiliarySecurityHeader::new(&self.buffer.as_ref()[start..]))
+        let fc = self.frame_control();
+
+        if fc.security_enabled() {
+            let mut offset = 2;
+
+            offset += (!fc.sequence_number_suppression() as usize);
+
+            if let Some(af) = self.addressing() {
+                offset += af.len(&fc);
+            }
+
+            Some(AuxiliarySecurityHeader::new(
+                &self.buffer.as_ref()[offset..],
+            ))
         } else {
             None
         }
@@ -289,11 +310,16 @@ impl<T: AsRef<[u8]>> Frame<T> {
 
     /// Return an [`InformationElements`] reader.
     pub fn information_elements(&self) -> Option<InformationElements<&'_ [u8]>> {
-        if self.frame_control().information_elements_present() {
-            let start = 2
-                + (!self.frame_control().sequence_number_suppression() as usize)
-                + self.addressing().len(&self.frame_control());
-            Some(InformationElements::new(&self.buffer.as_ref()[start..]))
+        let fc = self.frame_control();
+        if fc.information_elements_present() {
+            let mut offset = 2;
+            offset += (!fc.sequence_number_suppression() as usize);
+
+            if let Some(af) = self.addressing() {
+                offset += af.len(&fc);
+            }
+
+            Some(InformationElements::new(&self.buffer.as_ref()[offset..]))
         } else {
             None
         }
@@ -303,20 +329,24 @@ impl<T: AsRef<[u8]>> Frame<T> {
 impl<'f, T: AsRef<[u8]> + ?Sized> Frame<&'f T> {
     /// Return the payload of the frame.
     pub fn payload(&self) -> Option<&'f [u8]> {
+        let fc = self.frame_control();
+
         let mut offset = 0;
         offset += 2;
 
-        if !self.frame_control().sequence_number_suppression() {
+        if !fc.sequence_number_suppression() {
             offset += 1;
         }
 
-        offset += self.addressing().len(&self.frame_control());
+        if let Some(af) = self.addressing() {
+            offset += af.len(&fc);
+        }
 
-        if self.frame_control().security_enabled() {
+        if fc.security_enabled() {
             offset += self.auxiliary_security_header().unwrap().len();
         }
 
-        if self.frame_control().information_elements_present() {
+        if fc.information_elements_present() {
             offset += self.information_elements().unwrap().len();
         }
 
@@ -374,7 +404,11 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     ) {
         let mut offset = 2;
         offset += (!self.frame_control().sequence_number_suppression() as usize);
-        offset += self.addressing().len(&self.frame_control());
+
+        if let Some(af) = self.addressing() {
+            offset += af.len(&self.frame_control());
+        }
+
         ie.emit(&mut self.buffer.as_mut()[offset..], contains_payload);
     }
 
@@ -387,7 +421,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
             offset += 1;
         }
 
-        offset += self.addressing().len(&self.frame_control());
+        if let Some(af) = self.addressing() {
+            offset += af.len(&self.frame_control());
+        }
 
         if self.frame_control().security_enabled() {
             offset += self.auxiliary_security_header().unwrap().len();
@@ -409,8 +445,9 @@ impl<'f, T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&'f T> {
             writeln!(f, "Sequence number: {}", self.sequence_number().unwrap())?;
         }
 
-        let addressing = self.addressing();
-        addressing.fmt(f, &fc)?;
+        if let Some(af) = self.addressing() {
+            af.fmt(f, &fc)?;
+        }
 
         if fc.security_enabled() {
             todo!();

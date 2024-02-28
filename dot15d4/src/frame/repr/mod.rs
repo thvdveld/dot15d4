@@ -35,11 +35,9 @@ impl<'f> FrameRepr<'f> {
         Self {
             frame_control: FrameControlRepr::parse(reader.frame_control()),
             sequence_number: reader.sequence_number(),
-            addressing_fields: Some(AddressingFieldsRepr::parse(
-                reader.addressing(),
-                // Frame control is needed to determine the addressing modes
-                reader.frame_control(),
-            )),
+            addressing_fields: reader
+                .addressing()
+                .map(|af| AddressingFieldsRepr::parse(af, reader.frame_control())),
             information_elements: reader
                 .information_elements()
                 .map(InformationElementsRepr::parse),
