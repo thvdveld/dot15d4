@@ -22,7 +22,7 @@ pub struct FrameRepr<'p> {
     /// The sequence number.
     pub sequence_number: Option<u8>,
     /// The addressing fields.
-    pub addressing_fields: AddressingFieldsRepr,
+    pub addressing_fields: Option<AddressingFieldsRepr>,
     /// The information elements.
     pub information_elements: Option<InformationElementsRepr>,
     /// The payload.
@@ -35,11 +35,11 @@ impl<'f> FrameRepr<'f> {
         Self {
             frame_control: FrameControlRepr::parse(reader.frame_control()),
             sequence_number: reader.sequence_number(),
-            addressing_fields: AddressingFieldsRepr::parse(
+            addressing_fields: Some(AddressingFieldsRepr::parse(
                 reader.addressing(),
                 // Frame control is needed to determine the addressing modes
                 reader.frame_control(),
-            ),
+            )),
             information_elements: reader
                 .information_elements()
                 .map(InformationElementsRepr::parse),
@@ -55,7 +55,9 @@ impl<'f> FrameRepr<'f> {
             len += 1;
         }
 
-        len += self.addressing_fields.buffer_len(&self.frame_control);
+        if let Some(af) = &self.addressing_fields {
+            len += af.buffer_len(&self.frame_control);
+        }
 
         if let Some(ie) = &self.information_elements {
             len += ie.buffer_len(self.payload.is_some());
@@ -76,7 +78,9 @@ impl<'f> FrameRepr<'f> {
             frame.set_sequence_number(sequence_number);
         }
 
-        frame.set_addressing_fields(&self.addressing_fields);
+        if let Some(af) = &self.addressing_fields {
+            frame.set_addressing_fields(af);
+        }
 
         if let Some(ie) = &self.information_elements {
             frame.set_information_elements(ie, self.payload.is_some());

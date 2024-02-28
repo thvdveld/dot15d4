@@ -32,12 +32,7 @@ impl<'p> FrameBuilder<'p, Ack> {
                     frame_version: FrameVersion::Ieee802154_2020,
                 },
                 sequence_number: None,
-                addressing_fields: AddressingFieldsRepr {
-                    dst_pan_id: None,
-                    src_pan_id: None,
-                    dst_address: None,
-                    src_address: None,
-                },
+                addressing_fields: None,
                 information_elements: None,
                 payload: None,
             },
@@ -64,12 +59,7 @@ impl<'p> FrameBuilder<'p, Beacon> {
                     frame_version: FrameVersion::Ieee802154_2006,
                 },
                 sequence_number: None,
-                addressing_fields: AddressingFieldsRepr {
-                    dst_pan_id: None,
-                    src_pan_id: None,
-                    dst_address: None,
-                    src_address: None,
-                },
+                addressing_fields: None,
                 information_elements: None,
                 payload: None,
             },
@@ -96,12 +86,7 @@ impl<'p> FrameBuilder<'p, EnhancedBeacon> {
                     frame_version: FrameVersion::Ieee802154_2020,
                 },
                 sequence_number: None,
-                addressing_fields: AddressingFieldsRepr {
-                    dst_pan_id: None,
-                    src_pan_id: None,
-                    dst_address: None,
-                    src_address: None,
-                },
+                addressing_fields: None,
                 information_elements: None,
                 payload: None,
             },
@@ -128,12 +113,7 @@ impl<'p> FrameBuilder<'p, Data> {
                     frame_version: FrameVersion::Ieee802154_2006,
                 },
                 sequence_number: None,
-                addressing_fields: AddressingFieldsRepr {
-                    dst_pan_id: None,
-                    src_pan_id: None,
-                    dst_address: None,
-                    src_address: None,
-                },
+                addressing_fields: None,
                 information_elements: None,
                 payload: Some(payload),
             },
@@ -155,13 +135,20 @@ impl<'p, T> FrameBuilder<'p, T> {
 
     /// Set the destination PAN ID.
     pub fn set_dst_pan_id(mut self, pan_id: u16) -> Self {
-        self.frame.addressing_fields.dst_pan_id = Some(pan_id);
+        self.frame
+            .addressing_fields
+            .get_or_insert_with(AddressingFieldsRepr::default)
+            .dst_pan_id = Some(pan_id);
+
         self
     }
 
     /// Set the source PAN ID.
     pub fn set_src_pan_id(mut self, pan_id: u16) -> Self {
-        self.frame.addressing_fields.src_pan_id = Some(pan_id);
+        self.frame
+            .addressing_fields
+            .get_or_insert_with(AddressingFieldsRepr::default)
+            .src_pan_id = Some(pan_id);
         self
     }
 
@@ -171,7 +158,10 @@ impl<'p, T> FrameBuilder<'p, T> {
     /// Based on the address, the addressing mode will be set.
     pub fn set_dst_address(mut self, address: Address) -> Self {
         self.frame.frame_control.dst_addressing_mode = address.into();
-        self.frame.addressing_fields.dst_address = Some(address);
+        self.frame
+            .addressing_fields
+            .get_or_insert_with(AddressingFieldsRepr::default)
+            .dst_address = Some(address);
         self
     }
 
@@ -181,7 +171,10 @@ impl<'p, T> FrameBuilder<'p, T> {
     /// Based on the address, the addressing mode will be set.
     pub fn set_src_address(mut self, address: Address) -> Self {
         self.frame.frame_control.src_addressing_mode = address.into();
-        self.frame.addressing_fields.src_address = Some(address);
+        self.frame
+            .addressing_fields
+            .get_or_insert_with(AddressingFieldsRepr::default)
+            .src_address = Some(address);
         self
     }
 
@@ -237,11 +230,15 @@ impl<'p, T> FrameBuilder<'p, T> {
     pub fn finalize(mut self) -> Result<FrameRepr<'p>> {
         // Check if PAN ID compression is possible, depending on the frame version.
         if self.frame.frame_control.frame_version == FrameVersion::Ieee802154_2020 {
+            let Some(addr) = self.frame.addressing_fields.as_mut() else {
+                return Err(Error);
+            };
+
             self.frame.frame_control.pan_id_compression = match (
-                self.frame.addressing_fields.dst_address,
-                self.frame.addressing_fields.src_address,
-                self.frame.addressing_fields.dst_pan_id,
-                self.frame.addressing_fields.src_pan_id,
+                addr.dst_address,
+                addr.src_address,
+                addr.dst_pan_id,
+                addr.src_pan_id,
             ) {
                 (None, None, None, None) => false,
                 (None, None, Some(_), None) => true,
@@ -252,21 +249,21 @@ impl<'p, T> FrameBuilder<'p, T> {
                 (Some(Address::Extended(_)), Some(Address::Extended(_)), None, None) => true,
                 (Some(Address::Short(_)), Some(Address::Short(_)), Some(dst), Some(src)) => {
                     if dst == src {
-                        self.frame.addressing_fields.src_pan_id = None;
+                        addr.src_pan_id = None;
                     }
 
                     dst == src
                 }
                 (Some(Address::Short(_)), Some(Address::Extended(_)), Some(dst), Some(src)) => {
                     if dst == src {
-                        self.frame.addressing_fields.src_pan_id = None;
+                        addr.src_pan_id = None;
                     }
 
                     dst == src
                 }
                 (Some(Address::Extended(_)), Some(Address::Short(_)), Some(dst), Some(src)) => {
                     if dst == src {
-                        self.frame.addressing_fields.src_pan_id = None;
+                        addr.src_pan_id = None;
                     }
 
                     dst == src
@@ -284,7 +281,10 @@ impl<'p, T> FrameBuilder<'p, T> {
             // - If only either the destination or source address is present, the PAN ID
             //   compression bit is set to 0. The PAN ID field of the single address shall be
             //   included in the frame.
-            let addr = &mut self.frame.addressing_fields;
+            let Some(addr) = self.frame.addressing_fields.as_mut() else {
+                return Err(Error);
+            };
+
             match (
                 addr.dst_address,
                 addr.src_address,

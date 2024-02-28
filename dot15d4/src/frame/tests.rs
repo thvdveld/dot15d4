@@ -257,14 +257,14 @@ fn emit_enhanced_beacon() {
             frame_version: FrameVersion::Ieee802154_2020,
         },
         sequence_number: None,
-        addressing_fields: AddressingFieldsRepr {
+        addressing_fields: Some(AddressingFieldsRepr {
             dst_pan_id: Some(0xabcd),
             src_pan_id: None,
             dst_address: Some(Address::BROADCAST),
             src_address: Some(Address::Extended([
                 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01,
             ])),
-        },
+        }),
         information_elements: Some(InformationElementsRepr {
             header_information_elements: Vec::new(),
             payload_information_elements: Vec::from_iter([PayloadInformationElementRepr::Mlme(
