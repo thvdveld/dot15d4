@@ -44,6 +44,7 @@ impl<'f> FrameRepr<'f> {
         }
     }
 
+    /// Return the length of the frame when emitted into a buffer.
     pub fn buffer_len(&self) -> usize {
         let mut len = 2; // Frame control
 
@@ -64,6 +65,7 @@ impl<'f> FrameRepr<'f> {
         len
     }
 
+    /// Emit the frame into a buffer.
     pub fn emit(&self, frame: &mut Frame<&'_ mut [u8]>) {
         frame.set_frame_control(&self.frame_control);
 
