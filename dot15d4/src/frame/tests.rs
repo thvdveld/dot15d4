@@ -66,7 +66,8 @@ fn emit_ack_frame() {
                 nack: true,
             },
         ))
-        .finalize();
+        .finalize()
+        .unwrap();
 
     let mut buffer = vec![0; frame.buffer_len()];
     frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
@@ -120,31 +121,16 @@ fn parse_data_frame() {
 
 #[test]
 fn emit_data_frame() {
-    let frame = FrameRepr {
-        frame_control: FrameControlRepr {
-            frame_type: FrameType::Data,
-            security_enabled: false,
-            frame_pending: false,
-            ack_request: false,
-            pan_id_compression: true,
-            sequence_number_suppression: false,
-            information_elements_present: false,
-            dst_addressing_mode: AddressingMode::Short,
-            src_addressing_mode: AddressingMode::Extended,
-            frame_version: FrameVersion::Ieee802154_2006,
-        },
-        sequence_number: Some(1),
-        addressing_fields: AddressingFieldsRepr {
-            dst_pan_id: Some(0xabcd),
-            src_pan_id: None,
-            dst_address: Some(Address::BROADCAST),
-            src_address: Some(Address::Extended([
-                0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7,
-            ])),
-        },
-        information_elements: None,
-        payload: Some(&[0x2b, 0x00, 0x00, 0x00]),
-    };
+    let frame = FrameBuilder::new_data(&[0x2b, 0x00, 0x00, 0x00])
+        .set_sequence_number(1)
+        .set_dst_pan_id(0xabcd)
+        .set_dst_address(Address::BROADCAST)
+        .set_src_pan_id(0xabcd)
+        .set_src_address(Address::Extended([
+            0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7,
+        ]))
+        .finalize()
+        .unwrap();
 
     let mut buffer = vec![0; frame.buffer_len()];
 
