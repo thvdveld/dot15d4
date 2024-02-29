@@ -8,7 +8,7 @@ pub trait Driver {
     /// Waits until there is something to be transmitted
     fn transmit(&mut self) -> impl Future<Output = PacketBuffer>;
     /// Hold until the buffer is received successfully
-    fn received(&mut self, buffer: &PacketBuffer) -> impl Future<Output = ()>;
+    fn received(&mut self, buffer: PacketBuffer) -> impl Future<Output = ()>;
 }
 
 /// A buffer that is used to store 1 frame.
