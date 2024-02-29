@@ -1,12 +1,11 @@
-use crate::phy::Device;
+use crate::phy::radio::Radio;
 
-pub struct CsmaDevice<D: Device> {
-    device: D,
+pub struct CsmaDevice<R: Radio> {
+    device: R,
 }
 
-impl<D: Device> CsmaDevice<D> {
-    pub fn new(mut device: D) -> Self {
-        device.disable();
+impl<R: Radio> CsmaDevice<R> {
+    pub fn new(mut device: R) -> Self {
         Self { device }
     }
 }
