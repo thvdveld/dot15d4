@@ -12,6 +12,7 @@ tracing = { version = "0.1.38", default-features = false }
 bitflags = "2.4.2"
 heapless = "0.8.0"
 critical-section = "1.1"
+pollster = "0.3"
 
 colored = { version = "2", optional = true }
 clap = { version = "4.5.1", features = ["derive"], optional = true }
