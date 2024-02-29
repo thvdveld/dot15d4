@@ -6,6 +6,7 @@ use heapless::Vec;
 
 /// A high-level representation of a Payload Information Element.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum PayloadInformationElementRepr {
     Mlme(Vec<NestedInformationElementRepr, 16>),
     PayloadTermination,
