@@ -8,6 +8,8 @@ pub trait Radio {
     type RadioFrame<T>: RadioFrame<T>
     where
         T: AsRef<[u8]>;
+    type RxToken<'a>: RxToken<'a>;
+    type TxToken<'b>: TxToken<'b>;
 
     /// Request the radio to idle to a low-power sleep mode.
     fn off(&mut self, ctx: &mut Context<'_>) -> Poll<()>;
@@ -69,4 +71,20 @@ pub trait RadioFrame<T: AsRef<[u8]>>: Sized {
 
 pub trait RadioFrameMut<T: AsRef<[u8]> + AsMut<[u8]>>: RadioFrame<T> {
     fn data_mut(&mut self) -> &mut [u8];
+}
+
+pub trait RxToken<'a> {
+    type Buffer: 'a;
+
+    fn consume<F, R>(self, f: F) -> R
+    where
+        F: FnOnce(&'a mut Self::Buffer) -> R;
+}
+
+pub trait TxToken<'a> {
+    type Buffer: 'a;
+
+    fn consume<F, R>(self, len: usize, f: F) -> R
+    where
+        F: FnOnce(&'a mut Self::Buffer) -> R;
 }

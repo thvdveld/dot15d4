@@ -44,6 +44,18 @@ impl<T> Mutex<T> {
         MutexGuard { mutex: self }
     }
 
+    pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
+        let mut state = self.state.borrow_mut();
+        if !state.locked {
+            // The lock is currently not yet locked -> acquire lock
+            state.locked = true;
+            Some(MutexGuard { mutex: self })
+        } else {
+            // The current lock is locked, return None
+            None
+        }
+    }
+
     /// Get access to the protected value inside the mutex. This is similar to
     /// the Mutex::get_mut in std.
     pub fn get_mut(&mut self) -> &mut T {
@@ -132,7 +144,7 @@ impl<'a, T> Future for LockFuture<'a, T> {
 mod tests {
     use pollster::FutureExt as _;
 
-    use crate::sync::{join::join, select::select};
+    use crate::sync::{join::join, select::select, yield_now};
 
     use super::Mutex;
 
@@ -197,6 +209,42 @@ mod tests {
             }
 
             assert_eq!(*mutex.get_mut(), 200);
+        }
+        .block_on()
+    }
+
+    #[test]
+    pub fn test_try_lock() {
+        async {
+            let mut mutex = Mutex::new(0usize);
+            join(
+                async {
+                    let mut guard = mutex.lock().await;
+                    // Keep lock for 10 iterations
+                    for _ in 0..10 {
+                        *guard += 1;
+                        yield_now::yield_now().await;
+                    }
+                },
+                async {
+                    let mut i = 0;
+                    loop {
+                        if let Some(mut guard) = mutex.try_lock() {
+                            *guard += 1;
+                            break;
+                        }
+
+                        if i == 20 {
+                            panic!("Try lock takes to long!");
+                        }
+
+                        yield_now::yield_now().await;
+                    }
+                },
+            )
+            .await;
+
+            assert_eq!(*mutex.get_mut(), 11);
         }
         .block_on()
     }

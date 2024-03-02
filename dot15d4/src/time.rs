@@ -96,3 +96,11 @@ impl core::ops::Div<usize> for Duration {
         Self::from_us(self.as_us() / rhs as i64)
     }
 }
+
+impl core::ops::Add<Duration> for Duration {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        Self::from_us(self.as_us() + rhs.as_us())
+    }
+}
