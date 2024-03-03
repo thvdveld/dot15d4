@@ -92,6 +92,12 @@ impl<T> Sender<'_, T> {
         // Did we replace the inner message or not
         did_replace
     }
+
+    /// Check if there is an item in the channel
+    pub fn has_item(&self) -> bool {
+        let state = unsafe { &mut *self.channel.state.get() };
+        state.is_ready
+    }
 }
 
 pub struct Receiver<'a, T> {
@@ -125,6 +131,12 @@ impl<T> Receiver<'_, T> {
             }
         })
         .await
+    }
+
+    /// Check if there is an item in the channel
+    pub fn has_item(&self) -> bool {
+        let state = unsafe { &mut *self.channel.state.get() };
+        state.is_ready
     }
 }
 
@@ -169,5 +181,19 @@ mod tests {
             .await;
         }
         .block_on();
+    }
+
+    #[test]
+    /// Check with Miri whether or not drop is called correctly. If true, then all heap allocation should be deallocated correctly
+    pub fn test_drop_by_leaking() {
+        async {
+            let mut channel = Channel::new();
+            let (mut send, mut recv) = channel.split();
+            send.send(Box::new(0));
+            send.send(Box::new(1));
+            send.send(Box::new(2));
+            assert_eq!(*recv.receive().await, 2);
+        }
+        .block_on()
     }
 }

@@ -248,4 +248,14 @@ mod tests {
         }
         .block_on()
     }
+
+    #[test]
+    /// Check with Miri whether or not drop is called correctly. If true, then all heap allocation should be deallocated correctly
+    pub fn test_drop_by_leaking() {
+        async {
+            let mut mutex = Mutex::new(Box::new(0));
+            let mut guard = mutex.lock().await;
+        }
+        .block_on()
+    }
 }
