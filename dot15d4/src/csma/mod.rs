@@ -47,7 +47,7 @@ impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
 where
     R: Radio,
     for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
-    for<'a> R::TxToken<'a>: TxToken<'a, Buffer = [u8]> + From<&'a mut [u8]>,
+    for<'a> R::TxToken<'a>: TxToken<'a, Buffer = &'a mut [u8]> + From<&'a mut PacketBuffer>,
     Rng: RngCore,
     D: Driver,
     TIMER: DelayNs + Clone,
@@ -189,7 +189,7 @@ where
                         let ieee_repr = FrameBuilder::new_imm_ack(sequence_number)
                             .finalize()
                             .expect("A simple imm-ACK should always be possible to build");
-                        let ack_token = R::TxToken::from(&mut tx_ack.buffer);
+                        let ack_token = R::TxToken::from(&mut tx_ack);
                         ack_token.consume(ieee_repr.buffer_len(), |buffer| {
                             let mut frame = Frame::new_unchecked(buffer);
                             ieee_repr.emit(&mut frame);
@@ -400,5 +400,35 @@ where
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use pollster::FutureExt;
+
+    use crate::{phy::radio::tests::TestRadio, sync::test::Delay};
+
+    use self::driver::tests::TestDriver;
+
+    use super::*;
+
+    #[test]
+    pub fn test_happy_path_transmit() {
+        async {
+            let mut radio = TestRadio {
+                ieee802154_address: [1, 2, 3, 4, 5, 6, 7, 8],
+                should_receive: None,
+                events: vec![],
+                cca_fail: false,
+            };
+            let mut tx = Channel::new();
+            let (mut tx_send, tx_recv) = tx.split();
+            let mut rx = Channel::new();
+            let (mut rx_send, rx_recv) = rx.split();
+            let mut driver = TestDriver::new(tx_recv, rx_send);
+            // let csma = CsmaDevice::new(radio, rand::thread_rng(), driver, Delay::default());
+        }
+        .block_on()
     }
 }

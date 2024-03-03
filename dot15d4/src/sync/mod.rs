@@ -7,6 +7,9 @@ pub(crate) mod mutex;
 pub(crate) mod select;
 pub(crate) mod yield_now;
 
+#[cfg(test)]
+pub(crate) mod test;
+
 /// Type representing 2 possible outcomes/states
 #[cfg_attr(feature = "std", derive(Debug))]
 #[derive(PartialEq)]

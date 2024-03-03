@@ -37,3 +37,43 @@ impl Default for PacketBuffer {
         }
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::sync::{
+        channel::{Receiver, Sender},
+        mutex::Mutex,
+    };
+
+    use super::*;
+
+    pub struct TestDriver<'a> {
+        tx: Mutex<Receiver<'a, PacketBuffer>>,
+        rx: Mutex<Sender<'a, PacketBuffer>>,
+        errors: Mutex<Vec<Error>>,
+    }
+
+    impl<'a> TestDriver<'a> {
+        pub fn new(tx: Receiver<'a, PacketBuffer>, rx: Sender<'a, PacketBuffer>) -> Self {
+            Self {
+                tx: Mutex::new(tx),
+                rx: Mutex::new(rx),
+                errors: Mutex::new(vec![]),
+            }
+        }
+    }
+
+    impl Driver for TestDriver<'_> {
+        async fn transmit(&self) -> PacketBuffer {
+            self.tx.lock().await.receive().await
+        }
+
+        async fn received(&self, buffer: PacketBuffer) {
+            self.rx.lock().await.send(buffer);
+        }
+
+        async fn error(&self, error: Error) {
+            self.errors.lock().await.push(error);
+        }
+    }
+}
