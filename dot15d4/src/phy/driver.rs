@@ -24,7 +24,9 @@ pub trait Driver {
 }
 
 /// A buffer that is used to store 1 frame.
-#[derive(Clone)]
+#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Clone, PartialEq)]
 pub struct PacketBuffer {
     /// The data of the frame that should be transmitted over the radio
     pub buffer: [u8; 128],

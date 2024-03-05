@@ -275,4 +275,42 @@ mod tests {
         }
         .block_on()
     }
+
+    #[test]
+    pub fn test_multiple_channels_at_once() {
+        async {
+            let mut channel1 = Channel::new();
+            let (tx1, rx1) = channel1.split();
+            let mut channel2 = Channel::new();
+            let (tx2, rx2) = channel2.split();
+
+            join(
+                async {
+                    tx1.send_async(0).await;
+                    tx2.send_async(0).await;
+                    tx1.send_async(1).await;
+                    tx2.send_async(1).await;
+                },
+                async {
+                    for _ in 0..10 {
+                        yield_now::yield_now().await;
+                    }
+
+                    join(
+                        async {
+                            assert_eq!(rx1.receive().await, 0);
+                            assert_eq!(rx2.receive().await, 0);
+                        },
+                        async {
+                            assert_eq!(rx1.receive().await, 1);
+                            assert_eq!(rx2.receive().await, 1);
+                        },
+                    )
+                    .await;
+                },
+            )
+            .await;
+        }
+        .block_on()
+    }
 }

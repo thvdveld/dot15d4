@@ -454,4 +454,41 @@ pub mod tests {
         }
         .block_on()
     }
+
+    #[test]
+    pub fn test_happy_path_transmit_with_ack() {
+        async {
+            let mut radio = TestRadio::default();
+            let mut channel = TestDriverChannel::new();
+            let (driver, monitor) = channel.split();
+            let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
+
+            select::select(csma.run(), async {
+                let mut packet = PacketBuffer::default();
+                let frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
+                    .set_sequence_number(123)
+                    .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
+                    .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
+                    .set_dst_pan_id(0xfff)
+                    .set_src_pan_id(0xfff)
+                    .finalize()
+                    .unwrap();
+
+                let token = TestTxToken::from(&mut packet);
+                token.consume(frame_repr.buffer_len(), |buf| {
+                    let mut frame = Frame::new_unchecked(buf);
+                    frame_repr.emit(&mut frame);
+                });
+
+                monitor.tx.send_async(packet.clone()).await;
+                let received_frame = monitor.rx.receive().await;
+                assert_eq!(
+                    packet, received_frame,
+                    "The received and transmitted packet should be the same"
+                );
+            })
+            .await;
+        }
+        .block_on()
+    }
 }
