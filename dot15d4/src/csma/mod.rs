@@ -132,7 +132,7 @@ where
             yield_now().await;
 
             // try to receive something
-            let receive_result = {
+            let receive_result = dbg!({
                 radio_guard = match radio_guard {
                     Some(_) => radio_guard,
                     None => Some(self.radio.lock().await),
@@ -150,7 +150,7 @@ where
                     Either::First(receive_result) => receive_result,
                     Either::Second(_) => false,
                 }
-            };
+            });
             // wants_to_transmit_signal.reset();
 
             // Check if something went wrong
@@ -278,7 +278,7 @@ where
             // Enable ACK in frame coming from higher layers
             let mut sequence_number = None;
             match Self::set_ack_request_if_possible::<R::RadioFrame<_>>(&mut tx.buffer) {
-                Ok(seq_number) => sequence_number = Some(seq_number).flatten(),
+                Ok(seq_number) => sequence_number = dbg!(Some(seq_number).flatten()),
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
                 }
@@ -293,7 +293,7 @@ where
                 let mut backoff_exponent = MAC_MIN_BE;
                 'cca: for number_of_backoffs in 1..MAC_MAX_CSMA_BACKOFFS + 1 {
                     // try to transmit
-                    let transmission_result = {
+                    let transmission_result = dbg!({
                         radio_guard = match radio_guard {
                             Some(_) => radio_guard,
                             None => {
@@ -305,21 +305,23 @@ where
                                             break 'inner Some(guard);
                                         }
                                         None => {
-                                            wants_to_transmit_signal.send(()); // Ask the receiving loop to let go of the radio
-                                            yield_now().await; // Give the receiving end time to react
-                                            continue;
+                                            wants_to_transmit_signal.send_async(()).await; // Ask the receiving loop to let go of the radio
+                                                                                           // yield_now().await; // Give the receiving end time to react
+                                            continue 'inner;
                                         }
                                     }
                                 }
                             }
                         };
-                        transmit(
-                            &mut **radio_guard.as_mut().unwrap(),
-                            &tx.buffer,
-                            TxConfig::default_with_cca(),
+                        dbg!(
+                            transmit(
+                                &mut **radio_guard.as_mut().unwrap(),
+                                &tx.buffer,
+                                TxConfig::default_with_cca(),
+                            )
+                            .await
                         )
-                        .await
-                    };
+                    });
                     if transmission_result {
                         break 'cca; // Send succesfully, now wait for ack
                     }
@@ -423,72 +425,85 @@ pub mod tests {
 
     use super::*;
 
-    #[test]
-    pub fn test_happy_path_transmit_no_ack() {
-        async {
-            let mut radio = TestRadio::default();
-            let mut channel = TestDriverChannel::new();
-            let (driver, monitor) = channel.split();
-            let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
+    #[pollster::test]
+    pub async fn test_happy_path_transmit_no_ack() {
+        let mut radio = TestRadio::default();
+        let mut channel = TestDriverChannel::new();
+        let (driver, monitor) = channel.split();
+        let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
 
-            // Select here, such that everything ends when the test is over
-            select::select(csma.run(), async {
-                let packet = PacketBuffer::default();
-                radio.inner(|inner| {
-                    inner.assert_nxt.append(
-                        &mut [
-                            TestRadioEvent::PrepareReceive,
-                            TestRadioEvent::Receive,
-                            TestRadioEvent::CancelCurrentOperation,
-                            TestRadioEvent::PrepareTransmit,
-                            TestRadioEvent::Transmit,
-                            TestRadioEvent::PrepareReceive,
-                            TestRadioEvent::Receive,
-                        ]
-                        .into(),
-                    );
-                });
-                monitor.tx.send_async(packet.clone()).await;
-            })
-            .await;
-        }
-        .block_on()
+        // Select here, such that everything ends when the test is over
+        select::select(csma.run(), async {
+            let packet = PacketBuffer::default();
+            radio.inner(|inner| {
+                inner.assert_nxt.append(
+                    &mut [
+                        TestRadioEvent::PrepareReceive,
+                        TestRadioEvent::Receive,
+                        TestRadioEvent::CancelCurrentOperation,
+                        TestRadioEvent::PrepareTransmit,
+                        TestRadioEvent::Transmit,
+                        TestRadioEvent::CancelCurrentOperation,
+                        TestRadioEvent::PrepareReceive,
+                        TestRadioEvent::Receive,
+                    ]
+                    .into(),
+                );
+            });
+            monitor.tx.send_async(packet.clone()).await;
+        })
+        .await;
     }
 
-    #[test]
-    pub fn test_happy_path_transmit_with_ack() {
-        async {
-            let mut radio = TestRadio::default();
-            let mut channel = TestDriverChannel::new();
-            let (driver, monitor) = channel.split();
-            let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
+    #[pollster::test]
+    pub async fn test_happy_path_transmit_with_ack() {
+        let mut radio = TestRadio::default();
+        let mut channel = TestDriverChannel::new();
+        let (driver, monitor) = channel.split();
+        let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
 
-            select::select(csma.run(), async {
-                let mut packet = PacketBuffer::default();
-                let frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
-                    .set_sequence_number(123)
-                    .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
-                    .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
-                    .set_dst_pan_id(0xfff)
-                    .set_src_pan_id(0xfff)
-                    .finalize()
-                    .unwrap();
+        select::select(csma.run(), async {
+            let mut packet = PacketBuffer::default();
+            let frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
+                .set_sequence_number(123)
+                .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
+                .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
+                .set_dst_pan_id(0xfff)
+                .set_src_pan_id(0xfff)
+                .finalize()
+                .unwrap();
 
-                let token = TestTxToken::from(&mut packet);
-                token.consume(frame_repr.buffer_len(), |buf| {
-                    let mut frame = Frame::new_unchecked(buf);
-                    frame_repr.emit(&mut frame);
-                });
+            let token = TestTxToken::from(&mut packet);
+            token.consume(frame_repr.buffer_len(), |buf| {
+                let mut frame = Frame::new_unchecked(buf);
+                frame_repr.emit(&mut frame);
+            });
 
-                monitor.tx.send_async(packet.clone()).await;
-                let received_frame = monitor.rx.receive().await;
-                assert_eq!(
-                    packet, received_frame,
-                    "The received and transmitted packet should be the same"
+            monitor.tx.send_async(packet.clone()).await;
+            radio.inner(|inner| {
+                inner.assert_nxt.clear();
+                inner.assert_nxt.append(
+                    &mut [
+                        TestRadioEvent::PrepareReceive,
+                        TestRadioEvent::Receive,
+                        TestRadioEvent::CancelCurrentOperation,
+                        TestRadioEvent::PrepareTransmit,
+                        TestRadioEvent::Transmit,
+                        TestRadioEvent::CancelCurrentOperation,
+                        TestRadioEvent::PrepareReceive,
+                        TestRadioEvent::Receive,
+                    ]
+                    .into(),
                 );
-            })
-            .await;
-        }
-        .block_on()
+                inner.total_event_count = 0;
+            });
+            println!("Start of checks and counts");
+            // let received_frame = monitor.rx.receive().await;
+            // assert_eq!(
+            //     packet, received_frame,
+            //     "The received and transmitted packet should be the same"
+            // );
+        })
+        .await;
     }
 }

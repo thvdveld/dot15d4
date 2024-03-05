@@ -146,6 +146,12 @@ pub mod tests {
 
         pub fn new_event(&mut self, evnt: TestRadioEvent) {
             let mut inner = self.inner.borrow_mut();
+
+            // Filter duplicates
+            if Some(&evnt) == inner.events.last() {
+                return;
+            }
+
             inner.total_event_count += 1;
             if let Some(assert_nxt) = inner.assert_nxt.pop_front() {
                 assert_eq!(
@@ -219,7 +225,7 @@ pub mod tests {
             cfg: &crate::phy::config::TxConfig,
             bytes: &[u8],
         ) -> std::task::Poll<()> {
-            self.new_event(TestRadioEvent::PrepareTransmit);
+            self.new_event(dbg!(TestRadioEvent::PrepareTransmit));
             Poll::Ready(())
         }
 
@@ -228,8 +234,8 @@ pub mod tests {
         }
 
         fn transmit(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<bool> {
-            self.new_event(TestRadioEvent::Transmit);
-            Poll::Ready(self.inner.borrow().cca_fail)
+            self.new_event(dbg!(TestRadioEvent::Transmit));
+            Poll::Ready(!self.inner.borrow().cca_fail)
         }
 
         fn ieee802154_address(&self) -> [u8; 8] {

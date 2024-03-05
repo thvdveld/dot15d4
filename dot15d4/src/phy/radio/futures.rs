@@ -43,23 +43,23 @@ where
     type Output = bool;
 
     fn poll(self: Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> Poll<Self::Output> {
-        match self.state {
-            TransmissionTaskState::Preparing => {
-                let this = self.get_mut();
-                unsafe {
-                    ready!(this
-                        .radio
-                        .prepare_transmit(cx, &this.config, this.data.as_ref()))
-                };
-                this.state = TransmissionTaskState::Transmitting;
+        let this = self.get_mut();
+        'outer: loop {
+            match this.state {
+                TransmissionTaskState::Preparing => {
+                    unsafe {
+                        ready!(this
+                            .radio
+                            .prepare_transmit(cx, &this.config, this.data.as_ref()))
+                    };
+                    this.state = TransmissionTaskState::Transmitting;
 
-                Poll::Pending
-            }
-            TransmissionTaskState::Transmitting => {
-                let this = self.get_mut();
-                let result = ready!(this.radio.transmit(cx));
-
-                Poll::Ready(result)
+                    continue 'outer; // We can make more progress
+                }
+                TransmissionTaskState::Transmitting => {
+                    let result = ready!(this.radio.transmit(cx));
+                    break 'outer Poll::Ready(result);
+                }
             }
         }
     }
@@ -108,19 +108,19 @@ where
     type Output = bool;
 
     fn poll(self: Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> Poll<Self::Output> {
-        match self.state {
-            ReceiveTaskState::Preparing => {
-                let this = self.get_mut();
-                unsafe { ready!(this.radio.prepare_receive(cx, &this.config, this.data)) };
-                this.state = ReceiveTaskState::Receiving;
+        let this = self.get_mut();
+        'outer: loop {
+            match this.state {
+                ReceiveTaskState::Preparing => {
+                    unsafe { ready!(this.radio.prepare_receive(cx, &this.config, this.data)) };
+                    this.state = ReceiveTaskState::Receiving;
 
-                Poll::Pending
-            }
-            ReceiveTaskState::Receiving => {
-                let this = self.get_mut();
-                let result = ready!(this.radio.receive(cx));
-
-                Poll::Ready(result)
+                    continue 'outer;
+                }
+                ReceiveTaskState::Receiving => {
+                    let result = ready!(this.radio.receive(cx));
+                    break 'outer Poll::Ready(result);
+                }
             }
         }
     }
