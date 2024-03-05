@@ -14,7 +14,8 @@ use core::task::Waker;
 
 struct ChannelState {
     is_ready: bool, // We always stay in the same task/thread -> no atomic needed here
-    waker: Option<Waker>,
+    waker_recv: Option<Waker>,
+    waker_send: Option<Waker>,
 }
 
 pub struct Channel<T> {
@@ -28,7 +29,8 @@ impl<T> Channel<T> {
             message: UnsafeCell::new(MaybeUninit::uninit()),
             state: UnsafeCell::new(ChannelState {
                 is_ready: false,
-                waker: None,
+                waker_recv: None,
+                waker_send: None,
             }),
         }
     }
@@ -36,6 +38,12 @@ impl<T> Channel<T> {
     pub fn split(&mut self) -> (Sender<'_, T>, Receiver<'_, T>) {
         *self = Self::new(); // Drop previous channel to reset state. We have exclusive access here
         (Sender { channel: self }, Receiver { channel: self })
+    }
+}
+
+impl<T> Default for Channel<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -48,7 +56,7 @@ impl<T> Sender<'_, T> {
     /// Receiver can read them, results in overwriting the previous messages.
     /// Only the last one will be actually sent. This method returns whether or
     /// not the previous message was overwritten
-    pub fn send(&mut self, message: T) -> bool {
+    pub fn send(&self, message: T) -> bool {
         // If the channel is ready, make the message drop
         // Safety: The state is only accessed inside a function body and never across an await point. No concurrent access here (same task)
         let mut state = unsafe { &mut *self.channel.state.get() };
@@ -66,7 +74,7 @@ impl<T> Sender<'_, T> {
             }
 
             // Wake the Receiver task
-            if let Some(waker) = state.waker.take() {
+            if let Some(waker) = state.waker_recv.take() {
                 waker.wake()
             }
 
@@ -85,7 +93,7 @@ impl<T> Sender<'_, T> {
         };
         // Wake the Receiver task
         state.is_ready = true;
-        if let Some(waker) = state.waker.take() {
+        if let Some(waker) = state.waker_recv.take() {
             waker.wake()
         }
 
@@ -98,6 +106,39 @@ impl<T> Sender<'_, T> {
         let state = unsafe { &mut *self.channel.state.get() };
         state.is_ready
     }
+
+    /// Wait before sending
+    pub async fn send_async(&self, message: T) {
+        poll_fn(|cx| {
+            if self.has_item() {
+                // Replace waker if necessary
+                // Safety: we are the only ones that have access to the state at this moment
+                let state = unsafe { &mut *self.channel.state.get() };
+
+                let new_waker = cx.waker();
+                state.waker_send = match state.waker_send.take() {
+                    Some(mut waker) => {
+                        if new_waker.will_wake(&waker) {
+                            waker.clone_from(new_waker);
+                            Some(waker)
+                        } else {
+                            // We have a different waker now, wake the previous one before replacing it
+                            waker.wake();
+                            Some(new_waker.clone())
+                        }
+                    }
+                    None => Some(new_waker.clone()),
+                };
+
+                Poll::Pending
+            } else {
+                Poll::Ready(())
+            }
+        })
+        .await;
+
+        self.send(message);
+    }
 }
 
 pub struct Receiver<'a, T> {
@@ -105,14 +146,14 @@ pub struct Receiver<'a, T> {
 }
 
 impl<T> Receiver<'_, T> {
-    pub async fn receive(&mut self) -> T {
+    pub async fn receive(&self) -> T {
         poll_fn(|cx| {
             // Safety: We only access the state in the bounds of this call and never across an await point
             let state = unsafe { &mut *self.channel.state.get() };
 
             if !state.is_ready {
                 // Not yet ready, store/replace the context
-                match &mut state.waker {
+                match &mut state.waker_recv {
                     Some(waker) => waker.clone_from(cx.waker()),
                     waker @ None => *waker = Some(cx.waker().clone()),
                 }
@@ -126,6 +167,11 @@ impl<T> Receiver<'_, T> {
                 };
                 // Reset the state, such that we can send again
                 state.is_ready = false;
+
+                // Wake if possible the waker for sending
+                if let Some(waker) = state.waker_send.take() {
+                    waker.wake();
+                }
 
                 Poll::Ready(message)
             }
@@ -144,6 +190,8 @@ impl<T> Receiver<'_, T> {
 mod tests {
     use pollster::FutureExt as _;
 
+    use crate::sync::tests::Delay;
+    use crate::sync::yield_now;
     use crate::sync::{join::join, select::select, yield_now::yield_now};
 
     use super::Channel;
@@ -193,6 +241,37 @@ mod tests {
             send.send(Box::new(1));
             send.send(Box::new(2));
             assert_eq!(*recv.receive().await, 2);
+        }
+        .block_on()
+    }
+
+    #[test]
+    pub fn test_multiple_receivers() {
+        async {
+            let mut channel = Channel::new();
+            let (send, recv) = channel.split();
+
+            for _ in 0..10 {
+                join(
+                    join(
+                        async {
+                            assert_eq!(recv.receive().await, 0);
+                        },
+                        async {
+                            assert_eq!(recv.receive().await, 1);
+                        },
+                    ),
+                    async {
+                        for _ in 0..10 {
+                            yield_now::yield_now().await;
+                        }
+                        send.send(0);
+                        yield_now::yield_now().await;
+                        send.send(1);
+                    },
+                )
+                .await;
+            }
         }
         .block_on()
     }

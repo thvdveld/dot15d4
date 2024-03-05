@@ -8,8 +8,8 @@ pub trait Radio {
     type RadioFrame<T>: RadioFrame<T>
     where
         T: AsRef<[u8]>;
-    type RxToken<'a>: RxToken<'a>;
-    type TxToken<'b>: TxToken<'b>;
+    type RxToken<'a>: RxToken;
+    type TxToken<'b>: TxToken;
 
     /// Request the radio to idle to a low-power sleep mode.
     fn off(&mut self, ctx: &mut Context<'_>) -> Poll<()>;
@@ -73,25 +73,21 @@ pub trait RadioFrameMut<T: AsRef<[u8]> + AsMut<[u8]>>: RadioFrame<T> {
     fn data_mut(&mut self) -> &mut [u8];
 }
 
-pub trait RxToken<'a> {
-    type Buffer: 'a;
-
+pub trait RxToken {
     fn consume<F, R>(self, f: F) -> R
     where
-        F: FnOnce(Self::Buffer) -> R;
+        F: FnOnce(&mut [u8]) -> R;
 }
 
-pub trait TxToken<'a> {
-    type Buffer: 'a;
-
+pub trait TxToken {
     fn consume<F, R>(self, len: usize, f: F) -> R
     where
-        F: FnOnce(Self::Buffer) -> R;
+        F: FnOnce(&mut [u8]) -> R;
 }
 
-// #[cfg(test)]
+#[cfg(test)]
 pub mod tests {
-    use std::task::Poll;
+    use std::{cell::RefCell, collections::VecDeque, ptr::NonNull, rc::Rc, task::Poll};
 
     use crate::phy::{
         config::{RxConfig, TxConfig},
@@ -100,28 +96,81 @@ pub mod tests {
 
     use super::{Radio, RadioFrame, RadioFrameMut, RxToken, TxToken};
 
+    #[derive(Debug, Clone, PartialEq)]
     pub enum TestRadioEvent {
         Off,
-        PrepareReceive(RxConfig),
+        PrepareReceive,
         Receive,
-        PrepareTransmit(TxConfig, Vec<u8>),
+        PrepareTransmit,
         CancelCurrentOperation,
         Transmit,
     }
 
-    pub struct TestRadio {
+    pub struct TestRadioInner {
         pub ieee802154_address: [u8; 8],
         pub should_receive: Option<[u8; 128]>,
+        pub receive_buffer: Option<NonNull<[u8]>>,
         pub events: Vec<TestRadioEvent>,
         pub cca_fail: bool,
+        pub assert_nxt: VecDeque<TestRadioEvent>,
+        pub total_event_count: usize,
     }
+
+    #[derive(Clone)]
+    pub struct TestRadio {
+        inner: Rc<RefCell<TestRadioInner>>,
+    }
+
+    impl TestRadio {
+        pub fn new(ieee802154_address: [u8; 8]) -> Self {
+            Self {
+                inner: Rc::new(RefCell::new(TestRadioInner {
+                    ieee802154_address,
+                    should_receive: None,
+                    events: vec![],
+                    cca_fail: false,
+                    assert_nxt: VecDeque::new(),
+                    receive_buffer: None,
+                    total_event_count: 0,
+                })),
+            }
+        }
+
+        pub fn inner<F, R>(&self, f: F) -> R
+        where
+            F: FnOnce(&mut TestRadioInner) -> R,
+        {
+            let mut inner = self.inner.borrow_mut();
+            f(&mut inner)
+        }
+
+        pub fn new_event(&mut self, evnt: TestRadioEvent) {
+            let mut inner = self.inner.borrow_mut();
+            inner.total_event_count += 1;
+            if let Some(assert_nxt) = inner.assert_nxt.pop_front() {
+                assert_eq!(
+                    assert_nxt, evnt,
+                    "Check if the next event is the expected event in the radio [{}]",
+                    inner.total_event_count,
+                );
+            }
+            inner.events.push(evnt);
+        }
+    }
+
+    impl Default for TestRadio {
+        fn default() -> Self {
+            Self::new([0; 8])
+        }
+    }
+
     impl Radio for TestRadio {
         type RadioFrame<T> = TestRadioFrame<T> where T: AsRef<[u8]>;
         type RxToken<'a> = TestRxToken<'a>;
         type TxToken<'b> = TestTxToken<'b>;
 
         fn off(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<()> {
-            self.events.push(TestRadioEvent::Off);
+            self.new_event(TestRadioEvent::Off);
             Poll::Ready(())
         }
 
@@ -131,14 +180,37 @@ pub mod tests {
             cfg: &crate::phy::config::RxConfig,
             bytes: &mut [u8; 128],
         ) -> std::task::Poll<()> {
-            self.events
-                .push(TestRadioEvent::PrepareReceive(cfg.clone()));
+            self.new_event(TestRadioEvent::PrepareReceive);
+            // Safety: Rust references are always valid and never dangling
+            // Reference is also owned by the caller which will stay alive for the entire duration this part of the api is used.
+            self.inner.borrow_mut().receive_buffer = Some(unsafe { NonNull::new_unchecked(bytes) });
             Poll::Ready(())
         }
 
+        /// # Safety:
+        /// This API should only be used during tests where the caller of the radio API is the MAC protocol under test. Otherwise there are invalid pointer dereferences, making the tests UB.
         fn receive(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<bool> {
-            self.events.push(TestRadioEvent::Receive);
-            Poll::Ready(true)
+            ctx.waker().wake_by_ref(); // Always wake immediatly again
+            self.new_event(TestRadioEvent::Receive);
+
+            let mut inner = self.inner.borrow_mut();
+
+            if let Some(mut receive_buffer) = inner.receive_buffer {
+                if let Some(should_receive) = inner.should_receive {
+                    // Safety: The user of this API should also be the one that owns the receive_buffer
+                    unsafe { receive_buffer.as_mut().copy_from_slice(&should_receive) }
+
+                    // Reset pointers
+                    inner.receive_buffer = None;
+                    inner.should_receive = None;
+
+                    Poll::Ready(true)
+                } else {
+                    Poll::Pending
+                }
+            } else {
+                Poll::Ready(false)
+            }
         }
 
         unsafe fn prepare_transmit(
@@ -147,24 +219,21 @@ pub mod tests {
             cfg: &crate::phy::config::TxConfig,
             bytes: &[u8],
         ) -> std::task::Poll<()> {
-            self.events.push(TestRadioEvent::PrepareTransmit(
-                cfg.clone(),
-                Vec::from(bytes),
-            ));
+            self.new_event(TestRadioEvent::PrepareTransmit);
             Poll::Ready(())
         }
 
         fn cancel_current_opperation(&mut self) {
-            self.events.push(TestRadioEvent::CancelCurrentOperation);
+            self.new_event(TestRadioEvent::CancelCurrentOperation);
         }
 
         fn transmit(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<bool> {
-            self.events.push(TestRadioEvent::Transmit);
-            Poll::Ready(self.cca_fail)
+            self.new_event(TestRadioEvent::Transmit);
+            Poll::Ready(self.inner.borrow().cca_fail)
         }
 
         fn ieee802154_address(&self) -> [u8; 8] {
-            self.ieee802154_address
+            self.inner.borrow().ieee802154_address
         }
     }
 
@@ -196,12 +265,10 @@ pub mod tests {
     pub struct TestRxToken<'a> {
         buffer: &'a mut PacketBuffer,
     }
-    impl<'a> RxToken<'a> for TestRxToken<'a> {
-        type Buffer = &'a mut [u8];
-
+    impl<'a> RxToken for TestRxToken<'a> {
         fn consume<F, R>(self, f: F) -> R
         where
-            F: FnOnce(Self::Buffer) -> R,
+            F: FnOnce(&mut [u8]) -> R,
         {
             f(&mut self.buffer.buffer[..])
         }
@@ -214,12 +281,10 @@ pub mod tests {
     pub struct TestTxToken<'a> {
         buffer: &'a mut PacketBuffer,
     }
-    impl<'a> TxToken<'a> for TestTxToken<'a> {
-        type Buffer = &'a mut [u8];
-
+    impl<'a> TxToken for TestTxToken<'a> {
         fn consume<F, R>(self, len: usize, f: F) -> R
         where
-            F: FnOnce(Self::Buffer) -> R,
+            F: FnOnce(&mut [u8]) -> R,
         {
             f(&mut self.buffer.buffer[..len])
         }

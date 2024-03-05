@@ -62,6 +62,12 @@ impl<T> Mutex<T> {
         // Safety: &mut gives us exclusive access to T
         self.value.get_mut()
     }
+
+    /// # Safety
+    /// Only use this method if you are sure there are no locks currently taken. If you have a mutable reference, prefer to use the `get_mut` method instead.
+    pub unsafe fn read(&self) -> &T {
+        &*self.value.get()
+    }
 }
 
 /// Represesnts current exclusive access to the resource protected by a mutex

@@ -2,6 +2,9 @@ use core::future::Future;
 use core::task::Context;
 use core::task::Poll;
 
+#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Error {
     CCAFailed,
     ACKFailed,
@@ -40,40 +43,79 @@ impl Default for PacketBuffer {
 
 #[cfg(test)]
 pub mod tests {
+    use std::future::poll_fn;
+
     use crate::sync::{
-        channel::{Receiver, Sender},
+        channel::{Channel, Receiver, Sender},
         mutex::Mutex,
     };
 
     use super::*;
 
-    pub struct TestDriver<'a> {
-        tx: Mutex<Receiver<'a, PacketBuffer>>,
-        rx: Mutex<Sender<'a, PacketBuffer>>,
-        errors: Mutex<Vec<Error>>,
+    pub enum TestDriverEvent {
+        TxProcessed,
+        RxAvailable,
+        NewError,
     }
 
-    impl<'a> TestDriver<'a> {
-        pub fn new(tx: Receiver<'a, PacketBuffer>, rx: Sender<'a, PacketBuffer>) -> Self {
+    #[derive(Default)]
+    pub struct TestDriverChannel {
+        pub tx: Channel<PacketBuffer>,
+        pub rx: Channel<PacketBuffer>,
+        pub errors: Channel<Error>,
+    }
+
+    impl TestDriverChannel {
+        pub fn new() -> Self {
             Self {
-                tx: Mutex::new(tx),
-                rx: Mutex::new(rx),
-                errors: Mutex::new(vec![]),
+                tx: Channel::new(),
+                rx: Channel::new(),
+                errors: Channel::new(),
             }
         }
+
+        pub fn split(&mut self) -> (TestDriver<'_>, TestDriverMonitor<'_>) {
+            let (tx_send, tx_recv) = self.tx.split();
+            let (rx_send, rx_recv) = self.rx.split();
+            let (errors_send, errors_recv) = self.errors.split();
+            (
+                TestDriver {
+                    tx: tx_recv,
+                    rx: rx_send,
+                    errors: errors_send,
+                },
+                TestDriverMonitor {
+                    tx: tx_send,
+                    rx: rx_recv,
+                    errors: errors_recv,
+                },
+            )
+        }
+    }
+
+    pub struct TestDriverMonitor<'a> {
+        pub tx: Sender<'a, PacketBuffer>,
+        pub rx: Receiver<'a, PacketBuffer>,
+        pub errors: Receiver<'a, Error>,
+    }
+
+    pub struct TestDriver<'a> {
+        tx: Receiver<'a, PacketBuffer>,
+        rx: Sender<'a, PacketBuffer>,
+        errors: Sender<'a, Error>,
     }
 
     impl Driver for TestDriver<'_> {
         async fn transmit(&self) -> PacketBuffer {
-            self.tx.lock().await.receive().await
+            self.tx.receive().await
         }
 
         async fn received(&self, buffer: PacketBuffer) {
-            self.rx.lock().await.send(buffer);
+            self.rx.send(buffer);
         }
 
         async fn error(&self, error: Error) {
-            self.errors.lock().await.push(error);
+            self.errors.send(error);
         }
     }
 }

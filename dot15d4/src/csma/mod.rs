@@ -46,11 +46,8 @@ pub struct CsmaDevice<R: Radio, Rng, D: Driver, TIMER> {
 impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
 where
     R: Radio,
-    for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
-    for<'a> R::TxToken<'a>: TxToken<'a, Buffer = &'a mut [u8]> + From<&'a mut PacketBuffer>,
     Rng: RngCore,
     D: Driver,
-    TIMER: DelayNs + Clone,
 {
     /// Creates a new CSMA object that is ready to be run
     pub fn new(radio: R, rng: Rng, driver: D, timer: TIMER) -> Self {
@@ -79,7 +76,17 @@ where
     //         _r: Default::default(),
     //     }
     // }
+}
 
+impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
+where
+    R: Radio,
+    for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
+    for<'a> R::TxToken<'a>: From<&'a mut PacketBuffer>,
+    Rng: RngCore,
+    D: Driver,
+    TIMER: DelayNs + Clone,
+{
     /// Run the CSMA module. This should be run in its own task and polled seperately.
     pub async fn run(&self) -> ! {
         let mut wants_to_transmit_signal = Channel::new();
@@ -405,29 +412,45 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use std::collections::VecDeque;
+    use std::sync::Arc;
+
     use pollster::FutureExt;
 
-    use crate::{phy::radio::tests::TestRadio, sync::test::Delay};
-
-    use self::driver::tests::TestDriver;
+    use self::driver::tests::*;
+    use crate::phy::driver::Error;
+    use crate::{phy::radio::tests::*, phy::radio::*, sync::tests::*, sync::*};
 
     use super::*;
 
     #[test]
-    pub fn test_happy_path_transmit() {
+    pub fn test_happy_path_transmit_no_ack() {
         async {
-            let mut radio = TestRadio {
-                ieee802154_address: [1, 2, 3, 4, 5, 6, 7, 8],
-                should_receive: None,
-                events: vec![],
-                cca_fail: false,
-            };
-            let mut tx = Channel::new();
-            let (mut tx_send, tx_recv) = tx.split();
-            let mut rx = Channel::new();
-            let (mut rx_send, rx_recv) = rx.split();
-            let mut driver = TestDriver::new(tx_recv, rx_send);
-            // let csma = CsmaDevice::new(radio, rand::thread_rng(), driver, Delay::default());
+            let mut radio = TestRadio::default();
+            let mut channel = TestDriverChannel::new();
+            let (driver, monitor) = channel.split();
+            let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
+
+            // Select here, such that everything ends when the test is over
+            select::select(csma.run(), async {
+                let packet = PacketBuffer::default();
+                radio.inner(|inner| {
+                    inner.assert_nxt.append(
+                        &mut [
+                            TestRadioEvent::PrepareReceive,
+                            TestRadioEvent::Receive,
+                            TestRadioEvent::CancelCurrentOperation,
+                            TestRadioEvent::PrepareTransmit,
+                            TestRadioEvent::Transmit,
+                            TestRadioEvent::PrepareReceive,
+                            TestRadioEvent::Receive,
+                        ]
+                        .into(),
+                    );
+                });
+                monitor.tx.send_async(packet.clone()).await;
+            })
+            .await;
         }
         .block_on()
     }
