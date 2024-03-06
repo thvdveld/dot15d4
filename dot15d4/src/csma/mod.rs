@@ -1,5 +1,7 @@
 pub mod constants;
+pub mod transmission;
 pub mod user_configurable_constants;
+mod utils;
 
 use constants::*;
 use embedded_hal_async::delay::DelayNs;
@@ -32,6 +34,31 @@ enum TransmissionTaskError<D> {
     InvalidDeviceFrame(D),
 }
 
+#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(PartialEq, Clone, Copy)]
+pub struct CsmaConfig {
+    /// All to be transmitted frames will get the ack_request flag set if they are unicast and a data frame
+    ack_unicast: bool,
+    /// All to be transmitted frames will get the ack_request flag set if they are broadcast and a data frame
+    ack_broadcast: bool,
+    /// If false, all incoming packets will be sent up the layer stack, useful if making a sniffer. This does not include MAC layer control traffic
+    ignore_not_for_us: bool,
+    /// Even if there is no ack_request flag set, ack it anyway
+    ack_everything: bool,
+}
+
+impl Default for CsmaConfig {
+    fn default() -> Self {
+        Self {
+            ack_unicast: true,
+            ack_broadcast: false,
+            ignore_not_for_us: true,
+            ack_everything: false,
+        }
+    }
+}
+
 /// Structure that setups the CSMA futures
 pub struct CsmaDevice<R: Radio, Rng, D: Driver, TIMER> {
     radio: Mutex<R>,
@@ -39,6 +66,7 @@ pub struct CsmaDevice<R: Radio, Rng, D: Driver, TIMER> {
     driver: D,
     timer: TIMER,
     hardware_address: [u8; 8],
+    config: CsmaConfig,
 }
 
 impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
@@ -48,7 +76,7 @@ where
     D: Driver,
 {
     /// Creates a new CSMA object that is ready to be run
-    pub fn new(radio: R, rng: Rng, driver: D, timer: TIMER) -> Self {
+    pub fn new(radio: R, rng: Rng, driver: D, timer: TIMER, config: CsmaConfig) -> Self {
         let hardware_address = radio.ieee802154_address();
         CsmaDevice {
             radio: Mutex::new(radio),
@@ -56,24 +84,9 @@ where
             driver,
             timer,
             hardware_address,
+            config,
         }
     }
-
-    // /// Retrieve the Ieee802.15.4 driver needed for use with the `embassy-net` stack.
-    // /// This method is async because it temporarily needs to take a lock on the radio.
-    // /// If the CSMA module is not yet running, the async-ness should be almost a no-op.
-    // pub fn driver(&self) -> Ieee802154Driver<R> {
-    //     Ieee802154Driver {
-    //         tx: PacketBuffer::default(),
-    //         rx: None,
-    //         tx_channel: self.tx_channel.sender(),
-    //         rx_channel: self.rx_channel.receiver(),
-
-    //         address: self.hardware_address,
-
-    //         _r: Default::default(),
-    //     }
-    // }
 }
 
 impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
@@ -170,7 +183,9 @@ where
                 };
 
                 // Check if package is meant for us
-                if !Self::is_package_for_us(&self.hardware_address, &frame) {
+                if !Self::is_package_for_us(&self.hardware_address, &frame)
+                    && !self.config.ignore_not_for_us
+                {
                     // Package is not for us to handle, ignore
                     rx.dirty = false;
                     continue 'outer;
@@ -222,6 +237,7 @@ where
     }
 
     fn set_ack_request_if_possible<'a, RadioFrame>(
+        &self,
         buffer: &'a mut [u8],
     ) -> Result<Option<u8>, TransmissionTaskError<RadioFrame::Error>>
     where
@@ -231,7 +247,20 @@ where
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
         let mut frame =
             Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
-        frame.frame_control_mut().set_ack_request(true);
+        if frame.frame_control().frame_type() == FrameType::Data {
+            match frame
+                .addressing()
+                .and_then(|addr| addr.dst_address(&frame.frame_control()))
+            {
+                Some(addr) if addr.is_unicast() && self.config.ack_unicast => {
+                    frame.frame_control_mut().set_ack_request(true)
+                }
+                Some(addr) if addr.is_broadcast() && self.config.ack_broadcast => {
+                    frame.frame_control_mut().set_ack_request(true)
+                }
+                Some(_) | None => {}
+            }
+        }
         Ok(frame.sequence_number())
     }
 
@@ -275,100 +304,46 @@ where
 
             // Enable ACK in frame coming from higher layers
             let mut sequence_number = None;
-            match Self::set_ack_request_if_possible::<R::RadioFrame<_>>(&mut tx.buffer) {
+            match self.set_ack_request_if_possible::<R::RadioFrame<_>>(&mut tx.buffer) {
                 Ok(seq_number) => sequence_number = dbg!(Some(seq_number).flatten()),
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
+                    self.driver.error(driver::Error::InvalidStructure).await;
                 }
                 Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
                     // Invalid device frame encountered
+                    self.driver.error(driver::Error::InvalidStructure).await;
                 }
             }
 
             let mut radio_guard = None;
             'ack: for i_ack in 0..MAC_MAX_FRAME_RETIES + 1 {
                 // Set vars for CCA
-                let mut backoff_exponent = MAC_MIN_BE;
-                'cca: for number_of_backoffs in 1..MAC_MAX_CSMA_BACKOFFS + 1 {
-                    // try to transmit
-                    let transmission_result = dbg!({
-                        radio_guard = match radio_guard {
-                            Some(_) => radio_guard,
-                            None => {
-                                'inner: loop {
-                                    // repeatably ask for the lock, as this might need a few tries to prevent deadlocks
-                                    match self.radio.try_lock() {
-                                        Some(guard) => {
-                                            // wants_to_transmit_signal.reset(); // reset signal, such that the receiving end may continue the next time it acquires the lock
-                                            break 'inner Some(guard);
-                                        }
-                                        None => {
-                                            wants_to_transmit_signal.send_async(()).await; // Ask the receiving loop to let go of the radio
-                                                                                           // yield_now().await; // Give the receiving end time to react
-                                            continue 'inner;
-                                        }
-                                    }
-                                }
-                            }
-                        };
-                        dbg!(
-                            transmit(
-                                &mut **radio_guard.as_mut().unwrap(),
-                                &tx.buffer,
-                                TxConfig::default_with_cca(),
-                            )
-                            .await
-                        )
-                    });
-                    if transmission_result {
-                        break 'cca; // Send succesfully, now wait for ack
+                let backoff_strategy =
+                    transmission::CCABackoffStrategy::new_exponential_backoff(&self.rng);
+                // Perform CCA
+                match transmission::transmit_cca(
+                    &self.radio,
+                    &mut radio_guard,
+                    &wants_to_transmit_signal,
+                    &tx,
+                    &mut timer,
+                    &self.rng,
+                    backoff_strategy,
+                )
+                .await
+                {
+                    Ok(()) => {}
+                    Err(err) => {
+                        self.driver.error(driver::Error::CCAFailed).await;
+                        break 'ack; // Transmission failed
                     }
-
-                    // As we are now going to wait a number of periods, release the
-                    // mutex on the radio
-                    radio_guard = None;
-
-                    // CCA did not go succesfully
-                    // Was this the last attempt?
-                    if number_of_backoffs == MAC_MAX_CSMA_BACKOFFS {
-                        break 'ack; // Fail transmission
-                    }
-
-                    // Wait now for a random number of periods, before retrying
-                    backoff_exponent = core::cmp::min(backoff_exponent + 1, MAC_MAX_BE);
-
-                    // delay periods = random(2^{BE} - 1) periods
-                    // Page 63 IEEE 802.15.4 2015 edition
-                    let max_backoff = (1u32 << backoff_exponent) - 1;
-                    // The +1 in (max_backoff + 1) comes from the interpretation that the random() function
-                    // used in the specification includes max_backoff as a possible value. The possible
-                    // values periods now can take are: [0, max_backoff].
-                    let periods = self.rng.lock().await.next_u32() % (max_backoff + 1);
-                    let delay = MAC_UNIT_BACKOFF_DURATION * periods as usize;
-                    timer.delay_us(delay.as_us() as u32).await;
                 }
 
                 // We now want to try and receive an ACK
                 if let Some(sequence_number) = sequence_number {
-                    radio_guard = match radio_guard {
-                        Some(_) => radio_guard,
-                        None => {
-                            'inner: loop {
-                                // repeatably ask for the lock, as this might need a few tries to prevent deadlocks
-                                match self.radio.try_lock() {
-                                    Some(guard) => {
-                                        // wants_to_transmit_signal.reset(); // reset signal, such that the receiving end may continue the next time it acquires the lock
-                                        break 'inner Some(guard);
-                                    }
-                                    None => {
-                                        wants_to_transmit_signal.send(()); // Ask the receiving loop to let go of the radio
-                                        yield_now().await; // Give the receiving end time to react
-                                        continue;
-                                    }
-                                }
-                            }
-                        }
-                    };
+                    utils::acquire_lock(&self.radio, &wants_to_transmit_signal, &mut radio_guard)
+                        .await;
 
                     let delay = ACKNOWLEDGEMENT_INTERYFRAME_SPACING
                         + MAC_SIFT_PERIOD.max(Duration::from_us(A_TURNAROUND_TIME as i64));
@@ -428,7 +403,13 @@ pub mod tests {
         let mut radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
+        let csma = CsmaDevice::new(
+            radio.clone(),
+            rand::thread_rng(),
+            driver,
+            Delay::default(),
+            CsmaConfig::default(),
+        );
 
         // Select here, such that everything ends when the test is over
         select::select(csma.run(), async {
@@ -458,7 +439,13 @@ pub mod tests {
         let mut radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(radio.clone(), rand::thread_rng(), driver, Delay::default());
+        let csma = CsmaDevice::new(
+            radio.clone(),
+            rand::thread_rng(),
+            driver,
+            Delay::default(),
+            CsmaConfig::default(),
+        );
 
         select::select(csma.run(), async {
             let mut packet = PacketBuffer::default();
