@@ -19,8 +19,6 @@ jobs:
       run: |
         rustup toolchain install nightly --component miri
         cargo +nightly miri setup
-    - name: Install AFL
-      run: cargo install cargo-afl
     - name: Build
       run: cargo build --verbose
     - name: Run tests
