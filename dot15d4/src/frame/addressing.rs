@@ -3,6 +3,7 @@
 use super::FrameControl;
 use super::FrameControlRepr;
 use super::FrameVersion;
+use super::{Error, Result};
 
 /// An IEEE 802.15.4 address.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -135,10 +136,45 @@ pub struct AddressingFields<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> AddressingFields<T> {
-    pub fn new(buffer: T) -> Self {
-        Self::new_unchecked(buffer)
+    /// Create a new [`AddressingFields`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// This function will check the length of the buffer to ensure it is large enough to contain
+    /// the addressing fields. If the buffer is too small, an error will be returned.
+    pub fn new(buffer: T, fc: &FrameControl<T>) -> Result<Self> {
+        let af = Self::new_unchecked(buffer);
+
+        if !af.check_len(fc) {
+            return Err(Error);
+        }
+
+        Ok(af)
     }
 
+    /// Check if the buffer is large enough to contain the addressing fields.
+    fn check_len(&self, fc: &FrameControl<T>) -> bool {
+        let Some((dst_pan_id_present, dst_addr_mode, src_pan_id_present, src_addr_mode)) = self
+            .address_present_flags(
+                fc.frame_version(),
+                fc.dst_addressing_mode(),
+                fc.src_addressing_mode(),
+                fc.pan_id_compression(),
+            )
+        else {
+            return false;
+        };
+
+        let expected_len = (if dst_pan_id_present { 2 } else { 0 })
+            + dst_addr_mode.size()
+            + (if src_pan_id_present { 2 } else { 0 })
+            + src_addr_mode.size();
+
+        self.buffer.as_ref().len() >= expected_len
+    }
+
+    /// Create a new [`AddressingFields`] reader/writer from a given buffer without checking the
+    /// length.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
@@ -166,14 +202,13 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     fn address_present_flags(
         &self,
-        fc: &FrameControl<T>,
+        frame_version: FrameVersion,
+        dst_addr_mode: AddressingMode,
+        src_addr_mode: AddressingMode,
+        pan_id_compression: bool,
     ) -> Option<(bool, AddressingMode, bool, AddressingMode)> {
-        let dst_addr_mode = fc.dst_addressing_mode();
-        let src_addr_mode = fc.src_addressing_mode();
-        let pan_id_compression = fc.pan_id_compression();
-
         use AddressingMode::*;
-        match fc.frame_version() {
+        match frame_version {
             FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006 => {
                 match (dst_addr_mode, src_addr_mode) {
                     (Absent, src) => Some((false, Absent, true, src)),
@@ -209,7 +244,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 destination [`Address`] if not absent.
     pub fn dst_address(&self, fc: &FrameControl<T>) -> Option<Address> {
-        if let Some((dst_pan_id, dst_addr, _, _)) = self.address_present_flags(fc) {
+        if let Some((dst_pan_id, dst_addr, _, _)) = self.address_present_flags(
+            fc.frame_version(),
+            fc.dst_addressing_mode(),
+            fc.src_addressing_mode(),
+            fc.pan_id_compression(),
+        ) {
             let offset = if dst_pan_id { 2 } else { 0 };
 
             match dst_addr {
@@ -235,7 +275,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 source [`Address`] if not absent.
     pub fn src_address(&self, fc: &FrameControl<T>) -> Option<Address> {
-        if let Some((dst_pan_id, dst_addr, src_pan_id, src_addr)) = self.address_present_flags(fc) {
+        if let Some((dst_pan_id, dst_addr, src_pan_id, src_addr)) = self.address_present_flags(
+            fc.frame_version(),
+            fc.dst_addressing_mode(),
+            fc.src_addressing_mode(),
+            fc.pan_id_compression(),
+        ) {
             let mut offset = if dst_pan_id { 2 } else { 0 };
             offset += dst_addr.size();
             offset += if src_pan_id { 2 } else { 0 };
@@ -263,7 +308,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 destination PAN ID if not elided.
     pub fn dst_pan_id(&self, fc: &FrameControl<T>) -> Option<u16> {
-        if let Some((true, _, _, _)) = self.address_present_flags(fc) {
+        if let Some((true, _, _, _)) = self.address_present_flags(
+            fc.frame_version(),
+            fc.dst_addressing_mode(),
+            fc.src_addressing_mode(),
+            fc.pan_id_compression(),
+        ) {
             let b = &self.buffer.as_ref()[..2];
             Some(u16::from_le_bytes([b[0], b[1]]))
         } else {
@@ -273,7 +323,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 source PAN ID if not elided.
     pub fn src_pan_id(&self, fc: &FrameControl<T>) -> Option<u16> {
-        if let Some((dst_pan_id, dst_addr, true, _)) = self.address_present_flags(fc) {
+        if let Some((dst_pan_id, dst_addr, true, _)) = self.address_present_flags(
+            fc.frame_version(),
+            fc.dst_addressing_mode(),
+            fc.src_addressing_mode(),
+            fc.pan_id_compression(),
+        ) {
             let mut offset = if dst_pan_id { 2 } else { 0 };
             offset += dst_addr.size();
 

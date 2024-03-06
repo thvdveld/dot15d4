@@ -7,7 +7,8 @@ pub use nested::*;
 mod payloads;
 pub use payloads::*;
 
-use super::super::InformationElements;
+use super::super::{InformationElements, PayloadInformationElement};
+use super::{Error, Result};
 
 use heapless::Vec;
 
@@ -22,22 +23,22 @@ pub struct InformationElementsRepr {
 
 impl InformationElementsRepr {
     /// Parse Information Elements.
-    pub fn parse(ie: InformationElements<&[u8]>) -> Self {
+    pub fn parse(ie: InformationElements<&[u8]>) -> Result<Self> {
         let mut header_information_elements = Vec::new();
         let mut payload_information_elements = Vec::new();
 
         for header_ie in ie.header_information_elements() {
-            header_information_elements.push(HeaderInformationElementRepr::parse(header_ie));
+            header_information_elements.push(HeaderInformationElementRepr::parse(&header_ie)?);
         }
 
         for payload_ie in ie.payload_information_elements() {
-            payload_information_elements.push(PayloadInformationElementRepr::parse(payload_ie));
+            payload_information_elements.push(PayloadInformationElementRepr::parse(&payload_ie)?);
         }
 
-        Self {
+        Ok(Self {
             header_information_elements,
             payload_information_elements,
-        }
+        })
     }
 
     /// The header terminations required to emit the Information Elements.
@@ -122,12 +123,16 @@ impl InformationElementsRepr {
         }
 
         for ie in self.payload_information_elements.iter() {
-            ie.emit(&mut buffer[offset..][..ie.buffer_len()]);
+            ie.emit(&mut PayloadInformationElement::new_unchecked(
+                &mut buffer[offset..][..ie.buffer_len()],
+            ));
             offset += ie.buffer_len();
         }
 
         if pt {
-            PayloadInformationElementRepr::PayloadTermination.emit(&mut buffer[offset..][..2]);
+            PayloadInformationElementRepr::PayloadTermination.emit(
+                &mut PayloadInformationElement::new_unchecked(&mut buffer[offset..][..2]),
+            );
             offset += 2;
         }
     }

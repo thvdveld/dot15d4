@@ -1,6 +1,7 @@
 //! IEEE 802.15.4 Frame Control field readers and writers.
 
 use super::AddressingMode;
+use super::{Error, Result};
 
 /// IEEE 802.15.4 frame type.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -56,7 +57,28 @@ pub struct FrameControl<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> FrameControl<T> {
-    pub fn new(buffer: T) -> Self {
+    /// Create a new [`FrameControl`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short.
+    pub fn new(buffer: T) -> Result<Self> {
+        let fc = Self::new_unchecked(buffer);
+
+        if !fc.check_len() {
+            return Err(Error);
+        }
+
+        Ok(fc)
+    }
+
+    /// Returns `false` if the buffer is too short to contain the Frame Control field.
+    fn check_len(&self) -> bool {
+        self.buffer.as_ref().len() >= 2
+    }
+
+    /// Create a new [`FrameControl`] reader/writer from a given buffer without length checking.
+    pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
 

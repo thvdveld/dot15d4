@@ -2,6 +2,7 @@ use super::super::super::{
     ChannelHopping, NestedInformationElement, NestedSubId, NestedSubIdLong, NestedSubIdShort,
     TschSlotframeAndLink, TschSynchronization, TschTimeslot,
 };
+use super::super::super::{Error, Result};
 
 /// A high-level representation of a MLME Payload Information Element.
 #[derive(Debug)]
@@ -13,30 +14,33 @@ pub enum NestedInformationElementRepr {
 }
 
 impl NestedInformationElementRepr {
-    pub fn parse(ie: NestedInformationElement<&[u8]>) -> Self {
-        match ie.sub_id() {
+    /// Parse a Nested Information Element.
+    pub fn parse(ie: &NestedInformationElement<&[u8]>) -> Result<Self> {
+        Ok(match ie.sub_id() {
             NestedSubId::Short(NestedSubIdShort::TschSynchronization) => Self::TschSynchronization(
-                TschSynchronizationRepr::parse(TschSynchronization::new(ie.content())),
+                TschSynchronizationRepr::parse(&TschSynchronization::new(ie.content())?),
             ),
             NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-                Self::TschTimeslot(TschTimeslotRepr::parse(TschTimeslot::new(ie.content())))
+                Self::TschTimeslot(TschTimeslotRepr::parse(&TschTimeslot::new(ie.content())?))
             }
             NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink) => {
                 Self::TschSlotframeAndLink(TschSlotframeAndLinkRepr::parse(
-                    TschSlotframeAndLink::new(ie.content()),
+                    &TschSlotframeAndLink::new(ie.content())?,
                 ))
             }
-            NestedSubId::Long(NestedSubIdLong::ChannelHopping) => {
-                Self::ChannelHopping(ChannelHoppingRepr::parse(ChannelHopping::new(ie.content())))
-            }
-            _ => todo!(),
-        }
+            NestedSubId::Long(NestedSubIdLong::ChannelHopping) => Self::ChannelHopping(
+                ChannelHoppingRepr::parse(&ChannelHopping::new(ie.content())?),
+            ),
+            _ => return Err(Error),
+        })
     }
 
+    /// The buffer length required to emit the Nested Information Element.
     pub fn buffer_len(&self) -> usize {
         2 + self.inner_len()
     }
 
+    /// The buffer length required to emit the inner part of the Nested Information Element.
     pub fn inner_len(&self) -> usize {
         match self {
             Self::TschSynchronization(repr) => repr.buffer_len(),
@@ -46,23 +50,27 @@ impl NestedInformationElementRepr {
         }
     }
 
-    pub fn emit(&self, buffer: &mut [u8]) {
+    /// Emit the Nested Information Element into a buffer.
+    pub fn emit(&self, w: &mut NestedInformationElement<&mut [u8]>) {
         let id = NestedSubId::from(self);
 
-        let mut w = NestedInformationElement::new_unchecked(buffer);
         w.clear();
         w.set_length(self.inner_len() as u16, id);
         w.set_sub_id(id);
 
         match self {
             Self::TschSynchronization(repr) => {
-                repr.emit(&mut TschSynchronization::new(w.content_mut()))
+                repr.emit(&mut TschSynchronization::new_unchecked(w.content_mut()))
             }
-            Self::TschTimeslot(repr) => repr.emit(&mut TschTimeslot::new(w.content_mut())),
+            Self::TschTimeslot(repr) => {
+                repr.emit(&mut TschTimeslot::new_unchecked(w.content_mut()))
+            }
             Self::TschSlotframeAndLink(repr) => {
-                repr.emit(&mut TschSlotframeAndLink::new(w.content_mut()))
+                repr.emit(&mut TschSlotframeAndLink::new_unchecked(w.content_mut()))
             }
-            Self::ChannelHopping(repr) => repr.emit(&mut ChannelHopping::new(w.content_mut())),
+            Self::ChannelHopping(repr) => {
+                repr.emit(&mut ChannelHopping::new_unchecked(w.content_mut()))
+            }
         }
     }
 }
@@ -97,7 +105,7 @@ pub struct TschSynchronizationRepr {
 
 impl TschSynchronizationRepr {
     /// Parse a TSCH Synchronization Information Element.
-    pub fn parse(ie: TschSynchronization<&[u8]>) -> Self {
+    pub fn parse(ie: &TschSynchronization<&[u8]>) -> Self {
         Self {
             absolute_slot_number: ie.absolute_slot_number(),
             join_metric: ie.join_metric(),
@@ -125,7 +133,7 @@ pub struct TschSlotframeAndLinkRepr {
 
 impl TschSlotframeAndLinkRepr {
     /// Parse a TSCH Slotframe and Link Information Element.
-    pub fn parse(ie: TschSlotframeAndLink<&[u8]>) -> Self {
+    pub fn parse(ie: &TschSlotframeAndLink<&[u8]>) -> Self {
         Self {
             number_of_slot_frames: ie.number_of_slot_frames(),
         }
@@ -151,7 +159,7 @@ pub struct TschTimeslotRepr {
 
 impl TschTimeslotRepr {
     /// Parse a TSCH Timeslot Information Element.
-    pub fn parse(ie: TschTimeslot<&[u8]>) -> Self {
+    pub fn parse(ie: &TschTimeslot<&[u8]>) -> Self {
         Self { id: ie.id() }
     }
 
@@ -176,7 +184,7 @@ pub struct ChannelHoppingRepr {
 
 impl ChannelHoppingRepr {
     /// Parse a Channel Hopping Information Element.
-    pub fn parse(ie: ChannelHopping<&[u8]>) -> Self {
+    pub fn parse(ie: &ChannelHopping<&[u8]>) -> Self {
         Self {
             hopping_sequence_id: ie.hopping_sequence_id(),
         }

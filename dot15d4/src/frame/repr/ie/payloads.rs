@@ -1,3 +1,4 @@
+use super::super::super::{Error, Result};
 use super::super::super::{NestedInformationElement, PayloadGroupId, PayloadInformationElement};
 
 use super::NestedInformationElementRepr;
@@ -14,19 +15,19 @@ pub enum PayloadInformationElementRepr {
 
 impl PayloadInformationElementRepr {
     /// Parse a Payload Information Element.
-    pub fn parse(ie: PayloadInformationElement<&[u8]>) -> Self {
+    pub fn parse(ie: &PayloadInformationElement<&[u8]>) -> Result<Self> {
         match ie.group_id() {
             PayloadGroupId::Mlme => {
                 let mut nested_information_elements = Vec::new();
 
                 for nested_ie in ie.nested_information_elements() {
                     nested_information_elements
-                        .push(NestedInformationElementRepr::parse(nested_ie));
+                        .push(NestedInformationElementRepr::parse(&nested_ie)?);
                 }
 
-                Self::Mlme(nested_information_elements)
+                Ok(Self::Mlme(nested_information_elements))
             }
-            _ => todo!(),
+            _ => Err(Error),
         }
     }
 
@@ -35,6 +36,7 @@ impl PayloadInformationElementRepr {
         2 + self.inner_len()
     }
 
+    /// The buffer length required to emit the inner part of the Payload Information Element.
     fn inner_len(&self) -> usize {
         match self {
             Self::Mlme(nested_ies) => {
@@ -51,8 +53,7 @@ impl PayloadInformationElementRepr {
     }
 
     /// Emit the Payload Information Element into a buffer.
-    pub fn emit(&self, buffer: &mut [u8]) {
-        let mut w = PayloadInformationElement::new_unchecked(buffer);
+    pub fn emit(&self, w: &mut PayloadInformationElement<&mut [u8]>) {
         w.clear();
         w.set_length(self.inner_len() as u16);
         w.set_group_id(self.into());
@@ -62,7 +63,9 @@ impl PayloadInformationElementRepr {
             Self::Mlme(nested_ies) => {
                 let mut offset = 0;
                 for ie in nested_ies.iter() {
-                    ie.emit(&mut buffer[offset..]);
+                    ie.emit(&mut NestedInformationElement::new_unchecked(
+                        &mut buffer[offset..],
+                    ));
                     offset += ie.buffer_len();
                 }
             }

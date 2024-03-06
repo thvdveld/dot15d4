@@ -1,4 +1,5 @@
 use super::Frame;
+use super::{Error, Result};
 
 mod addressing;
 pub use addressing::AddressingFieldsRepr;
@@ -31,18 +32,23 @@ pub struct FrameRepr<'p> {
 
 impl<'f> FrameRepr<'f> {
     /// Parse an IEEE 802.15.4 frame.
-    pub fn parse(reader: &Frame<&'f [u8]>) -> Self {
-        Self {
-            frame_control: FrameControlRepr::parse(reader.frame_control()),
+    pub fn parse(reader: &Frame<&'f [u8]>) -> Result<Self> {
+        let frame_control = FrameControlRepr::parse(reader.frame_control())?;
+        let addressing_fields = reader
+            .addressing()
+            .map(|af| AddressingFieldsRepr::parse(af, reader.frame_control()));
+        let information_elements = reader
+            .information_elements()
+            .map(InformationElementsRepr::parse)
+            .transpose()?;
+
+        Ok(Self {
+            frame_control,
             sequence_number: reader.sequence_number(),
-            addressing_fields: reader
-                .addressing()
-                .map(|af| AddressingFieldsRepr::parse(af, reader.frame_control())),
-            information_elements: reader
-                .information_elements()
-                .map(InformationElementsRepr::parse),
+            addressing_fields,
+            information_elements,
             payload: reader.payload(),
-        }
+        })
     }
 
     /// Return the length of the frame when emitted into a buffer.

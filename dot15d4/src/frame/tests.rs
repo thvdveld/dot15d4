@@ -76,7 +76,7 @@ fn parse_ack_frame() {
         HeaderElementId::TimeCorrection
     );
 
-    let time_correction = TimeCorrection::new(time_correction.content());
+    let time_correction = TimeCorrection::new(time_correction.content()).unwrap();
     assert_eq!(time_correction.len(), 2);
     assert_eq!(
         time_correction.time_correction(),
@@ -235,11 +235,15 @@ fn parse_enhanced_beacon() {
         NestedSubId::Short(NestedSubIdShort::TschSynchronization)
     );
     assert_eq!(
-        TschSynchronization::new(tsch_sync.content()).absolute_slot_number(),
+        TschSynchronization::new(tsch_sync.content())
+            .unwrap()
+            .absolute_slot_number(),
         14
     );
     assert_eq!(
-        TschSynchronization::new(tsch_sync.content()).join_metric(),
+        TschSynchronization::new(tsch_sync.content())
+            .unwrap()
+            .join_metric(),
         0
     );
 
@@ -248,7 +252,7 @@ fn parse_enhanced_beacon() {
         tsch_timeslot.sub_id(),
         NestedSubId::Short(NestedSubIdShort::TschTimeslot)
     );
-    assert_eq!(TschTimeslot::new(tsch_timeslot.content()).id(), 0);
+    assert_eq!(TschTimeslot::new(tsch_timeslot.content()).unwrap().id(), 0);
 
     let channel_hopping = nested_iterator.next().unwrap();
     assert_eq!(
@@ -256,7 +260,9 @@ fn parse_enhanced_beacon() {
         NestedSubId::Long(NestedSubIdLong::ChannelHopping)
     );
     assert_eq!(
-        ChannelHopping::new(channel_hopping.content()).hopping_sequence_id(),
+        ChannelHopping::new(channel_hopping.content())
+            .unwrap()
+            .hopping_sequence_id(),
         0
     );
 
@@ -266,7 +272,9 @@ fn parse_enhanced_beacon() {
         NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink)
     );
     assert_eq!(
-        TschSlotframeAndLink::new(slotframe.content()).number_of_slot_frames(),
+        TschSlotframeAndLink::new(slotframe.content())
+            .unwrap()
+            .number_of_slot_frames(),
         0
     );
 

@@ -9,6 +9,8 @@ pub use payloads::*;
 mod nested;
 pub use nested::*;
 
+use super::{Error, Result};
+
 use heapless::Vec;
 
 /// IEEE 802.15.4 Information Element reader.
@@ -17,10 +19,41 @@ pub struct InformationElements<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> InformationElements<T> {
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    /// Create a new [`InformationElements`] reader from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short to contain the information elements.
+    pub fn new(data: T) -> Result<Self> {
+        let ie = Self::new_unchecked(data);
+
+        if !ie.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ie)
     }
 
+    /// Returns `false` if the buffer is too short to contain the information elements.
+    fn check_len(&self) -> bool {
+        let mut len = 0;
+
+        let mut iter = self.header_information_elements();
+        while iter.next().is_some() {}
+        len += iter.offset();
+
+        if len > self.data.as_ref().len() {
+            return false;
+        }
+
+        let mut iter = self.payload_information_elements();
+        while iter.next().is_some() {}
+        len += iter.offset();
+
+        self.data.as_ref().len() >= len
+    }
+
+    /// Create a new [`InformationElements`] reader from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }

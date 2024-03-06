@@ -1,4 +1,6 @@
 use super::NestedInformationElementsIterator;
+use super::{Error, Result};
+
 use heapless::Vec;
 
 /// A reader/writer for the IEEE 802.15.4 Payload Information Elements.
@@ -8,10 +10,27 @@ pub struct PayloadInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    /// Create a new [`PayloadInformationElement`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short to contain a payload information element.
+    pub fn new(data: T) -> Result<Self> {
+        let ie = Self::new_unchecked(data);
+
+        if !ie.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ie)
     }
 
+    /// Returns `false` if the buffer is too short to contain a payload information element.
+    fn check_len(&self) -> bool {
+        self.data.as_ref().len() >= 2
+    }
+
+    /// Create a new [`PayloadInformationElement`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -142,8 +161,9 @@ impl<'f> Iterator for PayloadInformationElementsIterator<'f> {
         if self.terminated {
             None
         } else {
-            let ie = PayloadInformationElement {
-                data: &self.data[self.offset..],
+            let Ok(ie) = PayloadInformationElement::new(&self.data[self.offset..]) else {
+                self.terminated = true;
+                return None;
             };
 
             self.terminated = matches!(ie.group_id(), PayloadGroupId::PayloadTermination);
