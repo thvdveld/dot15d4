@@ -1,3 +1,4 @@
+use super::{Error, Result};
 use crate::time::Duration;
 use bitflags::bitflags;
 
@@ -23,17 +24,40 @@ pub struct NestedInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> NestedInformationElement<T> {
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    /// Create a new [`NestedInformationElement`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short to contain the nested information element.
+    pub fn new(data: T) -> Result<Self> {
+        let nested = Self::new_unchecked(data);
+
+        if !nested.check_len() {
+            return Err(Error);
+        }
+
+        Ok(nested)
     }
 
+    /// Returns `false` if the buffer is too short to contain the nested information element.
+    fn check_len(&self) -> bool {
+        if self.data.as_ref().len() < 2 {
+            return false;
+        }
+
+        let len = self.length();
+
+        self.data.as_ref().len() >= len + 2
+    }
+
+    /// Create a new [`NestedInformationElement`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
     /// Return the length of the Nested Information Element in bytes.
     pub fn length(&self) -> usize {
-        let b = &self.data.as_ref()[0..2];
+        let b = &self.data.as_ref()[0..];
         if self.is_long() {
             (u16::from_le_bytes([b[0], b[1]]) & 0b1111111111) as usize
         } else {
@@ -43,7 +67,7 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
 
     /// Return the [`NestedSubId`].
     pub fn sub_id(&self) -> NestedSubId {
-        let b = &self.data.as_ref()[0..2];
+        let b = &self.data.as_ref()[0..];
         let id = u16::from_le_bytes([b[0], b[1]]);
         if self.is_long() {
             NestedSubId::Long(NestedSubIdLong::from(((id >> 11) & 0b1111) as u8))
@@ -59,7 +83,7 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
 
     /// Returns `true` when the Nested Information Element is a long type.
     pub fn is_long(&self) -> bool {
-        let b = &self.data.as_ref()[0..2];
+        let b = &self.data.as_ref()[0..];
         (u16::from_le_bytes([b[0], b[1]]) >> 15) & 0b1 == 0b1
     }
 
@@ -114,19 +138,31 @@ impl<T: AsRef<[u8]>> core::fmt::Display for NestedInformationElement<T> {
         match self.sub_id() {
             NestedSubId::Short(id) => match id {
                 NestedSubIdShort::TschSynchronization => {
-                    write!(f, "  {id} {}", TschSynchronization::new(self.content()))
+                    let Ok(ts) = TschSynchronization::new(self.content()) else {
+                        return write!(f, "  {id}");
+                    };
+                    write!(f, "  {id} {ts}")
                 }
                 NestedSubIdShort::TschTimeslot => {
-                    write!(f, "  {id} {}", TschTimeslot::new(self.content()))
+                    let Ok(tt) = TschTimeslot::new(self.content()) else {
+                        return write!(f, "  {id}");
+                    };
+                    write!(f, "  {id} {tt}")
                 }
                 NestedSubIdShort::TschSlotframeAndLink => {
-                    write!(f, "  {id} {}", TschSlotframeAndLink::new(self.content()))
+                    let Ok(ts) = TschSlotframeAndLink::new(self.content()) else {
+                        return write!(f, "  {id}");
+                    };
+                    write!(f, "  {id} {ts}")
                 }
                 _ => write!(f, "  {:?}({:0x?})", id, self.content()),
             },
             NestedSubId::Long(id) => match id {
                 NestedSubIdLong::ChannelHopping => {
-                    write!(f, "  {id} {}", ChannelHopping::new(self.content()))
+                    let Ok(ch) = ChannelHopping::new(self.content()) else {
+                        return write!(f, "  {id}");
+                    };
+                    write!(f, "  {id} {ch}")
                 }
                 id => write!(f, "  {:?}({:0x?})", id, self.content()),
             },
@@ -296,8 +332,18 @@ pub struct TschSynchronization<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> TschSynchronization<T> {
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    pub fn new(data: T) -> Result<Self> {
+        let ts = Self::new_unchecked(data);
+
+        if !ts.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ts)
+    }
+
+    fn check_len(&self) -> bool {
+        self.data.as_ref().len() >= 6
     }
 
     pub fn new_unchecked(data: T) -> Self {
@@ -364,8 +410,28 @@ pub struct TschTimeslot<T: AsRef<[u8]>> {
 impl<T: AsRef<[u8]>> TschTimeslot<T> {
     pub const DEFAULT_ID: u8 = 0;
 
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    pub fn new(data: T) -> Result<Self> {
+        let ts = Self::new_unchecked(data);
+
+        if !ts.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ts)
+    }
+
+    fn check_len(&self) -> bool {
+        let len = self.data.as_ref().len();
+
+        if len < 1 {
+            return false;
+        }
+
+        if self.id() == Self::DEFAULT_ID {
+            return len >= 1;
+        }
+
+        len >= 25
     }
 
     pub fn new_unchecked(data: T) -> Self {
@@ -705,8 +771,28 @@ pub struct TschSlotframeAndLink<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    pub fn new(data: T) -> Result<Self> {
+        let ts = Self::new_unchecked(data);
+
+        if !ts.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ts)
+    }
+
+    fn check_len(&self) -> bool {
+        let len = self.data.as_ref().len();
+
+        if len < 1 {
+            return false;
+        }
+
+        let number_of_slot_frames = self.number_of_slot_frames() as usize;
+        let slotframe_descriptors_len =
+            self.slotframe_descriptors().map(|d| d.len()).sum::<usize>();
+
+        len > slotframe_descriptors_len
     }
 
     pub fn new_unchecked(data: T) -> Self {
@@ -752,7 +838,27 @@ pub struct SlotframeDescriptor<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
-    pub fn new(data: T) -> Self {
+    pub fn new(data: T) -> Result<Self> {
+        let descriptor = Self::new_unchecked(data);
+
+        if !descriptor.check_len() {
+            return Err(Error);
+        }
+
+        Ok(descriptor)
+    }
+
+    fn check_len(&self) -> bool {
+        let len = self.data.as_ref().len();
+
+        if len < 4 {
+            return false;
+        }
+
+        len > 4 + (self.links() as usize * LinkDescriptor::<&[u8]>::len())
+    }
+
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -814,19 +920,22 @@ impl<'f> Iterator for SlotframeDescriptorIterator<'f> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.terminated {
-            None
-        } else {
-            let descriptor = SlotframeDescriptor::new(&self.data[self.offset..]);
-            self.slotframe_count += 1;
-
-            self.offset += descriptor.len();
-
-            if self.offset >= self.data.as_ref().len() || self.slotframe_count >= self.slotframes {
-                self.terminated = true;
-            }
-
-            Some(descriptor)
+            return None;
         }
+
+        let Ok(descriptor) = SlotframeDescriptor::new(&self.data[self.offset..]) else {
+            self.terminated = true;
+            return None;
+        };
+
+        self.slotframe_count += 1;
+        self.offset += descriptor.len();
+
+        if self.offset >= self.data.as_ref().len() || self.slotframe_count >= self.slotframes {
+            self.terminated = true;
+        }
+
+        Some(descriptor)
     }
 }
 
@@ -939,7 +1048,28 @@ pub struct ChannelHopping<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> ChannelHopping<T> {
-    pub fn new(data: T) -> Self {
+    /// Create a new [`ChannelHopping`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too small.
+    pub fn new(data: T) -> Result<Self> {
+        let ts = Self::new_unchecked(data);
+
+        if !ts.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ts)
+    }
+
+    /// Return `false` if the buffer is too small.
+    fn check_len(&self) -> bool {
+        !self.data.as_ref().is_empty()
+    }
+
+    /// Create a new [`ChannelHopping`] reader/writer from a given buffer without checking the length.
+    pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
 
@@ -987,17 +1117,17 @@ impl<'f> Iterator for NestedInformationElementsIterator<'f> {
         if self.terminated {
             None
         } else {
-            let nested_len = NestedInformationElement {
-                data: &self.data[self.offset..],
-            }
-            .length()
-                + 2;
+            let Ok(nested) = NestedInformationElement::new(&self.data[self.offset..]) else {
+                self.terminated = true;
+                return None;
+            };
+            let len = nested.length() + 2;
 
             let nested = NestedInformationElement {
-                data: &self.data[self.offset..][..nested_len],
+                data: &self.data[self.offset..][..len],
             };
 
-            self.offset += nested_len;
+            self.offset += len;
 
             if self.offset >= self.data.len() {
                 self.terminated = true;

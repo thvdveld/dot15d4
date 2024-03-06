@@ -34,7 +34,8 @@ impl EnhancedBeacon {
                 for nested_ie in payload_ie.nested_information_elements() {
                     match nested_ie.sub_id() {
                         NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink) => {
-                            let slotframe_and_link = TschSlotframeAndLink::new(nested_ie.content());
+                            let slotframe_and_link =
+                                TschSlotframeAndLink::new(nested_ie.content()).ok()?;
                             for sf in slotframe_and_link.slotframe_descriptors() {
                                 trace!(
                                     "TSCH slotframe: handle={}, slots={}",
@@ -44,7 +45,7 @@ impl EnhancedBeacon {
                             }
                         }
                         NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-                            let timeslot = TschTimeslot::new(nested_ie.content());
+                            let timeslot = TschTimeslot::new(nested_ie.content()).ok()?;
                             let id = timeslot.id();
                             if id != TschTimeslot::<&[u8]>::DEFAULT_ID {
                                 // TODO: update our time slot timings with the new ones.
@@ -52,7 +53,8 @@ impl EnhancedBeacon {
                             }
                         }
                         NestedSubId::Short(NestedSubIdShort::TschSynchronization) => {
-                            let synchronization = TschSynchronization::new(nested_ie.content());
+                            let synchronization =
+                                TschSynchronization::new(nested_ie.content()).ok()?;
                             asn = Some(synchronization.absolute_slot_number());
                             join_metric = Some(synchronization.join_metric());
                             trace!(
@@ -62,7 +64,7 @@ impl EnhancedBeacon {
                             );
                         }
                         NestedSubId::Long(NestedSubIdLong::ChannelHopping) => {
-                            let channel_hopping = ChannelHopping::new(nested_ie.content());
+                            let channel_hopping = ChannelHopping::new(nested_ie.content()).ok()?;
                             hopping_sequence_id = Some(channel_hopping.hopping_sequence_id());
                             trace!(
                                 "TSCH channel hopping: hopping_sequence_id={}",

@@ -18,7 +18,6 @@
 //! For an incoming frame, use the [`Frame`] structure to read its content.
 //! ```
 //! # use dot15d4::frame::{
-//! #   Buffer,
 //! #   Frame,
 //! #   FrameControl,
 //! #   FrameType,
@@ -48,7 +47,7 @@
 //!         for nested in payload.nested_information_elements() {
 //!              match nested.sub_id() {
 //!                  NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-//!                      let time_slot = TschTimeslot::new(nested.content());
+//!                      let time_slot = TschTimeslot::new(nested.content()).unwrap();
 //!                      assert_eq!(time_slot.id(), 0);
 //!                  }
 //!                  _ => (),
@@ -195,49 +194,55 @@ pub struct Error;
 /// A type alias for `Result<T, frame::Error>`.
 pub type Result<T> = core::result::Result<T, Error>;
 
-pub trait Buffer: Sized {
-    type T: AsRef<[u8]>;
-
-    /// Create a new reader/writer.
-    ///
-    /// ## Note
-    /// This is a combination of [`Buffer::new_unchecked`] and [`Buffer::check_len`].
-    fn new(buffer: Self::T) -> Result<Self> {
-        let b = Self::new_unchecked(buffer);
-
-        if !b.check_len() {
-            return Err(Error);
-        }
-
-        Ok(b)
-    }
-
-    /// Create a new reader/writer without checking the buffer length.
-    fn new_unchecked(buffer: Self::T) -> Self;
-
-    /// Check if the buffer is long enough to contain valid content.
-    fn check_len(&self) -> bool {
-        true
-    }
-}
-
 /// A reader/writer for an IEEE 802.15.4 frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Frame<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> Buffer for Frame<T> {
-    type T = T;
+impl<T: AsRef<[u8]>> Frame<T> {
+    /// Create a new [`Frame`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short to contain a valid frame.
+    pub fn new(buffer: T) -> Result<Self> {
+        let b = Self::new_unchecked(buffer);
 
-    fn new_unchecked(buffer: Self::T) -> Self {
-        Self { buffer }
+        if !b.check_len() {
+            return Err(Error);
+        }
+
+        let fc = b.frame_control();
+
+        if fc.security_enabled() {
+            return Err(Error);
+        }
+
+        if fc.frame_type() == FrameType::Unknown {
+            return Err(Error);
+        }
+
+        if fc.frame_version() == FrameVersion::Unknown {
+            return Err(Error);
+        }
+
+        if fc.dst_addressing_mode() == AddressingMode::Unknown {
+            return Err(Error);
+        }
+
+        if fc.src_addressing_mode() == AddressingMode::Unknown {
+            return Err(Error);
+        }
+
+        Ok(b)
     }
 
+    /// Returns `false` if the buffer is too short to contain a valid frame.
     fn check_len(&self) -> bool {
         let buffer = self.buffer.as_ref();
 
-        if buffer.len() < 2 {
+        if buffer.len() < 2 || buffer.len() > 127 {
             return false;
         }
 
@@ -249,12 +254,15 @@ impl<T: AsRef<[u8]>> Buffer for Frame<T> {
 
         true
     }
-}
 
-impl<T: AsRef<[u8]>> Frame<T> {
+    /// Create a new [`Frame`] reader/writer from a given buffer without length checking.
+    pub fn new_unchecked(buffer: T) -> Self {
+        Self { buffer }
+    }
+
     /// Return a [`FrameControl`] reader.
     pub fn frame_control(&self) -> FrameControl<&'_ [u8]> {
-        FrameControl::new(&self.buffer.as_ref()[..2])
+        FrameControl::new_unchecked(&self.buffer.as_ref()[..2])
     }
 
     /// Return the sequence number if not suppressed.
@@ -281,9 +289,9 @@ impl<T: AsRef<[u8]>> Frame<T> {
         }
 
         if fc.sequence_number_suppression() {
-            Some(AddressingFields::new(&self.buffer.as_ref()[2..]))
+            AddressingFields::new(&self.buffer.as_ref()[2..], &fc).ok()
         } else {
-            Some(AddressingFields::new(&self.buffer.as_ref()[3..]))
+            AddressingFields::new(&self.buffer.as_ref()[3..], &fc).ok()
         }
     }
 
@@ -319,7 +327,7 @@ impl<T: AsRef<[u8]>> Frame<T> {
                 offset += af.len(&fc);
             }
 
-            Some(InformationElements::new(&self.buffer.as_ref()[offset..]))
+            Some(InformationElements::new(&self.buffer.as_ref()[offset..]).ok()?)
         } else {
             None
         }
@@ -347,7 +355,9 @@ impl<'f, T: AsRef<[u8]> + ?Sized> Frame<&'f T> {
         }
 
         if fc.information_elements_present() {
-            offset += self.information_elements().unwrap().len();
+            if let Some(ie) = self.information_elements() {
+                offset += ie.len();
+            }
         }
 
         if self.buffer.as_ref().len() <= offset {
@@ -361,7 +371,7 @@ impl<'f, T: AsRef<[u8]> + ?Sized> Frame<&'f T> {
 impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     /// Set the Frame Control field values in the buffer, based on the given [`FrameControlRepr`].
     pub fn set_frame_control(&mut self, fc: &FrameControlRepr) {
-        let mut w = FrameControl::new(&mut self.buffer.as_mut()[..2]);
+        let mut w = FrameControl::new_unchecked(&mut self.buffer.as_mut()[..2]);
         w.set_frame_type(fc.frame_type);
         w.set_security_enabled(fc.security_enabled);
         w.set_frame_pending(fc.frame_pending);
@@ -377,7 +387,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     /// Set the Sequence Number field value in the buffer.
     pub fn set_sequence_number(&mut self, sequence_number: u8) {
         // Set the sequence number suppression bit to false.
-        let mut w = FrameControl::new(&mut self.buffer.as_mut()[..2]);
+        let mut w = FrameControl::new_unchecked(&mut self.buffer.as_mut()[..2]);
         w.set_sequence_number_suppression(false);
 
         self.buffer.as_mut()[2] = sequence_number;
@@ -387,7 +397,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     pub fn set_addressing_fields(&mut self, addressing_fields: &AddressingFieldsRepr) {
         let start = 2 + (!self.frame_control().sequence_number_suppression() as usize);
 
-        let mut w = AddressingFields::new(&mut self.buffer.as_mut()[start..]);
+        let mut w = AddressingFields::new_unchecked(&mut self.buffer.as_mut()[start..]);
         w.write_fields(addressing_fields);
     }
 

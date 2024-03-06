@@ -1,2 +1,3 @@
 /target
 /Cargo.lock
+dot15d4-fuzz/out

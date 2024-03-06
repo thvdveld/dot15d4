@@ -1,4 +1,5 @@
-pub use super::super::super::{HeaderElementId, HeaderInformationElement, TimeCorrection};
+use super::super::super::{Error, Result};
+use super::super::super::{HeaderElementId, HeaderInformationElement, TimeCorrection};
 
 use crate::time::Duration;
 
@@ -12,15 +13,15 @@ pub enum HeaderInformationElementRepr {
 
 impl HeaderInformationElementRepr {
     /// Parse a Header Information Element.
-    pub fn parse(ie: HeaderInformationElement<&[u8]>) -> Self {
-        match ie.element_id() {
+    pub fn parse(ie: &HeaderInformationElement<&[u8]>) -> Result<Self> {
+        Ok(match ie.element_id() {
             HeaderElementId::TimeCorrection => Self::TimeCorrection(TimeCorrectionRepr::parse(
-                &TimeCorrection::new(ie.content()),
+                &TimeCorrection::new(ie.content())?,
             )),
             HeaderElementId::HeaderTermination1 => Self::HeaderTermination1,
             HeaderElementId::HeaderTermination2 => Self::HeaderTermination2,
-            element => todo!("Received {element:?}"),
-        }
+            _ => return Err(Error),
+        })
     }
 
     /// The buffer length required to emit the Header Information Element.

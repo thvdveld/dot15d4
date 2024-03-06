@@ -1,5 +1,6 @@
 //! IEEE 802.15.4 Header Information Element reader and writers.
 
+use crate::frame::{Error, Result};
 use crate::time::Duration;
 use dot15d4_macros::frame;
 
@@ -10,10 +11,27 @@ pub struct HeaderInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
-    pub fn new(data: T) -> Self {
-        Self::new_unchecked(data)
+    /// Create a new [`HeaderInformationElement`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the length field is less than 2.
+    pub fn new(data: T) -> Result<Self> {
+        let ie = Self::new_unchecked(data);
+
+        if !ie.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ie)
     }
 
+    /// Returns `false` if the buffer is too short to contain the Header Information Element.
+    fn check_len(&self) -> bool {
+        self.data.as_ref().len() >= 2
+    }
+
+    /// Create a new [`HeaderInformationElement`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -92,7 +110,10 @@ impl<T: AsRef<[u8]>> core::fmt::Display for HeaderInformationElement<T> {
                 )
             }
             HeaderElementId::TimeCorrection => {
-                write!(f, "{} {}", id, TimeCorrection::new(self.content()))
+                let Ok(tc) = TimeCorrection::new(self.content()) else {
+                    return write!(f, "{:?}({:0x?})", id, self.content());
+                };
+                write!(f, "{} {}", id, tc)
             }
             id => write!(f, "{:?}({:0x?})", id, self.content()),
         }
@@ -180,9 +201,7 @@ impl<'f> Iterator for HeaderInformationElementsIterator<'f> {
         if self.terminated {
             None
         } else {
-            let ie = HeaderInformationElement {
-                data: &self.data[self.offset..],
-            };
+            let ie = HeaderInformationElement::new(&self.data[self.offset..]).ok()?;
 
             self.terminated = matches!(
                 ie.element_id(),
@@ -292,10 +311,27 @@ pub struct TimeCorrection<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> TimeCorrection<T> {
-    pub fn new(buffer: T) -> Self {
-        Self { buffer }
+    /// Create a new [`TimeCorrection`] reader/writer from a given buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the buffer is too short.
+    pub fn new(buffer: T) -> Result<Self> {
+        let ie = Self::new_unchecked(buffer);
+
+        if !ie.check_len() {
+            return Err(Error);
+        }
+
+        Ok(ie)
     }
 
+    /// Returns `false` if the buffer is too short to contain the Time Correction field.
+    fn check_len(&self) -> bool {
+        self.buffer.as_ref().len() >= 2
+    }
+
+    /// Create a new [`TimeCorrection`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
