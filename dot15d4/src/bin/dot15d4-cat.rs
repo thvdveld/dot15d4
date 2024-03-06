@@ -114,7 +114,7 @@ fn main() {
             );
         }
 
-        if let Some(_) = frame.auxiliary_security_header() {
+        if frame.auxiliary_security_header().is_some() {
             println!("{}", "Auxiliary Security Header".underline().bold());
             println!("  unimplementec");
         }
@@ -139,7 +139,11 @@ fn main() {
 
                         match id {
                             HeaderElementId::TimeCorrection => {
-                                println!("      {}", TimeCorrection::new(header.content()));
+                                if let Ok(tc) = TimeCorrection::new(header.content()) {
+                                    println!("      {}", tc);
+                                } else {
+                                    println!("      invalid");
+                                }
                             }
                             _ => println!("        unimplemented"),
                         }
@@ -155,7 +159,8 @@ fn main() {
                 for payload in payloads {
                     match payload.group_id() {
                         PayloadGroupId::Mlme => {
-                            println!("    {}", "Mlme");
+                            println!("    MLME");
+
                             for nested in payload.nested_information_elements() {
                                 println!(
                                     "      {}",
@@ -167,25 +172,37 @@ fn main() {
 
                                 match nested.sub_id() {
                                     NestedSubId::Short(NestedSubIdShort::TschSynchronization) => {
-                                        println!(
-                                            "        {}",
-                                            TschSynchronization::new(nested.content())
-                                        );
+                                        if let Ok(sync) = TschSynchronization::new(nested.content())
+                                        {
+                                            println!("        {sync}");
+                                        } else {
+                                            println!("        invalid");
+                                        }
                                     }
                                     NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-                                        println!("        {}", TschTimeslot::new(nested.content()));
+                                        if let Ok(timeslot) = TschTimeslot::new(nested.content()) {
+                                            println!("        {timeslot}");
+                                        } else {
+                                            println!("        invalid");
+                                        }
                                     }
                                     NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink) => {
-                                        println!(
-                                            "        {}",
+                                        if let Ok(slotframe_and_link) =
                                             TschSlotframeAndLink::new(nested.content())
-                                        );
+                                        {
+                                            println!("        {slotframe_and_link}");
+                                        } else {
+                                            println!("        invalid");
+                                        }
                                     }
                                     NestedSubId::Long(NestedSubIdLong::ChannelHopping) => {
-                                        println!(
-                                            "        {}",
+                                        if let Ok(channel_hopping) =
                                             ChannelHopping::new(nested.content())
-                                        );
+                                        {
+                                            println!("        {channel_hopping}");
+                                        } else {
+                                            println!("        invalid");
+                                        }
                                     }
                                     _ => println!("        unimplemented"),
                                 }
