@@ -383,7 +383,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
 
     /// Get a mutable reference to the Frame Control fields
     pub fn frame_control_mut(&mut self) -> FrameControl<&'_ mut [u8]> {
-        FrameControl::new(&mut self.buffer.as_mut()[..2])
+        FrameControl::new_unchecked(&mut self.buffer.as_mut()[..2])
     }
 
     /// Set the Sequence Number field value in the buffer.

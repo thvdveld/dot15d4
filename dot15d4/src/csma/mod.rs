@@ -1,15 +1,13 @@
 pub mod constants;
 pub mod user_configurable_constants;
 
-use std::process::Output;
-
 use constants::*;
 use embedded_hal_async::delay::DelayNs;
 use rand_core::RngCore;
 use user_configurable_constants::*;
 
 use crate::{
-    frame::{Address, Buffer, Frame, FrameBuilder, FrameRepr, FrameType},
+    frame::{Address, Frame, FrameBuilder, FrameRepr, FrameType},
     phy::{
         config::{RxConfig, TxConfig},
         driver::{self, Driver, PacketBuffer},

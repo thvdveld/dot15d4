@@ -41,7 +41,6 @@ impl<T> Mutex<T> {
         LockFuture { mutex: self }.await;
 
         // Now that we have acquired the lock, we can return the mutex
-        println!("Lock acquired (lock)");
         MutexGuard { mutex: self }
     }
 
@@ -50,7 +49,6 @@ impl<T> Mutex<T> {
         if !state.locked {
             // The lock is currently not yet locked -> acquire lock
             state.locked = true;
-            println!("Lock acquired (try_lock)");
             Some(MutexGuard { mutex: self })
         } else {
             // The current lock is locked, return None
@@ -100,7 +98,6 @@ impl<'a, T> DerefMut for MutexGuard<'a, T> {
 impl<'a, T> Drop for MutexGuard<'a, T> {
     fn drop(&mut self) {
         let mut mutex_state = self.mutex.state.borrow_mut();
-        println!("Lock dropped");
 
         // Release the lock
         mutex_state.locked = false;

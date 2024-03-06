@@ -20,8 +20,7 @@ pub async fn yield_now() {
 
 #[cfg(test)]
 mod tests {
-    use std::thread::yield_now;
-
+    use super::*;
     use pollster::FutureExt;
 
     #[test]

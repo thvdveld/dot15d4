@@ -175,7 +175,7 @@ pub mod tests {
         type RxToken<'a> = TestRxToken<'a>;
         type TxToken<'b> = TestTxToken<'b>;
 
-        fn off(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<()> {
+        fn off(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<()> {
             self.new_event(TestRadioEvent::Off);
             Poll::Ready(())
         }
@@ -185,7 +185,7 @@ pub mod tests {
             ctx: &mut core::task::Context<'_>,
             cfg: &crate::phy::config::RxConfig,
             bytes: &mut [u8; 128],
-        ) -> std::task::Poll<()> {
+        ) -> core::task::Poll<()> {
             self.new_event(TestRadioEvent::PrepareReceive);
             // Safety: Rust references are always valid and never dangling
             // Reference is also owned by the caller which will stay alive for the entire duration this part of the api is used.
@@ -195,7 +195,7 @@ pub mod tests {
 
         /// # Safety:
         /// This API should only be used during tests where the caller of the radio API is the MAC protocol under test. Otherwise there are invalid pointer dereferences, making the tests UB.
-        fn receive(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<bool> {
+        fn receive(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<bool> {
             ctx.waker().wake_by_ref(); // Always wake immediatly again
             self.new_event(TestRadioEvent::Receive);
 
@@ -221,10 +221,10 @@ pub mod tests {
 
         unsafe fn prepare_transmit(
             &mut self,
-            ctx: &mut std::task::Context<'_>,
+            ctx: &mut core::task::Context<'_>,
             cfg: &crate::phy::config::TxConfig,
             bytes: &[u8],
-        ) -> std::task::Poll<()> {
+        ) -> core::task::Poll<()> {
             self.new_event(dbg!(TestRadioEvent::PrepareTransmit));
             Poll::Ready(())
         }
@@ -233,7 +233,7 @@ pub mod tests {
             self.new_event(TestRadioEvent::CancelCurrentOperation);
         }
 
-        fn transmit(&mut self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<bool> {
+        fn transmit(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<bool> {
             self.new_event(dbg!(TestRadioEvent::Transmit));
             Poll::Ready(!self.inner.borrow().cca_fail)
         }
