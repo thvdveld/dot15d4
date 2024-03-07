@@ -10,34 +10,58 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: EmbarkStudios/cargo-deny-action@v1
+
   build:
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
+    - name: Format
+      run: cargo fmt --check --verbose
 
+
+  clippy:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Clippy
+      run: cargo clippy --all-features --all-targets
+
+  tests:
+    needs: [build]
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Install Miri
       run: |
         rustup toolchain install nightly --component miri
         cargo +nightly miri setup
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
+
+    - name: Tests
       run: cargo test --verbose
-    - name: Run Miri on sync
-      run: cargo +nightly miri test -p dot15d4
+    - name: Miri
+      run: cargo +nightly miri test --verbose
 
-  clippy:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Lints
-      run: cargo clippy --all-features --all-targets
-    - name: Fmt
-      run: cargo fmt --check --verbose
-
-  cargo-deny:
+  coverage:
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: EmbarkStudios/cargo-deny-action@v1
+    - name: Install `llvm-cov`
+      uses: taiki-e/install-action@cargo-llvm-cov
+    - name: Coverage
+      run: |
+        cargo llvm-cov --no-report
+        cargo llvm-cov report --lcov --output-path lcov.info
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: lcov.info
+        fail_ci_if_error: false
