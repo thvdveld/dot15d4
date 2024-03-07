@@ -24,7 +24,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Run Miri on sync
-      run: cargo +nightly miri test -p dot15d4 sync
+      run: cargo +nightly miri test -p dot15d4
 
   clippy:
     runs-on: ubuntu-latest
