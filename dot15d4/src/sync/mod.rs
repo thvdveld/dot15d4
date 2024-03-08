@@ -11,8 +11,7 @@ pub(crate) mod yield_now;
 pub(crate) mod tests;
 
 /// Type representing 2 possible outcomes/states
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Either<T, S> {
     First(T),
     Second(S),

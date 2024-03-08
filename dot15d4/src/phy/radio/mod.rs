@@ -60,9 +60,9 @@ pub trait Radio {
 
 pub trait RadioFrame<T: AsRef<[u8]>>: Sized {
     #[cfg(not(feature = "defmt"))]
-    type Error: Sized;
+    type Error: Sized + core::fmt::Debug;
     #[cfg(feature = "defmt")]
-    type Error: Sized + defmt::Format;
+    type Error: Sized + defmt::Format + core::fmt::Debug;
 
     fn new_unchecked(buffer: T) -> Self;
     fn new_checked(buffer: T) -> Result<Self, Self::Error>;
@@ -87,7 +87,14 @@ pub trait TxToken {
 
 #[cfg(test)]
 pub mod tests {
-    use std::{cell::RefCell, collections::VecDeque, ptr::NonNull, rc::Rc, task::Poll};
+    use std::{
+        cell::RefCell,
+        collections::VecDeque,
+        future::poll_fn,
+        ptr::NonNull,
+        rc::Rc,
+        task::{Poll, Waker},
+    };
 
     use crate::phy::{
         config::{RxConfig, TxConfig},
@@ -114,6 +121,8 @@ pub mod tests {
         pub cca_fail: bool,
         pub assert_nxt: VecDeque<TestRadioEvent>,
         pub total_event_count: usize,
+        pub last_transmitted: Option<[u8; 128]>,
+        assert_waker: Option<Waker>,
     }
 
     #[derive(Clone)]
@@ -132,6 +141,8 @@ pub mod tests {
                     assert_nxt: VecDeque::new(),
                     receive_buffer: None,
                     total_event_count: 0,
+                    last_transmitted: None,
+                    assert_waker: None,
                 })),
             }
         }
@@ -153,6 +164,9 @@ pub mod tests {
             }
 
             inner.total_event_count += 1;
+            if let Some(waker) = inner.assert_waker.take() {
+                waker.wake();
+            }
             if let Some(assert_nxt) = inner.assert_nxt.pop_front() {
                 assert_eq!(
                     assert_nxt, evnt,
@@ -161,6 +175,29 @@ pub mod tests {
                 );
             }
             inner.events.push(evnt);
+        }
+
+        pub async fn wait_until_asserts_are_consumed(&self) {
+            poll_fn(|cx| {
+                let mut inner = self.inner.borrow_mut();
+                if inner.assert_nxt.is_empty() {
+                    Poll::Ready(())
+                } else {
+                    match &mut inner.assert_waker {
+                        Some(waker) if waker.will_wake(cx.waker()) => waker.clone_from(cx.waker()),
+                        Some(waker) => {
+                            waker.wake_by_ref();
+                            waker.clone_from(cx.waker());
+                        }
+                        waker @ None => {
+                            *waker = Some(cx.waker().clone());
+                        }
+                    };
+
+                    Poll::Pending
+                }
+            })
+            .await;
         }
     }
 
@@ -225,7 +262,10 @@ pub mod tests {
             cfg: &crate::phy::config::TxConfig,
             bytes: &[u8],
         ) -> core::task::Poll<()> {
-            self.new_event(dbg!(TestRadioEvent::PrepareTransmit));
+            self.new_event(TestRadioEvent::PrepareTransmit);
+            let mut buffer = [0u8; 128];
+            buffer.clone_from_slice(&bytes[..128]);
+            self.inner.borrow_mut().last_transmitted = Some(buffer);
             Poll::Ready(())
         }
 
@@ -234,7 +274,7 @@ pub mod tests {
         }
 
         fn transmit(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<bool> {
-            self.new_event(dbg!(TestRadioEvent::Transmit));
+            self.new_event(TestRadioEvent::Transmit);
             Poll::Ready(!self.inner.borrow().cca_fail)
         }
 
@@ -259,12 +299,12 @@ pub mod tests {
         }
 
         fn data(&self) -> &[u8] {
-            self.buffer.as_ref()
+            &self.buffer.as_ref()[..127]
         }
     }
     impl<T: AsRef<[u8]> + AsMut<[u8]>> RadioFrameMut<T> for TestRadioFrame<T> {
         fn data_mut(&mut self) -> &mut [u8] {
-            self.buffer.as_mut()
+            &mut self.buffer.as_mut()[..127]
         }
     }
 
@@ -276,7 +316,7 @@ pub mod tests {
         where
             F: FnOnce(&mut [u8]) -> R,
         {
-            f(&mut self.buffer.buffer[..])
+            f(&mut self.buffer.buffer[..127])
         }
     }
     impl<'a> From<&'a mut PacketBuffer> for TestRxToken<'a> {

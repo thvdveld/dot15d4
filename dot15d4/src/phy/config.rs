@@ -1,7 +1,6 @@
 /// IEEE 802.15.4 channels
-#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Channel {
     /// 2_405 MHz
     _11,
@@ -92,16 +91,14 @@ impl Default for Channel {
     }
 }
 
-#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct RxConfig {
     pub channel: Channel,
 }
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct TxConfig {
     pub channel: Channel,
     pub cca: bool,

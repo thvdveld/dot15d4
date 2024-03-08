@@ -13,9 +13,8 @@ use crate::sync::channel::Sender;
 use crate::sync::mutex::Mutex;
 use crate::sync::mutex::MutexGuard;
 
-#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TransmissionError {
     CCAError,
 }

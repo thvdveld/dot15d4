@@ -2,9 +2,8 @@ use core::future::Future;
 use core::task::Context;
 use core::task::Poll;
 
-#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Error {
     CCAFailed,
     ACKFailed,
@@ -24,9 +23,8 @@ pub trait Driver {
 }
 
 /// A buffer that is used to store 1 frame.
-#[cfg_attr(feature = "std", derive(Debug))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PacketBuffer {
     /// The data of the frame that should be transmitted over the radio
     pub buffer: [u8; 128],
