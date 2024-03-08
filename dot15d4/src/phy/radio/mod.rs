@@ -96,14 +96,22 @@ pub mod tests {
         task::{Poll, Waker},
     };
 
-    use crate::phy::{
-        config::{RxConfig, TxConfig},
-        driver::PacketBuffer,
+    use embedded_hal_async::delay::DelayNs;
+
+    use crate::{
+        phy::{
+            config::{RxConfig, TxConfig},
+            driver::PacketBuffer,
+        },
+        sync::{
+            select,
+            tests::{StdDelay, StdDelayFuture},
+        },
     };
 
     use super::{Radio, RadioFrame, RadioFrameMut, RxToken, TxToken};
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum TestRadioEvent {
         Off,
         PrepareReceive,
@@ -122,6 +130,7 @@ pub mod tests {
         pub assert_nxt: VecDeque<TestRadioEvent>,
         pub total_event_count: usize,
         pub last_transmitted: Option<[u8; 128]>,
+        pub has_requested_cca: bool,
         assert_waker: Option<Waker>,
     }
 
@@ -143,6 +152,7 @@ pub mod tests {
                     total_event_count: 0,
                     last_transmitted: None,
                     assert_waker: None,
+                    has_requested_cca: false,
                 })),
             }
         }
@@ -177,8 +187,10 @@ pub mod tests {
             inner.events.push(evnt);
         }
 
+        /// Async wait for all radio events to have happened.
+        /// This function is ment to be only used in tests an as such will panic if not all events have happened within 5s of starting
         pub async fn wait_until_asserts_are_consumed(&self) {
-            poll_fn(|cx| {
+            let wait_for_events = poll_fn(|cx| {
                 let mut inner = self.inner.borrow_mut();
                 if inner.assert_nxt.is_empty() {
                     Poll::Ready(())
@@ -196,8 +208,14 @@ pub mod tests {
 
                     Poll::Pending
                 }
-            })
-            .await;
+            });
+
+            match select::select(wait_for_events, StdDelay::default().delay_ms(5000)).await {
+                crate::sync::Either::First(_) => {}
+                crate::sync::Either::Second(_) => {
+                    panic!("Waiting timedout for events -> there is a bug in the code")
+                }
+            }
         }
     }
 
@@ -265,7 +283,10 @@ pub mod tests {
             self.new_event(TestRadioEvent::PrepareTransmit);
             let mut buffer = [0u8; 128];
             buffer.clone_from_slice(&bytes[..128]);
-            self.inner.borrow_mut().last_transmitted = Some(buffer);
+            let mut inner = self.inner.borrow_mut();
+            inner.last_transmitted = Some(buffer);
+            inner.has_requested_cca = cfg.cca;
+
             Poll::Ready(())
         }
 
@@ -275,7 +296,8 @@ pub mod tests {
 
         fn transmit(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<bool> {
             self.new_event(TestRadioEvent::Transmit);
-            Poll::Ready(!self.inner.borrow().cca_fail)
+            let inner = self.inner.borrow();
+            Poll::Ready(!(inner.has_requested_cca && inner.cca_fail))
         }
 
         fn ieee802154_address(&self) -> [u8; 8] {
