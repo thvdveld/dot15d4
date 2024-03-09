@@ -94,7 +94,7 @@ impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
 where
     R: Radio,
     for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
-    for<'a> R::TxToken<'a>: From<&'a mut PacketBuffer>,
+    for<'a> R::TxToken<'a>: From<&'a mut [u8]>,
     Rng: RngCore,
     D: Driver,
     TIMER: DelayNs + Clone,
@@ -220,7 +220,7 @@ where
                         let ieee_repr = FrameBuilder::new_imm_ack(sequence_number)
                             .finalize()
                             .expect("A simple imm-ACK should always be possible to build");
-                        let ack_token = R::TxToken::from(&mut tx_ack);
+                        let ack_token = R::TxToken::from(&mut tx_ack.buffer);
                         ack_token.consume(ieee_repr.buffer_len(), |buffer| {
                             let mut frame = Frame::new_unchecked(buffer);
                             ieee_repr.emit(&mut frame);
@@ -475,7 +475,7 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = false; // Set ACK to false, such that we can test if it acks
 
-            let token = TestTxToken::from(&mut packet);
+            let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
@@ -515,7 +515,7 @@ pub mod tests {
                 );
 
                 let mut ack_frame = PacketBuffer::default();
-                let token = TestTxToken::from(&mut ack_frame);
+                let token = TestTxToken::from(&mut ack_frame.buffer[..]);
                 let ack_repr = FrameBuilder::new_imm_ack(sequence_number)
                     .finalize()
                     .unwrap();
@@ -571,7 +571,7 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = true;
 
-            let token = TestTxToken::from(&mut packet);
+            let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
@@ -641,7 +641,7 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = false;
 
-            let token = TestTxToken::from(&mut packet);
+            let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
@@ -696,7 +696,7 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = false; // Set ACK to false, such that we can test if it acks
 
-            let token = TestTxToken::from(&mut packet);
+            let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
@@ -804,7 +804,7 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = false; // Set ACK to false, such that we can test if it acks
 
-            let token = TestTxToken::from(&mut packet);
+            let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
@@ -882,7 +882,7 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = true; // This should be ignored
 
-            let token = TestTxToken::from(&mut packet);
+            let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);

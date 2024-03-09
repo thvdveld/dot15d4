@@ -1,5 +1,6 @@
 pub mod futures;
 
+use core::future::Future;
 use core::task::{Context, Poll};
 
 use super::config::{RxConfig, TxConfig};
@@ -22,25 +23,20 @@ pub trait Radio {
     /// successful reception, or the radio state changed.
     unsafe fn prepare_receive(
         &mut self,
-        ctx: &mut Context<'_>,
         cfg: &RxConfig,
         bytes: &mut [u8; 128],
-    ) -> Poll<()>;
+    ) -> impl Future<Output = ()>;
 
     /// Request the radio to go in receive mode and try to receive a packet.
-    fn receive(&mut self, ctx: &mut Context<'_>) -> Poll<bool>;
+    fn receive(&mut self) -> impl Future<Output = bool>;
 
     /// Request the radio to go in transmit mode and try to send a packet.
     ///
     /// # Safety
     /// The supplied buffer must remain valid until either
     /// successful reception, or the radio state changed.
-    unsafe fn prepare_transmit(
-        &mut self,
-        ctx: &mut Context<'_>,
-        cfg: &TxConfig,
-        bytes: &[u8],
-    ) -> Poll<()>;
+    unsafe fn prepare_transmit(&mut self, cfg: &TxConfig, bytes: &[u8])
+        -> impl Future<Output = ()>;
 
     /// When working with futures, it is not always guaranteed that a future
     /// will complete. This method must be seen as a notification to the radio
@@ -52,7 +48,7 @@ pub trait Radio {
     /// Request the radio to transmit the queued packet.
     ///
     /// Returns whether a transmission was successful.
-    fn transmit(&mut self, ctx: &mut Context<'_>) -> Poll<bool>;
+    fn transmit(&mut self) -> impl Future<Output = bool>;
 
     /// Returns the IEEE802.15.4 8-octet MAC address of the radio device.
     fn ieee802154_address(&self) -> [u8; 8];
@@ -235,69 +231,67 @@ pub mod tests {
             Poll::Ready(())
         }
 
-        unsafe fn prepare_receive(
+        async unsafe fn prepare_receive(
             &mut self,
-            ctx: &mut core::task::Context<'_>,
             cfg: &crate::phy::config::RxConfig,
             bytes: &mut [u8; 128],
-        ) -> core::task::Poll<()> {
+        ) {
             self.new_event(TestRadioEvent::PrepareReceive);
             // Safety: Rust references are always valid and never dangling
             // Reference is also owned by the caller which will stay alive for the entire duration this part of the api is used.
             self.inner.borrow_mut().receive_buffer = Some(unsafe { NonNull::new_unchecked(bytes) });
-            Poll::Ready(())
         }
 
         /// # Safety:
         /// This API should only be used during tests where the caller of the radio API is the MAC protocol under test. Otherwise there are invalid pointer dereferences, making the tests UB.
-        fn receive(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<bool> {
-            ctx.waker().wake_by_ref(); // Always wake immediatly again
-            self.new_event(TestRadioEvent::Receive);
+        async fn receive(&mut self) -> bool {
+            poll_fn(|cx| {
+                cx.waker().wake_by_ref(); // Always wake immediatly again
+                self.new_event(TestRadioEvent::Receive);
 
-            let mut inner = self.inner.borrow_mut();
+                let mut inner = self.inner.borrow_mut();
 
-            if let Some(mut receive_buffer) = inner.receive_buffer {
-                if let Some(should_receive) = inner.should_receive {
-                    // Safety: The user of this API should also be the one that owns the receive_buffer
-                    unsafe { receive_buffer.as_mut().copy_from_slice(&should_receive) }
+                if let Some(mut receive_buffer) = inner.receive_buffer {
+                    if let Some(should_receive) = inner.should_receive {
+                        // Safety: The user of this API should also be the one that owns the receive_buffer
+                        unsafe { receive_buffer.as_mut().copy_from_slice(&should_receive) }
 
-                    // Reset pointers
-                    inner.receive_buffer = None;
-                    inner.should_receive = None;
+                        // Reset pointers
+                        inner.receive_buffer = None;
+                        inner.should_receive = None;
 
-                    Poll::Ready(true)
+                        Poll::Ready(true)
+                    } else {
+                        Poll::Pending
+                    }
                 } else {
-                    Poll::Pending
+                    Poll::Ready(false)
                 }
-            } else {
-                Poll::Ready(false)
-            }
+            })
+            .await
         }
 
-        unsafe fn prepare_transmit(
+        async unsafe fn prepare_transmit(
             &mut self,
-            ctx: &mut core::task::Context<'_>,
             cfg: &crate::phy::config::TxConfig,
             bytes: &[u8],
-        ) -> core::task::Poll<()> {
+        ) {
             self.new_event(TestRadioEvent::PrepareTransmit);
             let mut buffer = [0u8; 128];
             buffer.clone_from_slice(&bytes[..128]);
             let mut inner = self.inner.borrow_mut();
             inner.last_transmitted = Some(buffer);
             inner.has_requested_cca = cfg.cca;
-
-            Poll::Ready(())
         }
 
         fn cancel_current_opperation(&mut self) {
             self.new_event(TestRadioEvent::CancelCurrentOperation);
         }
 
-        fn transmit(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<bool> {
+        async fn transmit(&mut self) -> bool {
             self.new_event(TestRadioEvent::Transmit);
             let inner = self.inner.borrow();
-            Poll::Ready(!(inner.has_requested_cca && inner.cca_fail))
+            !(inner.has_requested_cca && inner.cca_fail)
         }
 
         fn ieee802154_address(&self) -> [u8; 8] {
@@ -331,34 +325,34 @@ pub mod tests {
     }
 
     pub struct TestRxToken<'a> {
-        buffer: &'a mut PacketBuffer,
+        buffer: &'a mut [u8],
     }
     impl<'a> RxToken for TestRxToken<'a> {
         fn consume<F, R>(self, f: F) -> R
         where
             F: FnOnce(&mut [u8]) -> R,
         {
-            f(&mut self.buffer.buffer[..127])
+            f(&mut self.buffer[..127])
         }
     }
-    impl<'a> From<&'a mut PacketBuffer> for TestRxToken<'a> {
-        fn from(mut value: &'a mut PacketBuffer) -> Self {
+    impl<'a> From<&'a mut [u8]> for TestRxToken<'a> {
+        fn from(mut value: &'a mut [u8]) -> Self {
             Self { buffer: value }
         }
     }
     pub struct TestTxToken<'a> {
-        buffer: &'a mut PacketBuffer,
+        buffer: &'a mut [u8],
     }
     impl<'a> TxToken for TestTxToken<'a> {
         fn consume<F, R>(self, len: usize, f: F) -> R
         where
             F: FnOnce(&mut [u8]) -> R,
         {
-            f(&mut self.buffer.buffer[..len])
+            f(&mut self.buffer[..len])
         }
     }
-    impl<'a> From<&'a mut PacketBuffer> for TestTxToken<'a> {
-        fn from(value: &'a mut PacketBuffer) -> Self {
+    impl<'a> From<&'a mut [u8]> for TestTxToken<'a> {
+        fn from(value: &'a mut [u8]) -> Self {
             Self { buffer: value }
         }
     }
