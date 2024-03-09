@@ -111,7 +111,6 @@ pub mod tests {
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum TestRadioEvent {
-        Off,
         PrepareReceive,
         Receive,
         PrepareTransmit,
