@@ -13,7 +13,9 @@ pub trait Radio {
     type TxToken<'b>: TxToken;
 
     /// Request the radio to idle to a low-power sleep mode.
-    fn off(&mut self, ctx: &mut Context<'_>) -> Poll<()>;
+    fn disable(&mut self) -> impl Future<Output = ()>;
+    /// Request the radio to wake from sleep.
+    fn enable(&mut self) -> impl Future<Output = ()>;
 
     /// Request the radio to go in receive mode and try to receive a packet into the supplied
     /// buffer.
@@ -115,6 +117,8 @@ pub mod tests {
         PrepareTransmit,
         CancelCurrentOperation,
         Transmit,
+        Disable,
+        Enable,
     }
 
     pub struct TestRadioInner {
@@ -226,9 +230,12 @@ pub mod tests {
         type RxToken<'a> = TestRxToken<'a>;
         type TxToken<'b> = TestTxToken<'b>;
 
-        fn off(&mut self, ctx: &mut core::task::Context<'_>) -> core::task::Poll<()> {
-            self.new_event(TestRadioEvent::Off);
-            Poll::Ready(())
+        async fn disable(&mut self) {
+            self.new_event(TestRadioEvent::Disable);
+        }
+
+        async fn enable(&mut self) {
+            self.new_event(TestRadioEvent::Enable);
         }
 
         async unsafe fn prepare_receive(

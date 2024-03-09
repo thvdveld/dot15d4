@@ -100,9 +100,10 @@ where
     TIMER: DelayNs + Clone,
 {
     /// Run the CSMA module. This should be run in its own task and polled seperately.
-    pub async fn run(&self) -> ! {
+    pub async fn run(&mut self) -> ! {
         let mut wants_to_transmit_signal = Channel::new();
         let (sender, receiver) = wants_to_transmit_signal.split();
+        self.radio.get_mut().enable().await; // Wake up radio
         match select::select(
             self.transmit_package_task(sender),
             self.receive_package_task(receiver),
@@ -417,7 +418,7 @@ pub mod tests {
         let mut radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
@@ -454,7 +455,7 @@ pub mod tests {
         let mut radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
@@ -542,14 +543,19 @@ pub mod tests {
         let mut radio = TestRadio::default();
 
         radio.inner(|inner| {
-            inner
-                .assert_nxt
-                .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
+            inner.assert_nxt.append(
+                &mut [
+                    TestRadioEvent::Enable,
+                    TestRadioEvent::PrepareReceive,
+                    TestRadioEvent::Receive,
+                ]
+                .into(),
+            )
         });
 
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
@@ -612,14 +618,19 @@ pub mod tests {
         let mut radio = TestRadio::default();
 
         radio.inner(|inner| {
-            inner
-                .assert_nxt
-                .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
+            inner.assert_nxt.append(
+                &mut [
+                    TestRadioEvent::Enable,
+                    TestRadioEvent::PrepareReceive,
+                    TestRadioEvent::Receive,
+                ]
+                .into(),
+            )
         });
 
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
@@ -675,7 +686,7 @@ pub mod tests {
         let mut radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
@@ -783,7 +794,7 @@ pub mod tests {
         let mut radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
@@ -853,14 +864,19 @@ pub mod tests {
         let mut radio = TestRadio::default();
 
         radio.inner(|inner| {
-            inner
-                .assert_nxt
-                .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
+            inner.assert_nxt.append(
+                &mut [
+                    TestRadioEvent::Enable,
+                    TestRadioEvent::PrepareReceive,
+                    TestRadioEvent::Receive,
+                ]
+                .into(),
+            )
         });
 
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
-        let csma = CsmaDevice::new(
+        let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
             driver,
