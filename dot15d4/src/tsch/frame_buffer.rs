@@ -1,7 +1,5 @@
 use super::TschFrame;
 
-use super::warn;
-
 pub(super) struct FrameBuffer<T, const N: usize> {
     buffer: [Option<T>; N],
     next_id: usize,

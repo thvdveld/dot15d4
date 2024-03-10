@@ -39,9 +39,10 @@ use crate::frame::*;
 use crate::phy::Device;
 use crate::time::*;
 
+#[macro_use]
+use crate::utils::log;
 use bitflags::bitflags;
 use heapless::Vec;
-use tracing::{debug, error, info, trace, warn};
 
 pub struct TschDevice<'d, D: Device> {
     device: &'d mut D,
