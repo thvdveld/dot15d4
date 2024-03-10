@@ -33,12 +33,19 @@ pub trait Radio {
     fn receive(&mut self) -> impl Future<Output = bool>;
 
     /// Request the radio to go in transmit mode and try to send a packet.
+    /// The mutability of the bytes argument is not really to modify the buffer,
+    /// but rather to signify to hand over exclusive ownership. In addition this
+    /// also helps with the easy_dma on the nRF family of chips as the buffer may
+    /// not be in flash.
     ///
     /// # Safety
     /// The supplied buffer must remain valid until either
     /// successful reception, or the radio state changed.
-    unsafe fn prepare_transmit(&mut self, cfg: &TxConfig, bytes: &[u8])
-        -> impl Future<Output = ()>;
+    unsafe fn prepare_transmit(
+        &mut self,
+        cfg: &TxConfig,
+        bytes: &mut [u8],
+    ) -> impl Future<Output = ()>;
 
     /// When working with futures, it is not always guaranteed that a future
     /// will complete. This method must be seen as a notification to the radio
@@ -179,8 +186,8 @@ pub mod tests {
             if let Some(assert_nxt) = inner.assert_nxt.pop_front() {
                 assert_eq!(
                     assert_nxt, evnt,
-                    "Check if the next event is the expected event in the radio [{}]",
-                    inner.total_event_count,
+                    "Check if the next event is the expected event in the radio [{}](got {:?}, expected {:?})",
+                    inner.total_event_count, evnt, assert_nxt
                 );
             }
             inner.events.push(evnt);
@@ -280,7 +287,7 @@ pub mod tests {
         async unsafe fn prepare_transmit(
             &mut self,
             cfg: &crate::phy::config::TxConfig,
-            bytes: &[u8],
+            bytes: &mut [u8],
         ) {
             self.new_event(TestRadioEvent::PrepareTransmit);
             let mut buffer = [0u8; 128];

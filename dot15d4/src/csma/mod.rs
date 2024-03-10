@@ -234,7 +234,7 @@ where
                         // We already have the lock on the radio, so start transmitting and do not have to check anymore
                         transmit(
                             &mut **radio_guard.as_mut().unwrap(),
-                            &tx_ack.buffer,
+                            &mut tx_ack.buffer,
                             TxConfig::default(),
                         )
                         .await;
@@ -338,7 +338,7 @@ where
                     &self.radio,
                     &mut radio_guard,
                     &wants_to_transmit_signal,
-                    &tx,
+                    &mut tx,
                     &mut timer,
                     &self.rng,
                     backoff_strategy,
@@ -437,7 +437,6 @@ pub mod tests {
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
                         TestRadioEvent::Transmit, // Then we get the request to transmit
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive, // After which we go back to receiving normal traffic
                         TestRadioEvent::Receive,
                     ]
@@ -496,7 +495,6 @@ pub mod tests {
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
                         TestRadioEvent::Transmit, // Then we get the request to transmit
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive, // After which we wait for an ACK
                     ]
@@ -525,7 +523,6 @@ pub mod tests {
 
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive, // At the end, we receive again
                         TestRadioEvent::Receive,
                     ]
@@ -585,14 +582,9 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 inner.should_receive = Some(packet.buffer);
-                inner.assert_nxt.append(
-                    &mut [
-                        TestRadioEvent::CancelCurrentOperation,
-                        TestRadioEvent::PrepareTransmit,
-                        TestRadioEvent::Transmit,
-                    ]
-                    .into(),
-                )
+                inner
+                    .assert_nxt
+                    .append(&mut [TestRadioEvent::PrepareTransmit, TestRadioEvent::Transmit].into())
             });
             assert_eq!(monitor.rx.receive().await.buffer, packet.buffer);
             radio.wait_until_asserts_are_consumed().await;
@@ -660,14 +652,9 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 inner.should_receive = Some(packet.buffer);
-                inner.assert_nxt.append(
-                    &mut [
-                        TestRadioEvent::CancelCurrentOperation,
-                        TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive,
-                    ]
-                    .into(),
-                )
+                inner
+                    .assert_nxt
+                    .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
             });
             assert_eq!(monitor.rx.receive().await.buffer, packet.buffer);
             radio.wait_until_asserts_are_consumed().await;
@@ -727,7 +714,6 @@ pub mod tests {
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
                         TestRadioEvent::Transmit, // Then we get a request to transmit
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive, // After which we wait for an ACK
                         TestRadioEvent::Receive,
                     ]
@@ -756,26 +742,25 @@ pub mod tests {
                 inner.cca_fail = true;
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive, // We receive garbage, timer is not yet done
+                        TestRadioEvent::CancelCurrentOperation,
                     ]
                     .repeat(3) // magic number corresponds to delay
                     .into(),
                 );
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit, // CCA should have failed here
                         TestRadioEvent::Transmit,
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive, // We go back to receive to process other messages, until delay
                         TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive, // We go back to receive to process other messages, until delay
                         TestRadioEvent::Receive,
+                        TestRadioEvent::CancelCurrentOperation,
                     ]
-                    .repeat(MAC_MAX_CSMA_BACKOFFS as usize)
+                    .repeat(MAC_MAX_CSMA_BACKOFFS as usize - 1)
                     .into(),
                 );
             });
@@ -840,9 +825,9 @@ pub mod tests {
                 );
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareReceive, // After which we wait for an ACK, which does not come
                         TestRadioEvent::Receive,
+                        TestRadioEvent::CancelCurrentOperation,
                     ]
                     .repeat(3)
                     .into(),
@@ -906,14 +891,9 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 inner.should_receive = Some(packet.buffer);
-                inner.assert_nxt.append(
-                    &mut [
-                        TestRadioEvent::CancelCurrentOperation,
-                        TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive,
-                    ]
-                    .into(),
-                )
+                inner
+                    .assert_nxt
+                    .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
             });
             assert_eq!(monitor.rx.receive().await.buffer, packet.buffer);
             radio.wait_until_asserts_are_consumed().await;

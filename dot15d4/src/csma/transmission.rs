@@ -23,7 +23,7 @@ pub async fn transmit_cca<'m, R, TIMER, Rng>(
     radio: &'m Mutex<R>,
     radio_guard: &mut Option<MutexGuard<'m, R>>,
     wants_to_transmit_signal: &Sender<'_, ()>,
-    tx_frame: &PacketBuffer,
+    tx_frame: &mut PacketBuffer,
     timer: &mut TIMER,
     rng: &Mutex<Rng>,
     mut backoff_strategy: CCABackoffStrategy<'_, Rng>,
@@ -40,7 +40,7 @@ where
             utils::acquire_lock(radio, wants_to_transmit_signal, radio_guard).await;
             transmit(
                 &mut **radio_guard.as_mut().unwrap(),
-                &tx_frame.buffer,
+                &mut tx_frame.buffer,
                 TxConfig::default_with_cca(),
             )
             .await
