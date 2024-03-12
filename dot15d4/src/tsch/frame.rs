@@ -1,8 +1,6 @@
 use crate::frame::*;
 use crate::time::Instant;
 
-use super::{error, trace, warn};
-
 use heapless::Vec;
 
 #[derive(Debug, Clone)]

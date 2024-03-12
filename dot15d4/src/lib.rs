@@ -1,4 +1,8 @@
 #![allow(unused)]
+#![cfg_attr(not(any(test, std)), no_std)]
+
+#[macro_use]
+pub(crate) mod utils;
 
 pub mod csma;
 pub mod frame;
