@@ -736,19 +736,29 @@ impl TschTimeslotTimings {
     }
 
     pub fn fmt(&self, indent: usize, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let indent = " ".repeat(indent);
-        writeln!(f, "{indent}cca_offset: {}", self.cca_offset())?;
-        writeln!(f, "{indent}cca: {}", self.cca())?;
-        writeln!(f, "{indent}tx offset: {}", self.tx_offset())?;
-        writeln!(f, "{indent}rx offset: {}", self.rx_offset())?;
-        writeln!(f, "{indent}tx ack delay: {}", self.tx_ack_delay())?;
-        writeln!(f, "{indent}rx ack delay: {}", self.rx_ack_delay())?;
-        writeln!(f, "{indent}rx wait: {}", self.rx_wait())?;
-        writeln!(f, "{indent}ack wait: {}", self.ack_wait())?;
-        writeln!(f, "{indent}rx/tx: {}", self.rx_tx())?;
-        writeln!(f, "{indent}max ack: {}", self.max_ack())?;
-        writeln!(f, "{indent}max tx: {}", self.max_tx())?;
-        writeln!(f, "{indent}time slot length: {}", self.time_slot_length())
+        writeln!(f, "{:indent$}cca_offset: {}", "", self.cca_offset(),)?;
+        writeln!(f, "{:indent$}cca: {}", "", self.cca(), indent = indent)?;
+        writeln!(f, "{:indent$}tx offset: {}", "", self.tx_offset(),)?;
+        writeln!(f, "{:indent$}rx offset: {}", "", self.rx_offset(),)?;
+        writeln!(
+            f,
+            "{:indent$}tx ack delay: {}",
+            "",
+            self.tx_ack_delay(),
+            indent = indent
+        )?;
+        writeln!(f, "{:indent$}rx ack delay: {}", "", self.rx_ack_delay(),)?;
+        writeln!(f, "{:indent$}rx wait: {}", "", self.rx_wait(),)?;
+        writeln!(f, "{:indent$}ack wait: {}", "", self.ack_wait(),)?;
+        writeln!(f, "{:indent$}rx/tx: {}", "", self.rx_tx(), indent = indent)?;
+        writeln!(f, "{:indent$}max ack: {}", "", self.max_ack(),)?;
+        writeln!(f, "{:indent$}max tx: {}", "", self.max_tx(),)?;
+        writeln!(
+            f,
+            "{:indent$}time slot length: {}",
+            "",
+            self.time_slot_length(),
+        )
     }
 }
 
