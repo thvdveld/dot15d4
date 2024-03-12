@@ -2,8 +2,5 @@
 
 resolver = "2"
 
-members = [
-    "dot15d4",
-    "dot15d4-macros",
-    "ensure_no_std",
-]
+members = ["dot15d4", "dot15d4-macros"]
+exclude = ["ensure-no-std"]

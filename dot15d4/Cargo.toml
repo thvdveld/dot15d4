@@ -26,12 +26,15 @@ tracing-subscriber = "0.3"
 critical-section = { version = "1.1", features = ["std"] }
 
 [features]
-std = ["log-tracing"]
+## Enable std only features
+std = ["tracing"]
 default = ["std"]
 dot15d4-cat = ["std", "colored", "clap", "hex"]
 
-log-tracing = ["dep:tracing"]
-log-defmt = ["dep:tracing"]
+## Use tracing for logging
+tracing = ["dep:tracing"]
+## Use defmt for logging
+defmt = ["dep:defmt"]
 
 [[bin]]
 name = "dot15d4-cat"
