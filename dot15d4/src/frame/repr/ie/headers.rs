@@ -30,7 +30,8 @@ impl HeaderInformationElementRepr {
         2 + self.inner_len()
     }
 
-    /// The buffer length required to emit the inner part of the Header Information Element.
+    /// The buffer length required to emit the inner part of the Header
+    /// Information Element.
     fn inner_len(&self) -> usize {
         match self {
             Self::TimeCorrection(tc) => tc.buffer_len(),
@@ -86,7 +87,8 @@ impl TimeCorrectionRepr {
         }
     }
 
-    /// The buffer length required to emit the Time Correction Header Information Element.
+    /// The buffer length required to emit the Time Correction Header
+    /// Information Element.
     pub const fn buffer_len(&self) -> usize {
         2
     }

@@ -17,18 +17,19 @@ use bitflags::bitflags;
 /// | Length | Sub-ID | Type=1 | Content (0-2046 octets)...|
 /// +--------+--------+--------+---------------------------+
 /// ```
-///
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct NestedInformationElement<T: AsRef<[u8]>> {
     data: T,
 }
 
 impl<T: AsRef<[u8]>> NestedInformationElement<T> {
-    /// Create a new [`NestedInformationElement`] reader/writer from a given buffer.
+    /// Create a new [`NestedInformationElement`] reader/writer from a given
+    /// buffer.
     ///
     /// # Errors
     ///
-    /// Returns an error if the buffer is too short to contain the nested information element.
+    /// Returns an error if the buffer is too short to contain the nested
+    /// information element.
     pub fn new(data: T) -> Result<Self> {
         let nested = Self::new_unchecked(data);
 
@@ -39,7 +40,8 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
         Ok(nested)
     }
 
-    /// Returns `false` if the buffer is too short to contain the nested information element.
+    /// Returns `false` if the buffer is too short to contain the nested
+    /// information element.
     fn check_len(&self) -> bool {
         if self.data.as_ref().len() < 2 {
             return false;
@@ -50,7 +52,8 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
         self.data.as_ref().len() >= len + 2
     }
 
-    /// Create a new [`NestedInformationElement`] reader/writer from a given buffer without length checking.
+    /// Create a new [`NestedInformationElement`] reader/writer from a given
+    /// buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -537,27 +540,32 @@ impl<T: AsRef<[u8]>> core::fmt::Display for TschTimeslot<T> {
 #[derive(Debug)]
 pub struct TschTimeslotTimings {
     id: u8,
-    /// Offset from the start of the time slot to the start of the CCA in microseconds.
+    /// Offset from the start of the time slot to the start of the CCA in
+    /// microseconds.
     cca_offset: Duration,
     /// Duration of the CCA in microseconds.
     cca: Duration,
     /// Radio turnaround time in microseconds.
     rx_tx: Duration,
 
-    /// Offset from the start of the time slot to the start of the TX in microseconds.
+    /// Offset from the start of the time slot to the start of the TX in
+    /// microseconds.
     tx_offset: Duration,
     /// Maximum transmission time for a frame in microseconds.
     max_tx: Duration,
-    /// Wait time between the end of the TX and the start of the ACK RX in microseconds.
+    /// Wait time between the end of the TX and the start of the ACK RX in
+    /// microseconds.
     rx_ack_delay: Duration,
     /// Maximum time to wait for receiving an ACK.
     ack_wait: Duration,
 
-    /// Offset from the start of the time slot to the start of the RX in microseconds.
+    /// Offset from the start of the time slot to the start of the RX in
+    /// microseconds.
     rx_offset: Duration,
     /// Maximum time to wait for receiving a frame.
     rx_wait: Duration,
-    /// Wait time between the end of the RX and the start of the ACK TX in microseconds.
+    /// Wait time between the end of the RX and the start of the ACK TX in
+    /// microseconds.
     tx_ack_delay: Duration,
     /// Maximum transmission time for an ACK in microseconds.
     max_ack: Duration,
@@ -1078,7 +1086,8 @@ impl<T: AsRef<[u8]>> ChannelHopping<T> {
         !self.data.as_ref().is_empty()
     }
 
-    /// Create a new [`ChannelHopping`] reader/writer from a given buffer without checking the length.
+    /// Create a new [`ChannelHopping`] reader/writer from a given buffer
+    /// without checking the length.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }

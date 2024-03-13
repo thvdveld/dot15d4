@@ -11,7 +11,8 @@ pub struct HeaderInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
-    /// Create a new [`HeaderInformationElement`] reader/writer from a given buffer.
+    /// Create a new [`HeaderInformationElement`] reader/writer from a given
+    /// buffer.
     ///
     /// # Errors
     ///
@@ -26,12 +27,14 @@ impl<T: AsRef<[u8]>> HeaderInformationElement<T> {
         Ok(ie)
     }
 
-    /// Returns `false` if the buffer is too short to contain the Header Information Element.
+    /// Returns `false` if the buffer is too short to contain the Header
+    /// Information Element.
     fn check_len(&self) -> bool {
         self.data.as_ref().len() >= 2
     }
 
-    /// Create a new [`HeaderInformationElement`] reader/writer from a given buffer without length checking.
+    /// Create a new [`HeaderInformationElement`] reader/writer from a given
+    /// buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -305,7 +308,8 @@ pub struct RendezvousTime {
     wake_up_interval: u16,
 }
 
-/// A reader/writer for the IEEE 802.15.4 Time Correction Header Information Element.
+/// A reader/writer for the IEEE 802.15.4 Time Correction Header Information
+/// Element.
 pub struct TimeCorrection<T: AsRef<[u8]>> {
     buffer: T,
 }
@@ -326,12 +330,14 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
         Ok(ie)
     }
 
-    /// Returns `false` if the buffer is too short to contain the Time Correction field.
+    /// Returns `false` if the buffer is too short to contain the Time
+    /// Correction field.
     fn check_len(&self) -> bool {
         self.buffer.as_ref().len() >= 2
     }
 
-    /// Create a new [`TimeCorrection`] reader/writer from a given buffer without length checking.
+    /// Create a new [`TimeCorrection`] reader/writer from a given buffer
+    /// without length checking.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
@@ -386,8 +392,8 @@ impl<T: AsRef<[u8]>> core::fmt::Display for TimeCorrection<T> {
 
 #[frame]
 #[derive(Debug)]
-/// A reader/writer for the IEEE 802.15.4 Simplified Superframe Specification Header
-/// Information Element.
+/// A reader/writer for the IEEE 802.15.4 Simplified Superframe Specification
+/// Header Information Element.
 pub struct SimplifiedSuperframeSpecification {
     /// Returns the timestamp field value.
     timestamp: u16,
@@ -401,7 +407,8 @@ pub struct SimplifiedSuperframeSpecification {
 
 #[frame]
 #[derive(Debug)]
-/// A reader/writer for the IEEE 802.15.4 Superframe Specification Header Information Element.
+/// A reader/writer for the IEEE 802.15.4 Superframe Specification Header
+/// Information Element.
 pub struct SuperframeSpecification {
     #[bits(4)]
     beacon_order: u8,
@@ -421,7 +428,8 @@ pub struct SuperframeSpecification {
 
 #[frame]
 #[derive(Debug)]
-/// A reader/writer for the IEEE 802.15.4 CFP Specification Header Information Element.
+/// A reader/writer for the IEEE 802.15.4 CFP Specification Header Information
+/// Element.
 pub struct CfpSpecification {
     #[bits(3)]
     gts_count: u8,

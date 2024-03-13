@@ -95,9 +95,10 @@ impl<'r, Rng: RngCore> CCABackoffStrategy<'r, Rng> {
                 // delay periods = random(2^{BE} - 1) periods
                 // Page 63 IEEE 802.15.4 2015 edition
                 let max_backoff = (1u32 << *backoff_exponent) - 1;
-                // The +1 in (max_backoff + 1) comes from the interpretation that the random() function
-                // used in the specification includes max_backoff as a possible value. The possible
-                // values periods now can take are: [0, max_backoff].
+                // The +1 in (max_backoff + 1) comes from the interpretation that the random()
+                // function used in the specification includes max_backoff as a
+                // possible value. The possible values periods now can take are:
+                // [0, max_backoff].
                 let periods = rng.lock().await.next_u32() % (max_backoff + 1);
                 let delay = MAC_UNIT_BACKOFF_DURATION * periods as usize;
                 timer.delay_us(delay.as_us() as u32).await;

@@ -60,7 +60,8 @@ impl PayloadInformationElementRepr {
         2 + self.inner_len()
     }
 
-    /// The buffer length required to emit the inner part of the Payload Information Element.
+    /// The buffer length required to emit the inner part of the Payload
+    /// Information Element.
     fn inner_len(&self) -> usize {
         match self {
             Self::Mlme(nested_ies) => {

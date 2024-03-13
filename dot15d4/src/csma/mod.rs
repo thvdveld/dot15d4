@@ -39,12 +39,16 @@ enum TransmissionTaskError<D: core::fmt::Debug> {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct CsmaConfig {
-    /// All to be transmitted frames will get the ack_request flag set if they are unicast and a data frame
+    /// All to be transmitted frames will get the ack_request flag set if they
+    /// are unicast and a data frame
     ack_unicast: bool,
-    /// All to be transmitted frames will get the ack_request flag set if they are broadcast and a data frame
+    /// All to be transmitted frames will get the ack_request flag set if they
+    /// are broadcast and a data frame
     ack_broadcast: bool,
-    /// If false, all incoming packets will be sent up the layer stack, useful if making a sniffer. This does not include MAC layer control traffic.
-    /// The default is true, meaning that packets not ment for us (non-broadcast or packets with a different destination address) will be filtered out.
+    /// If false, all incoming packets will be sent up the layer stack, useful
+    /// if making a sniffer. This does not include MAC layer control traffic.
+    /// The default is true, meaning that packets not ment for us (non-broadcast
+    /// or packets with a different destination address) will be filtered out.
     ignore_not_for_us: bool,
     /// Even if there is no ack_request flag set, ack it anyway
     ack_everything: bool,
@@ -100,7 +104,8 @@ where
     D: Driver,
     TIMER: DelayNs + Clone,
 {
-    /// Run the CSMA module. This should be run in its own task and polled seperately.
+    /// Run the CSMA module. This should be run in its own task and polled
+    /// seperately.
     pub async fn run(&mut self) -> ! {
         let mut wants_to_transmit_signal = Channel::new();
         let (sender, receiver) = wants_to_transmit_signal.split();
@@ -116,8 +121,8 @@ where
         }
     }
 
-    /// Checks if the current frame is intended for us. For the hardware address, the full 64 bit
-    /// address should be provided.
+    /// Checks if the current frame is intended for us. For the hardware
+    /// address, the full 64-bit address should be provided.
     fn is_package_for_us(hardware_address: &[u8; 8], frame: &Frame<&'_ [u8]>) -> bool {
         let Some(addr) = frame
             .addressing()
@@ -203,16 +208,26 @@ where
                     .addressing()
                     .and_then(|addr| addr.dst_address(&frame.frame_control()))
                 {
-                    _ if self.config.ack_everything => true, // Overwrite in config
-                    _ if !frame.frame_control().ack_request() => false, // If we do not want an ACK, don't ack
-                    Some(addr) if addr.is_broadcast() => self.config.ack_broadcast, // We want ACK on broadcast -> check config
-                    Some(_) => self.config.ack_unicast, // We want ACK on unicast -> check config
-                    None => false,                      // All other scenarios -> don't ack
+                    // Overwrite in config
+                    _ if self.config.ack_everything => true,
+
+                    // If we do not want an ACK, don't ack
+                    _ if !frame.frame_control().ack_request() => false,
+
+                    // We want ACK on broadcast -> check config
+                    Some(addr) if addr.is_broadcast() => self.config.ack_broadcast,
+
+                    // We want ACK on unicast -> check config
+                    Some(_) => self.config.ack_unicast,
+
+                    // All other scenarios -> don't ack
+                    None => false,
                 };
                 (should_ack, frame.sequence_number())
             };
 
-            // Concurrently send the received message to the upper layers, and if we need to ACK, we ACK
+            // Concurrently send the received message to the upper layers, and if we need to
+            // ACK, we ACK
             rx.dirty = true;
             join::join(self.driver.received(core::mem::take(&mut rx)), async {
                 if should_ack {
@@ -231,7 +246,8 @@ where
                         let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING;
                         timer.delay_us(delay.as_us() as u32).await;
 
-                        // We already have the lock on the radio, so start transmitting and do not have to check anymore
+                        // We already have the lock on the radio, so start transmitting and do not
+                        // have to check anymore
                         transmit(
                             &mut **radio_guard.as_mut().unwrap(),
                             &mut tx_ack.buffer,
@@ -240,7 +256,8 @@ where
                         .await;
                     }
                 } else {
-                    radio_guard = None; // Immediatly drop gruard if we do not longer need it to ACK
+                    // Immediatly drop gruard if we do not longer need it to ACK
+                    radio_guard = None;
                 }
             })
             .await;
@@ -280,8 +297,9 @@ where
         loop {
             let result = receive(radio, ack_rx, RxConfig::default()).await;
             if !result {
+                // No succesful receive, try again
                 continue;
-            } // No succesful receive, try again
+            }
 
             // Check if we received a valid ACK
             let Ok(frame) = R::RadioFrame::new_checked(ack_rx) else {
@@ -310,7 +328,8 @@ where
         let mut timer = self.timer.clone();
 
         'outer: loop {
-            let mut tx = self.driver.transmit().await; // Wait until we have a frame to send
+            // Wait until we have a frame to send
+            let mut tx = self.driver.transmit().await;
 
             yield_now().await;
 
@@ -346,8 +365,9 @@ where
                 {
                     Ok(()) => {}
                     Err(_err) => {
+                        // Transmission failed
                         self.driver.error(driver::Error::CcaFailed).await;
-                        break 'ack; // Transmission failed
+                        break 'ack;
                     }
                 }
 
@@ -364,23 +384,28 @@ where
                             sequence_number,
                             &mut ack_rx.buffer,
                         ),
-                        timer.delay_us(delay.as_us() as u32), // Timeout for waiting on an ACK
+                        // Timeout for waiting on an ACK
+                        timer.delay_us(delay.as_us() as u32),
                     )
                     .await
                     {
                         Either::First(()) => {
                             // ACK succesful, transmission succesful
-                            continue 'outer; // This releases the radio_gaurd too
+                            // This releases the radio_gaurd too
+                            continue 'outer;
                         }
-                        Either::Second(()) => (), // Timout, retry logic if following part of the code
+                        Either::Second(()) => {
+                            // Timout, retry logic if following part of the code
+                        }
                     }
                 } else {
                     // We do not have a sequence number, so do not wait for an ACK
-                    continue 'outer; // Transmission is considered a success
+                    // Transmission is considered a success
+                    continue 'outer;
                 }
 
-                // Whether we succeeded or not, we no longer need sole access to the radio module, so we can
-                // release the lock
+                // Whether we succeeded or not, we no longer need sole access to the radio
+                // module, so we can release the lock
                 radio_guard = None;
 
                 // Wait for SIFS here
@@ -389,8 +414,9 @@ where
 
                 // Was this the last attempt?
                 if i_ack == MAC_MAX_FRAME_RETIES {
+                    // Fail transmission
                     self.driver.error(driver::Error::AckFailed).await;
-                    break 'ack; // Fail transmission
+                    break 'ack;
                 }
             }
         }
@@ -424,11 +450,14 @@ pub mod tests {
                 inner.assert_nxt.append(
                     &mut [
                         TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive, // By default we receive
+                        // By default we receive
+                        TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
-                        TestRadioEvent::Transmit, // Then we get the request to transmit
-                        TestRadioEvent::PrepareReceive, // After which we go back to receiving normal traffic
+                        // Then we get the request to transmit
+                        TestRadioEvent::Transmit,
+                        // After which we go back to receiving normal traffic
+                        TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive,
                     ]
                     .into(),
@@ -464,7 +493,8 @@ pub mod tests {
                 .set_src_pan_id(0xfff)
                 .finalize()
                 .unwrap();
-            frame_repr.frame_control.ack_request = false; // Set ACK to false, such that we can test if it acks
+            // Set ACK to false, such that we can test if it acks
+            frame_repr.frame_control.ack_request = false;
 
             let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
@@ -482,12 +512,15 @@ pub mod tests {
                 inner.assert_nxt.append(
                     &mut [
                         TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive, // By default we listen
+                        // By default we listen
+                        TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
-                        TestRadioEvent::Transmit, // Then we get the request to transmit
+                        // Then we get the request to transmit
+                        TestRadioEvent::Transmit,
                         TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive, // After which we wait for an ACK
+                        // After which we wait for an ACK
+                        TestRadioEvent::Receive,
                     ]
                     .into(),
                 );
@@ -517,7 +550,8 @@ pub mod tests {
 
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::PrepareReceive, // At the end, we receive again
+                        // At the end, we receive again
+                        TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive,
                     ]
                     .into(),
@@ -684,7 +718,8 @@ pub mod tests {
                 .set_src_pan_id(0xfff)
                 .finalize()
                 .unwrap();
-            frame_repr.frame_control.ack_request = false; // Set ACK to false, such that we can test if it acks
+            // Set ACK to false, such that we can test if it acks
+            frame_repr.frame_control.ack_request = false;
 
             let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
@@ -702,11 +737,14 @@ pub mod tests {
                 inner.assert_nxt.append(
                     &mut [
                         TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive, // By default we receive
+                        // By default we receive
+                        TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
-                        TestRadioEvent::Transmit, // Then we get a request to transmit
-                        TestRadioEvent::PrepareReceive, // After which we wait for an ACK
+                        // Then we get a request to transmit
+                        TestRadioEvent::Transmit,
+                        // After which we wait for an ACK
+                        TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive,
                     ]
                     .into(),
@@ -735,7 +773,8 @@ pub mod tests {
                 inner.assert_nxt.append(
                     &mut [
                         TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive, // We receive garbage, timer is not yet done
+                        // We receive garbage, timer is not yet done
+                        TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                     ]
                     .repeat(3) // magic number corresponds to delay
@@ -743,12 +782,15 @@ pub mod tests {
                 );
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::PrepareTransmit, // CCA should have failed here
+                        // CCA should have failed here
+                        TestRadioEvent::PrepareTransmit,
                         TestRadioEvent::Transmit,
-                        TestRadioEvent::PrepareReceive, // We go back to receive to process other messages, until delay
+                        // We go back to receive to process other messages, until delay
+                        TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
-                        TestRadioEvent::PrepareReceive, // We go back to receive to process other messages, until delay
+                        // We go back to receive to process other messages, until delay
+                        TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                     ]
@@ -790,7 +832,8 @@ pub mod tests {
                 .set_src_pan_id(0xfff)
                 .finalize()
                 .unwrap();
-            frame_repr.frame_control.ack_request = false; // Set ACK to false, such that we can test if it acks
+            // Set ACK to false, such that we can test if it acks
+            frame_repr.frame_control.ack_request = false;
 
             let token = TestTxToken::from(&mut packet.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
@@ -808,16 +851,19 @@ pub mod tests {
                 inner.assert_nxt.append(
                     &mut [
                         TestRadioEvent::PrepareReceive,
-                        TestRadioEvent::Receive, // By default we receive
+                        // By default we receive
+                        TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                         TestRadioEvent::PrepareTransmit,
-                        TestRadioEvent::Transmit, // Then we get a request to transmit
+                        // Then we get a request to transmit
+                        TestRadioEvent::Transmit,
                     ]
                     .into(),
                 );
                 inner.assert_nxt.append(
                     &mut [
-                        TestRadioEvent::PrepareReceive, // After which we wait for an ACK, which does not come
+                        // After which we wait for an ACK, which does not come
+                        TestRadioEvent::PrepareReceive,
                         TestRadioEvent::Receive,
                         TestRadioEvent::CancelCurrentOperation,
                     ]

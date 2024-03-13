@@ -1,8 +1,10 @@
 use crate::sync::channel::Sender;
 use crate::sync::mutex::{Mutex, MutexGuard};
 
-/// Acquire the lock on Mutex by repeatably calling the wants_lock channel to request access.
-/// The resulting guard will be made available through the out_guard and will first check if the guard is not already in our possession. If it is, spinning will be performed.
+/// Acquire the lock on Mutex by repeatably calling the wants_lock channel to
+/// request access. The resulting guard will be made available through the
+/// out_guard and will first check if the guard is not already in our
+/// possession. If it is, spinning will be performed.
 pub async fn acquire_lock<'a, 'b, T>(
     mutex: &'a Mutex<T>,
     wants_lock: &Sender<'b, ()>,
@@ -12,16 +14,21 @@ pub async fn acquire_lock<'a, 'b, T>(
         Some(_) => (),
         None => {
             'inner: loop {
-                // repeatably ask for the lock, as this might need a few tries to prevent deadlocks
+                // repeatably ask for the lock, as this might need a few tries to prevent
+                // deadlocks
                 match mutex.try_lock() {
                     Some(guard) => {
-                        // wants_to_transmit_signal.reset(); // reset signal, such that the receiving end may continue the next time it acquires the lock
+                        // wants_to_transmit_signal.reset();
+
+                        // reset signal, such that the receiving end may continue the next time it
+                        // acquires the lock
                         *out_guard = Some(guard);
                         return;
                     }
                     None => {
-                        wants_lock.send_async(()).await; // Ask the receiving loop to let go of the radio
-                                                         // yield_now().await; // Give the receiving end time to react
+                        // Ask the receiving loop to let go of the radio
+                        wants_lock.send_async(()).await;
+                        // yield_now().await; // Give the receiving end time to react
                         continue 'inner;
                     }
                 }

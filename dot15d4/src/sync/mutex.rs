@@ -13,7 +13,8 @@ struct MutexState {
 }
 
 /// A generic mutex that is independent on the underlying async runtime.
-/// The idea is that this is used to synchronize different parts inside 1 single task that may run concurrently through `select`.
+/// The idea is that this is used to synchronize different parts inside 1 single
+/// task that may run concurrently through `select`.
 pub struct Mutex<T> {
     value: UnsafeCell<T>,
     state: RefCell<MutexState>,
@@ -60,7 +61,9 @@ impl<T> Mutex<T> {
     }
 
     /// # Safety
-    /// Only use this method if you are sure there are no locks currently taken. If you have a mutable reference, prefer to use the `get_mut` method instead.
+    /// Only use this method if you are sure there are no locks currently taken.
+    /// If you have a mutable reference, prefer to use the `get_mut` method
+    /// instead.
     pub unsafe fn read(&self) -> &T {
         &*self.value.get()
     }
@@ -111,7 +114,8 @@ impl<'a, T> Future for LockFuture<'a, T> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut mutex_state = self.mutex.state.borrow_mut();
         if mutex_state.locked {
-            // Mutex is locked here, wake the previous task, so it can make progress and we do not have to remember it
+            // Mutex is locked here, wake the previous task, so it can make progress and we
+            // do not have to remember it
             let new_waker = cx.waker();
             match &mut mutex_state.waker {
                 // We already have the same waker stored, do not wake
@@ -249,7 +253,8 @@ mod tests {
     }
 
     #[test]
-    /// Check with Miri whether or not drop is called correctly. If true, then all heap allocation should be deallocated correctly
+    /// Check with Miri whether or not drop is called correctly. If true, then
+    /// all heap allocation should be deallocated correctly
     pub fn test_drop_by_leaking() {
         async {
             let mutex = Mutex::new(Box::new(0));

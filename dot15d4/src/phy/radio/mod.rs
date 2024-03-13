@@ -16,8 +16,8 @@ pub trait Radio {
     /// Request the radio to wake from sleep.
     fn enable(&mut self) -> impl Future<Output = ()>;
 
-    /// Request the radio to go in receive mode and try to receive a packet into the supplied
-    /// buffer.
+    /// Request the radio to go in receive mode and try to receive a packet into
+    /// the supplied buffer.
     ///
     /// # Safety
     /// The supplied buffer must remain writable until either
@@ -34,8 +34,8 @@ pub trait Radio {
     /// Request the radio to go in transmit mode and try to send a packet.
     /// The mutability of the bytes argument is not really to modify the buffer,
     /// but rather to signify to hand over exclusive ownership. In addition this
-    /// also helps with the easy_dma on the nRF family of chips as the buffer may
-    /// not be in flash.
+    /// also helps with the easy_dma on the nRF family of chips as the buffer
+    /// may not be in flash.
     ///
     /// # Safety
     /// The supplied buffer must remain valid until either
@@ -184,7 +184,8 @@ pub mod tests {
         }
 
         /// Async wait for all radio events to have happened.
-        /// This function is ment to be only used in tests an as such will panic if not all events have happened within 5s of starting
+        /// This function is ment to be only used in tests an as such will panic
+        /// if not all events have happened within 5s of starting
         pub async fn wait_until_asserts_are_consumed(&self) {
             let wait_for_events = poll_fn(|cx| {
                 let mut inner = self.inner.borrow_mut();
@@ -241,12 +242,15 @@ pub mod tests {
         ) {
             self.new_event(TestRadioEvent::PrepareReceive);
             // Safety: Rust references are always valid and never dangling
-            // Reference is also owned by the caller which will stay alive for the entire duration this part of the api is used.
+            // Reference is also owned by the caller which will stay alive for the entire
+            // duration this part of the api is used.
             self.inner.borrow_mut().receive_buffer = Some(unsafe { NonNull::new_unchecked(bytes) });
         }
 
         /// # Safety:
-        /// This API should only be used during tests where the caller of the radio API is the MAC protocol under test. Otherwise there are invalid pointer dereferences, making the tests UB.
+        /// This API should only be used during tests where the caller of the
+        /// radio API is the MAC protocol under test. Otherwise there are
+        /// invalid pointer dereferences, making the tests UB.
         async fn receive(&mut self) -> bool {
             poll_fn(|cx| {
                 cx.waker().wake_by_ref(); // Always wake immediatly again
@@ -256,7 +260,8 @@ pub mod tests {
 
                 if let Some(mut receive_buffer) = inner.receive_buffer {
                     if let Some(should_receive) = inner.should_receive {
-                        // Safety: The user of this API should also be the one that owns the receive_buffer
+                        // Safety: The user of this API should also be the one that owns the
+                        // receive_buffer
                         unsafe { receive_buffer.as_mut().copy_from_slice(&should_receive) }
 
                         // Reset pointers

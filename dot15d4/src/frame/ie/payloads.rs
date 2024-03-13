@@ -8,11 +8,13 @@ pub struct PayloadInformationElement<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
-    /// Create a new [`PayloadInformationElement`] reader/writer from a given buffer.
+    /// Create a new [`PayloadInformationElement`] reader/writer from a given
+    /// buffer.
     ///
     /// # Errors
     ///
-    /// Returns an error if the buffer is too short to contain a payload information element.
+    /// Returns an error if the buffer is too short to contain a payload
+    /// information element.
     pub fn new(data: T) -> Result<Self> {
         let ie = Self::new_unchecked(data);
 
@@ -23,12 +25,14 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
         Ok(ie)
     }
 
-    /// Returns `false` if the buffer is too short to contain a payload information element.
+    /// Returns `false` if the buffer is too short to contain a payload
+    /// information element.
     fn check_len(&self) -> bool {
         self.data.as_ref().len() >= 2
     }
 
-    /// Create a new [`PayloadInformationElement`] reader/writer from a given buffer without length checking.
+    /// Create a new [`PayloadInformationElement`] reader/writer from a given
+    /// buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -55,7 +59,8 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
     /// Returns [`NestedInformationElementsIterator`] [`Iterator`].
     ///
     /// ## Panics
-    /// This method panics if the [`PayloadInformationElement`] is not an [`MLME`] group.
+    /// This method panics if the [`PayloadInformationElement`] is not an
+    /// [`MLME`] group.
     ///
     /// [`MLME`]: PayloadGroupId::Mlme
     pub fn nested_information_elements(&self) -> NestedInformationElementsIterator {

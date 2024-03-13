@@ -1,5 +1,6 @@
 //! A handful of executor independent synchronization primitives.
-//! The goal is to provide some synchronization within 1 task between different parts of that task.
+//! The goal is to provide some synchronization within 1 task between different
+//! parts of that task.
 pub(crate) mod channel;
 pub(crate) mod join;
 pub(crate) mod mutex;

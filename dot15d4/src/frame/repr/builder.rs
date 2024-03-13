@@ -204,8 +204,8 @@ impl<'p, T> FrameBuilder<'p, T> {
     /// Add a header Information Element.
     ///
     /// # Note
-    /// This method will enable the Information Elements Present bit in the frame control.
-    /// The frame version will be set to IEEE 802.15.4-2020.
+    /// This method will enable the Information Elements Present bit in the
+    /// frame control. The frame version will be set to IEEE 802.15.4-2020.
     pub fn add_header_information_element(mut self, ie: HeaderInformationElementRepr) -> Self {
         self.frame.frame_control.information_elements_present = true;
         self.frame
@@ -223,8 +223,8 @@ impl<'p, T> FrameBuilder<'p, T> {
     /// Add a payload Information Element.
     ///
     /// # Note
-    /// This method will enable the Information Elements Present bit in the frame control.
-    /// The frame version will be set to IEEE 802.15.4-2020.
+    /// This method will enable the Information Elements Present bit in the
+    /// frame control. The frame version will be set to IEEE 802.15.4-2020.
     pub fn add_payload_information_element(mut self, ie: PayloadInformationElementRepr) -> Self {
         self.frame.frame_control.information_elements_present = true;
         self.frame
@@ -309,13 +309,13 @@ impl<'p, T> FrameBuilder<'p, T> {
                 return Ok(self.frame);
             }
 
-            // - If both destination and source addresses are present, and the PAN IDs are equal,
-            //   then PAN ID compression is possible. In this case, the source PAN ID field is
-            //   omitted and the PAN ID compression bit is set to 1.
-            //   If PAN IDs are different, the PAN ID compression bit is set to 0.
+            // - If both destination and source addresses are present, and the PAN IDs are
+            //   equal, then PAN ID compression is possible. In this case, the source PAN ID
+            //   field is omitted and the PAN ID compression bit is set to 1. If PAN IDs are
+            //   different, the PAN ID compression bit is set to 0.
             // - If only either the destination or source address is present, the PAN ID
-            //   compression bit is set to 0. The PAN ID field of the single address shall be
-            //   included in the frame.
+            //   compression bit is set to 0. The PAN ID field of the single address shall
+            //   be included in the frame.
             let Some(addr) = self.frame.addressing_fields.as_mut() else {
                 return Err(Error);
             };

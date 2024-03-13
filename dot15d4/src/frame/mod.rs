@@ -2,15 +2,17 @@
 //!
 //! Each reader contains the following functions:
 //! - [`new`]: Create a new reader.
-//! - [`check_len`]: Check if the buffer is long enough to contain a valid frame.
+//! - [`check_len`]: Check if the buffer is long enough to contain a valid
+//!   frame.
 //! - [`new_unchecked`]: Create a new reader without checking the buffer length.
 //!
-//! The most important reader is the [`Frame`] reader, which is used to read a full IEEE 802.15.4
-//! frame. The reader provides the following functions:
+//! The most important reader is the [`Frame`] reader, which is used to read a
+//! full IEEE 802.15.4 frame. The reader provides the following functions:
 //! - [`frame_control`]: returns a [`FrameControl`] reader.
 //! - [`sequence_number`]: returns the sequence number if not suppressed.
 //! - [`addressing`]: returns an [`AddressingFields`] reader.
-//! - [`auxiliary_security_header`]: returns an [`AuxiliarySecurityHeader`] reader.
+//! - [`auxiliary_security_header`]: returns an [`AuxiliarySecurityHeader`]
+//!   reader.
 //! - [`information_elements`]: returns an [`InformationElements`] reader.
 //! - [`payload`]: returns the payload of the frame.
 //!
@@ -63,16 +65,20 @@
 //!
 //! ## Information Elements
 //!
-//! The IEEE 802.15.4 standard defines a set of Information Elements (IEs) that can be included in
-//! the frame. These IEs are used to provide additional information about the frame, such as
-//! timestamping, channel hopping, and more. The IEs are divided into two groups: Header IEs and
-//! Payload IEs. Calling [`information_elements`] on a [`Frame`] reader returns an [`InformationElements`] reader.
-//! The reader provides access to the Header and Payload IEs, via the [`header_information_elements`] and [`payload_information_elements`] functions.
+//! The IEEE 802.15.4 standard defines a set of Information Elements (IEs) that
+//! can be included in the frame. These IEs are used to provide additional
+//! information about the frame, such as timestamping, channel hopping, and
+//! more. The IEs are divided into two groups: Header IEs and Payload IEs.
+//! Calling [`information_elements`] on a [`Frame`] reader returns an
+//! [`InformationElements`] reader. The reader provides access to the Header and
+//! Payload IEs, via the [`header_information_elements`] and
+//! [`payload_information_elements`] functions.
 //!
 //! ### Header Information Elements
 //!
-//! The Header IEs are located in the frame header, and are used to provide information about the
-//! frame itself. The following IEs are defined in the standard:
+//! The Header IEs are located in the frame header, and are used to provide
+//! information about the frame itself. The following IEs are defined in the
+//! standard:
 //!
 //! - [x] [`VendorSpecific`]
 //! - [x] [`Csl`]
@@ -95,22 +101,25 @@
 //!
 //! ### Payload Information Elements
 //!
-//! The Payload IEs are located in the frame payload, and are used to provide information about the
-//! payload itself. The following IEs are defined in the standard:
+//! The Payload IEs are located in the frame payload, and are used to provide
+//! information about the payload itself. The following IEs are defined in the
+//! standard:
 //!
 //! - [ ] `Esdu`
-//! - [x] `Mlme`: The MLME group contains a set of nested IEs. Call [`nested_information_elements`]
+//! - [x] `Mlme`: The MLME group contains a set of nested IEs. Call
+//!   [`nested_information_elements`]
 //! to get an iterator over the nested IEs.
 //! - [ ] `VendorSpecific`
 //! - [ ] `PayloadTermination`
 //!
 //! ### Nested Information Elements
 //!
-//! Some IEs contain nested IEs. The [`NestedInformationElementsIterator`] provides an iterator
-//! over the nested IEs. The iterator is used to parse the nested IEs.
+//! Some IEs contain nested IEs. The [`NestedInformationElementsIterator`]
+//! provides an iterator over the nested IEs. The iterator is used to parse the
+//! nested IEs.
 //!
-//! The Nested IEs are split into two groups: Short and Long. The following short IEs are defined in
-//! the standard:
+//! The Nested IEs are split into two groups: Short and Long. The following
+//! short IEs are defined in the standard:
 //!
 //! - [x] [`TschSynchronization`]
 //! - [x] [`TschSlotframeAndLink`]
@@ -252,7 +261,8 @@ impl<T: AsRef<[u8]>> Frame<T> {
         true
     }
 
-    /// Create a new [`Frame`] reader/writer from a given buffer without length checking.
+    /// Create a new [`Frame`] reader/writer from a given buffer without length
+    /// checking.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
@@ -366,7 +376,8 @@ impl<'f, T: AsRef<[u8]> + ?Sized> Frame<&'f T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
-    /// Set the Frame Control field values in the buffer, based on the given [`FrameControlRepr`].
+    /// Set the Frame Control field values in the buffer, based on the given
+    /// [`FrameControlRepr`].
     pub fn set_frame_control(&mut self, fc: &FrameControlRepr) {
         let mut w = FrameControl::new_unchecked(&mut self.buffer.as_mut()[..2]);
         w.set_frame_type(fc.frame_type);
@@ -395,7 +406,8 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
         self.buffer.as_mut()[2] = sequence_number;
     }
 
-    /// Set the Addressing field values in the buffer, based on the given [`AddressingFieldsRepr`].
+    /// Set the Addressing field values in the buffer, based on the given
+    /// [`AddressingFieldsRepr`].
     pub fn set_addressing_fields(&mut self, addressing_fields: &AddressingFieldsRepr) {
         let start = 2 + (!self.frame_control().sequence_number_suppression() as usize);
 
@@ -403,12 +415,14 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
         w.write_fields(addressing_fields);
     }
 
-    /// Set the Auxiliary Security Header field values in the buffer, based on the given _.
+    /// Set the Auxiliary Security Header field values in the buffer, based on
+    /// the given _.
     pub fn set_aux_sec_header(&mut self) {
         todo!();
     }
 
-    /// Set the Information Elements field values in the buffer, based on the given _.
+    /// Set the Information Elements field values in the buffer, based on the
+    /// given _.
     pub fn set_information_elements(
         &mut self,
         ie: &InformationElementsRepr,

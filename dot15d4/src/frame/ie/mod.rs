@@ -21,7 +21,8 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the buffer is too short to contain the information elements.
+    /// Returns an error if the buffer is too short to contain the information
+    /// elements.
     pub fn new(data: T) -> Result<Self> {
         let ie = Self::new_unchecked(data);
 
@@ -32,7 +33,8 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
         Ok(ie)
     }
 
-    /// Returns `false` if the buffer is too short to contain the information elements.
+    /// Returns `false` if the buffer is too short to contain the information
+    /// elements.
     fn check_len(&self) -> bool {
         let mut len = 0;
 
@@ -51,7 +53,8 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
         self.data.as_ref().len() >= len
     }
 
-    /// Create a new [`InformationElements`] reader from a given buffer without length checking.
+    /// Create a new [`InformationElements`] reader from a given buffer without
+    /// length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
