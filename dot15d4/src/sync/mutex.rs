@@ -1,12 +1,8 @@
-#![no_std]
-
 use core::cell::RefCell;
 use core::cell::UnsafeCell;
-use core::future::poll_fn;
 use core::future::Future;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use core::pin::pin;
 use core::pin::Pin;
 use core::task::Waker;
 use core::task::{Context, Poll};
@@ -44,11 +40,29 @@ impl<T> Mutex<T> {
         MutexGuard { mutex: self }
     }
 
+    pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
+        let mut state = self.state.borrow_mut();
+        if !state.locked {
+            // The lock is currently not yet locked -> acquire lock
+            state.locked = true;
+            Some(MutexGuard { mutex: self })
+        } else {
+            // The current lock is locked, return None
+            None
+        }
+    }
+
     /// Get access to the protected value inside the mutex. This is similar to
     /// the Mutex::get_mut in std.
     pub fn get_mut(&mut self) -> &mut T {
         // Safety: &mut gives us exclusive access to T
         self.value.get_mut()
+    }
+
+    /// # Safety
+    /// Only use this method if you are sure there are no locks currently taken. If you have a mutable reference, prefer to use the `get_mut` method instead.
+    pub unsafe fn read(&self) -> &T {
+        &*self.value.get()
     }
 }
 
@@ -61,19 +75,15 @@ impl<'a, T> Deref for MutexGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        /// Safety: Only one mutex can exist at a time
-        unsafe {
-            &*self.mutex.value.get()
-        }
+        // Safety: Only one mutex can exist at a time
+        unsafe { &*self.mutex.value.get() }
     }
 }
 
 impl<'a, T> DerefMut for MutexGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        /// Safety: Only one mutex can exist at a time
-        unsafe {
-            &mut *self.mutex.value.get()
-        }
+        // Safety: Only one mutex can exist at a time
+        unsafe { &mut *self.mutex.value.get() }
     }
 }
 
@@ -132,7 +142,7 @@ impl<'a, T> Future for LockFuture<'a, T> {
 mod tests {
     use pollster::FutureExt as _;
 
-    use crate::sync::{join::join, select::select};
+    use crate::sync::{join::join, select::select, yield_now};
 
     use super::Mutex;
 
@@ -197,6 +207,53 @@ mod tests {
             }
 
             assert_eq!(*mutex.get_mut(), 200);
+        }
+        .block_on()
+    }
+
+    #[test]
+    pub fn test_try_lock() {
+        async {
+            let mut mutex = Mutex::new(0usize);
+            join(
+                async {
+                    let mut guard = mutex.lock().await;
+                    // Keep lock for 10 iterations
+                    for _ in 0..10 {
+                        *guard += 1;
+                        yield_now::yield_now().await;
+                    }
+                },
+                async {
+                    let mut i = 0;
+                    loop {
+                        if let Some(mut guard) = mutex.try_lock() {
+                            *guard += 1;
+                            break;
+                        }
+
+                        if i == 20 {
+                            panic!("Try lock takes to long!");
+                        }
+
+                        i += 1;
+                        yield_now::yield_now().await;
+                    }
+                },
+            )
+            .await;
+
+            assert_eq!(*mutex.get_mut(), 11);
+        }
+        .block_on()
+    }
+
+    #[test]
+    /// Check with Miri whether or not drop is called correctly. If true, then all heap allocation should be deallocated correctly
+    pub fn test_drop_by_leaking() {
+        async {
+            let mutex = Mutex::new(Box::new(0));
+            let _guard = mutex.lock().await;
         }
         .block_on()
     }

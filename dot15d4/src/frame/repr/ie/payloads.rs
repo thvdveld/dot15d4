@@ -22,7 +22,9 @@ impl arbitrary::Arbitrary<'_> for PayloadInformationElementRepr {
                 let mut nested_information_elements = Vec::new();
 
                 for _ in 0..u.int_in_range(0..=15)? {
-                    nested_information_elements.push(NestedInformationElementRepr::arbitrary(u)?);
+                    nested_information_elements
+                        .push(NestedInformationElementRepr::arbitrary(u)?)
+                        .map_err(|_err| arbitrary::Error::IncorrectFormat)?;
                 }
 
                 Ok(Self::Mlme(nested_information_elements))

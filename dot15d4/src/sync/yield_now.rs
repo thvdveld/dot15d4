@@ -1,5 +1,3 @@
-#![no_std]
-
 use core::{future::poll_fn, task::Poll};
 
 /// Simple function that makes the current task yield immediatly, such that
@@ -20,15 +18,14 @@ pub async fn yield_now() {
 
 #[cfg(test)]
 mod tests {
-    use std::thread::yield_now;
-
+    use super::*;
     use pollster::FutureExt;
 
     #[test]
     pub fn test_yield_finishes() {
         assert!(
             async {
-                yield_now();
+                yield_now().await;
                 true
             }
             .block_on(),

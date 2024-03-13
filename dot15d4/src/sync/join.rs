@@ -1,8 +1,5 @@
-#![no_std]
-
 use core::{
     future::Future,
-    pin::pin,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -65,7 +62,7 @@ unsafe fn poll_future<F: Future>(
             Poll::Ready(res) => Some(res),
             Poll::Pending => None,
         },
-        Either::Second(rus) => None,
+        Either::Second(_res) => None,
     }
 }
 
@@ -75,8 +72,6 @@ mod tests {
     use core::task::Poll;
 
     use pollster::FutureExt as _;
-
-    use crate::sync::Either;
 
     use super::join;
 

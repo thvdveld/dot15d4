@@ -28,11 +28,15 @@ impl arbitrary::Arbitrary<'_> for InformationElementsRepr {
         let mut payload_information_elements = Vec::new();
 
         for _ in 0..u.int_in_range(0..=15)? {
-            header_information_elements.push(HeaderInformationElementRepr::arbitrary(u)?);
+            header_information_elements
+                .push(HeaderInformationElementRepr::arbitrary(u)?)
+                .map_err(|_| arbitrary::Error::IncorrectFormat)?;
         }
 
         for _ in 0..u.int_in_range(0..=15)? {
-            payload_information_elements.push(PayloadInformationElementRepr::arbitrary(u)?);
+            payload_information_elements
+                .push(PayloadInformationElementRepr::arbitrary(u)?)
+                .map_err(|_| arbitrary::Error::IncorrectFormat)?;
         }
 
         Ok(Self {

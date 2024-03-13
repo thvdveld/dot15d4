@@ -1,4 +1,3 @@
-#![no_std]
 //! A handful of executor independent synchronization primitives.
 //! The goal is to provide some synchronization within 1 task between different parts of that task.
 pub(crate) mod channel;
@@ -7,9 +6,11 @@ pub(crate) mod mutex;
 pub(crate) mod select;
 pub(crate) mod yield_now;
 
+#[cfg(test)]
+pub(crate) mod tests;
+
 /// Type representing 2 possible outcomes/states
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Either<T, S> {
     First(T),
     Second(S),
