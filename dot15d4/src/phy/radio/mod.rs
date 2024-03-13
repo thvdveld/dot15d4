@@ -16,7 +16,7 @@ pub trait Radio {
     /// Request the radio to wake from sleep.
     fn enable(&mut self) -> impl Future<Output = ()>;
 
-    /// Request the radio to go in receive mode and try to receive a frame into the supplied
+    /// Request the radio to go in receive mode and try to receive a packet into the supplied
     /// buffer.
     ///
     /// # Safety
@@ -28,10 +28,10 @@ pub trait Radio {
         bytes: &mut [u8; 128],
     ) -> impl Future<Output = ()>;
 
-    /// Request the radio to go in receive mode and try to receive a frame.
+    /// Request the radio to go in receive mode and try to receive a packet.
     fn receive(&mut self) -> impl Future<Output = bool>;
 
-    /// Request the radio to go in transmit mode and try to send a frame.
+    /// Request the radio to go in transmit mode and try to send a packet.
     /// The mutability of the bytes argument is not really to modify the buffer,
     /// but rather to signify to hand over exclusive ownership. In addition this
     /// also helps with the easy_dma on the nRF family of chips as the buffer may
@@ -53,7 +53,7 @@ pub trait Radio {
     /// not be async.
     fn cancel_current_opperation(&mut self);
 
-    /// Request the radio to transmit the queued frame.
+    /// Request the radio to transmit the queued packet.
     ///
     /// Returns whether a transmission was successful.
     fn transmit(&mut self) -> impl Future<Output = bool>;
@@ -246,8 +246,7 @@ pub mod tests {
         }
 
         /// # Safety:
-        /// This API should only be used during tests where the caller of the radio API is the MAC protocol under test.
-        /// Otherwise there are invalid pointer dereferences, making the tests UB.
+        /// This API should only be used during tests where the caller of the radio API is the MAC protocol under test. Otherwise there are invalid pointer dereferences, making the tests UB.
         async fn receive(&mut self) -> bool {
             poll_fn(|cx| {
                 cx.waker().wake_by_ref(); // Always wake immediatly again
@@ -307,7 +306,6 @@ pub mod tests {
     pub struct TestRadioFrame<T: AsRef<[u8]>> {
         buffer: T,
     }
-
     impl<T: AsRef<[u8]>> RadioFrame<T> for TestRadioFrame<T> {
         type Error = ();
 
@@ -323,7 +321,6 @@ pub mod tests {
             &self.buffer.as_ref()[..127]
         }
     }
-
     impl<T: AsRef<[u8]> + AsMut<[u8]>> RadioFrameMut<T> for TestRadioFrame<T> {
         fn data_mut(&mut self) -> &mut [u8] {
             &mut self.buffer.as_mut()[..127]
@@ -333,7 +330,6 @@ pub mod tests {
     pub struct TestRxToken<'a> {
         buffer: &'a mut [u8],
     }
-
     impl<'a> RxToken for TestRxToken<'a> {
         fn consume<F, R>(self, f: F) -> R
         where
@@ -342,17 +338,14 @@ pub mod tests {
             f(&mut self.buffer[..127])
         }
     }
-
     impl<'a> From<&'a mut [u8]> for TestRxToken<'a> {
         fn from(value: &'a mut [u8]) -> Self {
             Self { buffer: value }
         }
     }
-
     pub struct TestTxToken<'a> {
         buffer: &'a mut [u8],
     }
-
     impl<'a> TxToken for TestTxToken<'a> {
         fn consume<F, R>(self, len: usize, f: F) -> R
         where
@@ -361,7 +354,6 @@ pub mod tests {
             f(&mut self.buffer[..len])
         }
     }
-
     impl<'a> From<&'a mut [u8]> for TestTxToken<'a> {
         fn from(value: &'a mut [u8]) -> Self {
             Self { buffer: value }

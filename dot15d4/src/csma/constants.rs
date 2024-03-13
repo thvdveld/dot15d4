@@ -2,7 +2,7 @@
 
 // Constants from section 11.3, Table 11-1, PHY constants
 /// The maximum PSDU size (in octets) the PHY shall be able to receive.
-pub const MAX_PHY_FRAME_SIZE: u32 = 127;
+pub const MAX_PHY_PACKET_SIZE: u32 = 127;
 /// RX-to-TX or TX-to-RX turnaround time (in symbol periods), as defined in 10.2.2 and 10.2.3.
 pub const TURNAROUND_TIME: u32 = 12;
 // /// The delay between the start of the SFD and the LEIP, as described in 18.6.
