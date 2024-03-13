@@ -1,5 +1,5 @@
+use super::super::Result;
 use super::super::{AddressingMode, FrameControl, FrameType, FrameVersion};
-use super::super::{Result};
 
 /// A high-level representation of the IEEE 802.15.4 Frame Control field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

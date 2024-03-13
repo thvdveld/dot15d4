@@ -2,8 +2,6 @@ use super::*;
 use crate::frame::{Address, AddressingMode, FrameType, FrameVersion};
 use crate::frame::{Error, Result};
 
-
-
 pub struct Beacon;
 pub struct EnhancedBeacon;
 pub struct Ack;

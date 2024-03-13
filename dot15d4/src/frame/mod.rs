@@ -184,9 +184,6 @@ pub use ie::*;
 mod repr;
 pub use repr::*;
 
-
-
-
 /// An error that can occur when reading or writing an IEEE 802.15.4 frame.
 #[derive(Debug, Clone, Copy)]
 pub struct Error;

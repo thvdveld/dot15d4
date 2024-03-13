@@ -1,8 +1,6 @@
 use super::NestedInformationElementsIterator;
 use super::{Error, Result};
 
-
-
 /// A reader/writer for the IEEE 802.15.4 Payload Information Elements.
 #[derive(Debug, Eq, PartialEq)]
 pub struct PayloadInformationElement<T: AsRef<[u8]>> {
