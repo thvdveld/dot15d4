@@ -6,6 +6,7 @@ use super::super::super::{Error, Result};
 
 /// A high-level representation of a MLME Payload Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum NestedInformationElementRepr {
     TschSynchronization(TschSynchronizationRepr),
     TschTimeslot(TschTimeslotRepr),
@@ -96,6 +97,7 @@ impl From<&NestedInformationElementRepr> for NestedSubId {
 
 /// A high-level representation of a TSCH Synchronization Nested Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschSynchronizationRepr {
     /// The absolute slot number (ASN).
     pub absolute_slot_number: u64,
@@ -126,6 +128,7 @@ impl TschSynchronizationRepr {
 
 /// A high-level representation of a TSCH Slotframe and Link Nested Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschSlotframeAndLinkRepr {
     /// The number of slotframes.
     pub number_of_slot_frames: u8,
@@ -152,6 +155,7 @@ impl TschSlotframeAndLinkRepr {
 
 /// A high-level representation of a TSCH Timeslot Nested Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschTimeslotRepr {
     /// The timeslot ID.
     pub id: u8,
@@ -177,6 +181,7 @@ impl TschTimeslotRepr {
 
 /// A high-level representation of a Channel Hopping Nested Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct ChannelHoppingRepr {
     /// The hopping sequence ID.
     pub hopping_sequence_id: u8,

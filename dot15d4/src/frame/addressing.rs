@@ -7,6 +7,7 @@ use super::{Error, Result};
 
 /// An IEEE 802.15.4 address.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum Address {
     Absent,
     Short([u8; 2]),
@@ -100,6 +101,7 @@ impl core::fmt::Display for Address {
 
 /// IEEE 802.15.4 addressing mode.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum AddressingMode {
     Absent = 0b00,
     Short = 0b10,

@@ -4,6 +4,7 @@
 //! - [`Duration`] is used to represent a duration of time.
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct Instant {
     us: i64,
 }
@@ -29,6 +30,7 @@ impl core::fmt::Display for Instant {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct Duration(i64);
 
 impl Duration {

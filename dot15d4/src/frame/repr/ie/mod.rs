@@ -21,6 +21,27 @@ pub struct InformationElementsRepr {
     pub payload_information_elements: Vec<PayloadInformationElementRepr, 16>,
 }
 
+#[cfg(feature = "fuzz")]
+impl arbitrary::Arbitrary<'_> for InformationElementsRepr {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        let mut header_information_elements = Vec::new();
+        let mut payload_information_elements = Vec::new();
+
+        for _ in 0..u.int_in_range(0..=15)? {
+            header_information_elements.push(HeaderInformationElementRepr::arbitrary(u)?);
+        }
+
+        for _ in 0..u.int_in_range(0..=15)? {
+            payload_information_elements.push(PayloadInformationElementRepr::arbitrary(u)?);
+        }
+
+        Ok(Self {
+            header_information_elements,
+            payload_information_elements,
+        })
+    }
+}
+
 impl InformationElementsRepr {
     /// Parse Information Elements.
     pub fn parse(ie: InformationElements<&[u8]>) -> Result<Self> {

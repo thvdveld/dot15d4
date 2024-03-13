@@ -17,6 +17,7 @@ use heapless::Vec;
 
 /// A high-level representation of an IEEE 802.15.4 frame.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct FrameRepr<'p> {
     /// The frame control field.
     pub frame_control: FrameControlRepr,

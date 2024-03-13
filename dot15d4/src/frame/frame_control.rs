@@ -5,6 +5,7 @@ use super::{Error, Result};
 
 /// IEEE 802.15.4 frame type.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum FrameType {
     Beacon = 0b000,
     Data = 0b001,
@@ -33,6 +34,7 @@ impl From<u8> for FrameType {
 
 /// IEEE 802.15.4 frame version.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum FrameVersion {
     Ieee802154_2003 = 0b00,
     Ieee802154_2006 = 0b01,

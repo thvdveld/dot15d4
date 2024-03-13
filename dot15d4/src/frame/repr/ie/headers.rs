@@ -5,6 +5,7 @@ use crate::time::Duration;
 
 /// A high-level representation of a Header Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum HeaderInformationElementRepr {
     TimeCorrection(TimeCorrectionRepr),
     HeaderTermination1,
@@ -68,6 +69,7 @@ impl From<&HeaderInformationElementRepr> for HeaderElementId {
 
 /// A high-level representation of a Time Correction Header Information Element.
 #[derive(Debug)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TimeCorrectionRepr {
     /// The time correction value in microseconds.
     pub time_correction: Duration,

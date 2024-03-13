@@ -1,8 +1,10 @@
 use super::super::{Address, AddressingFields, AddressingMode, FrameControl};
 use super::FrameControlRepr;
+use super::{Error, Result};
 
 /// A high-level representation of the IEEE 802.15.4 Addressing Fields.
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct AddressingFieldsRepr {
     pub dst_pan_id: Option<u16>,
     pub src_pan_id: Option<u16>,

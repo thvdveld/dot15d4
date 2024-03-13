@@ -3,6 +3,7 @@ use super::super::{Error, Result};
 
 /// A high-level representation of the IEEE 802.15.4 Frame Control field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct FrameControlRepr {
     pub frame_type: FrameType,
     pub security_enabled: bool,
