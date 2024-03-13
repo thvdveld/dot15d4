@@ -358,7 +358,7 @@ where
                         .await;
 
                     let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
-                        + MAC_SIFT_PERIOD.max(Duration::from_us(A_TURNAROUND_TIME as i64));
+                        + MAC_SIFT_PERIOD.max(Duration::from_us(TURNAROUND_TIME as i64));
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
@@ -385,7 +385,7 @@ where
                 radio_guard = None;
 
                 // Wait for SIFS here
-                let delay = MAC_SIFT_PERIOD.max(Duration::from_us(A_TURNAROUND_TIME as i64));
+                let delay = MAC_SIFT_PERIOD.max(Duration::from_us(TURNAROUND_TIME as i64));
                 timer.delay_us(delay.as_us() as u32).await;
 
                 // Was this the last attempt?
