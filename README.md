@@ -8,11 +8,14 @@ However, `dot15d4` is more focused on implementing MAC layer functionality (unsl
 
 ## Usage
 
+> [!NOTE]
+> This library is still in development and is not yet published to crates.io.
+
 Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dot15d4 = "0.1"
+dot15d4 = "0.1.0"
 ```
 
 For more information, see the [API documentation](https://docs.rs/dot15d4).
