@@ -75,6 +75,6 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install a no_std target
       run: rustup target add thumbv7em-none-eabi
-    - run: cd ensure-no-std
     - name: Check if it is buildable with a no_std target
+      working-directory: ./ensure-no-std
       run: cargo build --target thumbv7em-none-eabi
