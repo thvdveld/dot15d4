@@ -184,8 +184,8 @@ pub use ie::*;
 mod repr;
 pub use repr::*;
 
-use crate::time::Duration;
-use heapless::Vec;
+
+
 
 /// An error that can occur when reading or writing an IEEE 802.15.4 frame.
 #[derive(Debug, Clone, Copy)]
@@ -302,7 +302,7 @@ impl<T: AsRef<[u8]>> Frame<T> {
         if fc.security_enabled() {
             let mut offset = 2;
 
-            offset += (!fc.sequence_number_suppression() as usize);
+            offset += !fc.sequence_number_suppression() as usize;
 
             if let Some(af) = self.addressing() {
                 offset += af.len(&fc);
@@ -321,7 +321,7 @@ impl<T: AsRef<[u8]>> Frame<T> {
         let fc = self.frame_control();
         if fc.information_elements_present() {
             let mut offset = 2;
-            offset += (!fc.sequence_number_suppression() as usize);
+            offset += !fc.sequence_number_suppression() as usize;
 
             if let Some(af) = self.addressing() {
                 offset += af.len(&fc);
@@ -413,7 +413,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
         contains_payload: bool,
     ) {
         let mut offset = 2;
-        offset += (!self.frame_control().sequence_number_suppression() as usize);
+        offset += !self.frame_control().sequence_number_suppression() as usize;
 
         if let Some(af) = self.addressing() {
             offset += af.len(&self.frame_control());

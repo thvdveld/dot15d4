@@ -1,5 +1,5 @@
 use super::Frame;
-use super::{Error, Result};
+use super::Result;
 
 mod addressing;
 pub use addressing::AddressingFieldsRepr;
@@ -12,8 +12,6 @@ pub use ie::*;
 
 mod builder;
 pub use builder::FrameBuilder;
-
-use heapless::Vec;
 
 /// A high-level representation of an IEEE 802.15.4 frame.
 #[derive(Debug)]

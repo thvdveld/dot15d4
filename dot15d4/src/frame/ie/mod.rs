@@ -11,7 +11,7 @@ pub use nested::*;
 
 use super::{Error, Result};
 
-use heapless::Vec;
+
 
 /// IEEE 802.15.4 Information Element reader.
 pub struct InformationElements<T: AsRef<[u8]>> {

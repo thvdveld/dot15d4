@@ -72,7 +72,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> HeaderInformationElement<T> {
         const MASK: u16 = 0b1111_1110;
 
         let b = &mut self.data.as_mut()[0..2];
-        let value = (u16::from_le_bytes([b[0], b[1]]) & !MASK);
+        let value = u16::from_le_bytes([b[0], b[1]]) & !MASK;
         let value = value | (len & MASK);
         b[0..2].copy_from_slice(&value.to_le_bytes());
     }
@@ -83,7 +83,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> HeaderInformationElement<T> {
         const MASK: u16 = 0b0111_1111_1000_0000;
 
         let b = &mut self.data.as_mut()[0..2];
-        let value = (u16::from_le_bytes([b[0], b[1]]) & !MASK);
+        let value = u16::from_le_bytes([b[0], b[1]]) & !MASK;
         let value = value | (((id as u16) << SHIFT) & MASK);
         b[0..2].copy_from_slice(&value.to_le_bytes());
     }
@@ -357,7 +357,7 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> TimeCorrection<T> {
     pub fn set_time_correction(&mut self, time_correction: Duration) {
-        let time = ((((time_correction.as_us() as i16) << 4) >> 4) & 0x0fff);
+        let time = (((time_correction.as_us() as i16) << 4) >> 4) & 0x0fff;
         let b = &mut self.buffer.as_mut()[0..2];
         b[0..2].copy_from_slice(&time.to_le_bytes());
     }

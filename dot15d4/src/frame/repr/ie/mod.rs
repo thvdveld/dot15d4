@@ -8,7 +8,7 @@ mod payloads;
 pub use payloads::*;
 
 use super::super::{InformationElements, PayloadInformationElement};
-use super::{Error, Result};
+use super::Result;
 
 use heapless::Vec;
 
@@ -49,11 +49,21 @@ impl InformationElementsRepr {
         let mut payload_information_elements = Vec::new();
 
         for header_ie in ie.header_information_elements() {
-            header_information_elements.push(HeaderInformationElementRepr::parse(&header_ie)?);
+            if header_information_elements
+                .push(HeaderInformationElementRepr::parse(&header_ie)?)
+                .is_err()
+            {
+                break;
+            }
         }
 
         for payload_ie in ie.payload_information_elements() {
-            payload_information_elements.push(PayloadInformationElementRepr::parse(&payload_ie)?);
+            if payload_information_elements
+                .push(PayloadInformationElementRepr::parse(&payload_ie)?)
+                .is_err()
+            {
+                break;
+            };
         }
 
         Ok(Self {
@@ -154,7 +164,6 @@ impl InformationElementsRepr {
             PayloadInformationElementRepr::PayloadTermination.emit(
                 &mut PayloadInformationElement::new_unchecked(&mut buffer[offset..][..2]),
             );
-            offset += 2;
         }
     }
 }

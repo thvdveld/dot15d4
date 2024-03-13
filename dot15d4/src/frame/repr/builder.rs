@@ -2,7 +2,7 @@ use super::*;
 use crate::frame::{Address, AddressingMode, FrameType, FrameVersion};
 use crate::frame::{Error, Result};
 
-use core::marker::PhantomData;
+
 
 pub struct Beacon;
 pub struct EnhancedBeacon;

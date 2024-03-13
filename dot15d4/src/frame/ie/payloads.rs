@@ -1,7 +1,7 @@
 use super::NestedInformationElementsIterator;
 use super::{Error, Result};
 
-use heapless::Vec;
+
 
 /// A reader/writer for the IEEE 802.15.4 Payload Information Elements.
 #[derive(Debug, Eq, PartialEq)]

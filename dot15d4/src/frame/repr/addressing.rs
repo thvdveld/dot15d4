@@ -1,6 +1,6 @@
 use super::super::{Address, AddressingFields, AddressingMode, FrameControl};
 use super::FrameControlRepr;
-use super::{Error, Result};
+
 
 /// A high-level representation of the IEEE 802.15.4 Addressing Fields.
 #[derive(Debug, Default)]
@@ -45,7 +45,7 @@ impl AddressingFieldsRepr {
     }
 
     /// Emit the Addressing Fields into the given buffer.
-    pub fn emit(&self, buffer: &AddressingFields<&'_ mut [u8]>, fc: &FrameControl<&'_ [u8]>) {
+    pub fn emit(&self, _buffer: &AddressingFields<&'_ mut [u8]>, _fc: &FrameControl<&'_ [u8]>) {
         todo!();
     }
 }

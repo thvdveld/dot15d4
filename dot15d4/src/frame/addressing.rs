@@ -1,7 +1,6 @@
 //! Addressing fields readers and writers.
 
 use super::FrameControl;
-use super::FrameControlRepr;
 use super::FrameVersion;
 use super::{Error, Result};
 

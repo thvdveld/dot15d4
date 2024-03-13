@@ -798,7 +798,7 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
             return false;
         }
 
-        let number_of_slot_frames = self.number_of_slot_frames() as usize;
+        let _number_of_slot_frames = self.number_of_slot_frames() as usize;
         let slotframe_descriptors_len =
             self.slotframe_descriptors().map(|d| d.len()).sum::<usize>();
 

@@ -39,8 +39,12 @@ impl PayloadInformationElementRepr {
                 let mut nested_information_elements = Vec::new();
 
                 for nested_ie in ie.nested_information_elements() {
-                    nested_information_elements
-                        .push(NestedInformationElementRepr::parse(&nested_ie)?);
+                    if nested_information_elements
+                        .push(NestedInformationElementRepr::parse(&nested_ie)?)
+                        .is_err()
+                    {
+                        break;
+                    }
                 }
 
                 Ok(Self::Mlme(nested_information_elements))
