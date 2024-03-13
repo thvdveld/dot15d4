@@ -5,8 +5,8 @@ use core::task::Poll;
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Error {
-    CCAFailed,
-    ACKFailed,
+    CcaFailed,
+    AckFailed,
     InvalidStructure,
     RadioError,
 }
@@ -15,9 +15,9 @@ pub enum Error {
 /// This trait allows to abstract over channels in async executors.
 pub trait Driver {
     /// Waits until there is something to be transmitted
-    fn transmit(&self) -> impl Future<Output = PacketBuffer>;
+    fn transmit(&self) -> impl Future<Output = FrameBuffer>;
     /// Hold until the buffer is received successfully
-    fn received(&self, buffer: PacketBuffer) -> impl Future<Output = ()>;
+    fn received(&self, buffer: FrameBuffer) -> impl Future<Output = ()>;
     /// Hold until the buffer is received successfully
     fn error(&self, error: Error) -> impl Future<Output = ()>;
 }
@@ -25,7 +25,7 @@ pub trait Driver {
 /// A buffer that is used to store 1 frame.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, PartialEq)]
-pub struct PacketBuffer {
+pub struct FrameBuffer {
     /// The data of the frame that should be transmitted over the radio.
     /// Normally, a MAC layer frame is 127 bytes long.
     /// Some radios, like the one on the nRF52840, have the possibility to not having to include the checksum at the end, but require one extra byte to specify the length of the frame.
@@ -38,7 +38,7 @@ pub struct PacketBuffer {
     pub dirty: bool,
 }
 
-impl Default for PacketBuffer {
+impl Default for FrameBuffer {
     fn default() -> Self {
         Self {
             buffer: [0u8; 128],
@@ -66,8 +66,8 @@ pub mod tests {
 
     #[derive(Default)]
     pub struct TestDriverChannel {
-        pub tx: Channel<PacketBuffer>,
-        pub rx: Channel<PacketBuffer>,
+        pub tx: Channel<FrameBuffer>,
+        pub rx: Channel<FrameBuffer>,
         pub errors: Channel<Error>,
     }
 
@@ -100,23 +100,23 @@ pub mod tests {
     }
 
     pub struct TestDriverMonitor<'a> {
-        pub tx: Sender<'a, PacketBuffer>,
-        pub rx: Receiver<'a, PacketBuffer>,
+        pub tx: Sender<'a, FrameBuffer>,
+        pub rx: Receiver<'a, FrameBuffer>,
         pub errors: Receiver<'a, Error>,
     }
 
     pub struct TestDriver<'a> {
-        tx: Receiver<'a, PacketBuffer>,
-        rx: Sender<'a, PacketBuffer>,
+        tx: Receiver<'a, FrameBuffer>,
+        rx: Sender<'a, FrameBuffer>,
         errors: Sender<'a, Error>,
     }
 
     impl Driver for TestDriver<'_> {
-        async fn transmit(&self) -> PacketBuffer {
+        async fn transmit(&self) -> FrameBuffer {
             self.tx.receive().await
         }
 
-        async fn received(&self, buffer: PacketBuffer) {
+        async fn received(&self, buffer: FrameBuffer) {
             self.rx.send(buffer);
         }
 

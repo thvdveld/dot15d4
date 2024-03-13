@@ -6,7 +6,7 @@ use super::user_configurable_constants::*;
 use super::utils;
 
 use crate::phy::config::TxConfig;
-use crate::phy::driver::PacketBuffer;
+use crate::phy::driver::FrameBuffer;
 use crate::phy::radio::futures::transmit;
 use crate::phy::radio::Radio;
 use crate::sync::channel::Sender;
@@ -23,7 +23,7 @@ pub async fn transmit_cca<'m, R, TIMER, Rng>(
     radio: &'m Mutex<R>,
     radio_guard: &mut Option<MutexGuard<'m, R>>,
     wants_to_transmit_signal: &Sender<'_, ()>,
-    tx_frame: &mut PacketBuffer,
+    tx_frame: &mut FrameBuffer,
     timer: &mut TIMER,
     rng: &Mutex<Rng>,
     mut backoff_strategy: CCABackoffStrategy<'_, Rng>,

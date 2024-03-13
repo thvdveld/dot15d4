@@ -12,7 +12,7 @@ use crate::{
     frame::{Address, Frame, FrameBuilder, FrameRepr, FrameType},
     phy::{
         config::{RxConfig, TxConfig},
-        driver::{self, Driver, PacketBuffer},
+        driver::{self, Driver, FrameBuffer},
         radio::{
             futures::{receive, transmit},
             Radio, RadioFrame, RadioFrameMut, TxToken,
@@ -43,7 +43,8 @@ pub struct CsmaConfig {
     ack_unicast: bool,
     /// All to be transmitted frames will get the ack_request flag set if they are broadcast and a data frame
     ack_broadcast: bool,
-    /// If false, all incoming packets will be sent up the layer stack, useful if making a sniffer. This does not include MAC layer control traffic
+    /// If false, all incoming packets will be sent up the layer stack, useful if making a sniffer. This does not include MAC layer control traffic.
+    /// The default is true, meaning that packets not ment for us (non-broadcast or packets with a different destination address) will be filtered out.
     ignore_not_for_us: bool,
     /// Even if there is no ack_request flag set, ack it anyway
     ack_everything: bool,
@@ -106,7 +107,7 @@ where
         self.radio.get_mut().enable().await; // Wake up radio
         match select::select(
             self.transmit_package_task(sender),
-            self.receive_package_task(receiver),
+            self.receive_frame_task(receiver),
         )
         .await
         {
@@ -115,9 +116,9 @@ where
         }
     }
 
-    /// Checks if the current frame is intended for us. For the hardware address, the full 64bit
+    /// Checks if the current frame is intended for us. For the hardware address, the full 64 bit
     /// address should be provided.
-    fn is_package_for_us<BUF: AsRef<[u8]>>(hardware_address: &[u8; 8], frame: &Frame<BUF>) -> bool {
+    fn is_package_for_us(hardware_address: &[u8; 8], frame: &Frame<&'_ [u8]>) -> bool {
         let Some(addr) = frame
             .addressing()
             .and_then(|fields| fields.dst_address(&frame.frame_control()))
@@ -133,13 +134,13 @@ where
         }
     }
 
-    async fn receive_package_task(&self, mut wants_to_transmit_signal: Receiver<'_, ()>) -> ! {
-        let mut rx = PacketBuffer::default();
+    async fn receive_frame_task(&self, mut wants_to_transmit_signal: Receiver<'_, ()>) -> ! {
+        let mut rx = FrameBuffer::default();
         let mut radio_guard = None;
         let mut timer = self.timer.clone();
 
         // Allocate tx buffer for ACK messages
-        let mut tx_ack = PacketBuffer::default();
+        let mut tx_ack = FrameBuffer::default();
 
         'outer: loop {
             yield_now().await;
@@ -164,7 +165,6 @@ where
                     Either::Second(_) => false,
                 }
             };
-            // wants_to_transmit_signal.reset();
 
             // Check if something went wrong
             if !receive_result {
@@ -228,7 +228,7 @@ where
                         });
 
                         // Wait before sending the ACK (AIFS)
-                        let delay = ACKNOWLEDGEMENT_INTERYFRAME_SPACING;
+                        let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING;
                         timer.delay_us(delay.as_us() as u32).await;
 
                         // We already have the lock on the radio, so start transmitting and do not have to check anymore
@@ -306,7 +306,7 @@ where
         Rng: RngCore,
         D: Driver,
     {
-        let mut ack_rx = PacketBuffer::default();
+        let mut ack_rx = FrameBuffer::default();
         let mut timer = self.timer.clone();
 
         'outer: loop {
@@ -347,7 +347,7 @@ where
                 {
                     Ok(()) => {}
                     Err(err) => {
-                        self.driver.error(driver::Error::CCAFailed).await;
+                        self.driver.error(driver::Error::CcaFailed).await;
                         break 'ack; // Transmission failed
                     }
                 }
@@ -357,7 +357,7 @@ where
                     utils::acquire_lock(&self.radio, &wants_to_transmit_signal, &mut radio_guard)
                         .await;
 
-                    let delay = ACKNOWLEDGEMENT_INTERYFRAME_SPACING
+                    let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
                         + MAC_SIFT_PERIOD.max(Duration::from_us(A_TURNAROUND_TIME as i64));
                     match select::select(
                         Self::wait_for_valid_ack(
@@ -390,7 +390,7 @@ where
 
                 // Was this the last attempt?
                 if i_ack == MAC_MAX_FRAME_RETIES {
-                    self.driver.error(driver::Error::ACKFailed).await;
+                    self.driver.error(driver::Error::AckFailed).await;
                     break 'ack; // Fail transmission
                 }
             }
@@ -428,7 +428,7 @@ pub mod tests {
 
         // Select here, such that everything ends when the test is over
         select::select(csma.run(), async {
-            let packet = PacketBuffer::default();
+            let packet = FrameBuffer::default();
             radio.inner(|inner| {
                 inner.assert_nxt.append(
                     &mut [
@@ -464,7 +464,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -513,7 +513,7 @@ pub mod tests {
                     "The transmitted packet should have the ack_request set by default"
                 );
 
-                let mut ack_frame = PacketBuffer::default();
+                let mut ack_frame = FrameBuffer::default();
                 let token = TestTxToken::from(&mut ack_frame.buffer[..]);
                 let ack_repr = FrameBuilder::new_imm_ack(sequence_number)
                     .finalize()
@@ -561,9 +561,9 @@ pub mod tests {
         );
 
         select::select(csma.run(), async {
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let sequence_number = 123;
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -631,9 +631,9 @@ pub mod tests {
         );
 
         select::select(csma.run(), async {
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let sequence_number = 123;
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -683,7 +683,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -732,7 +732,7 @@ pub mod tests {
                     "The transmitted packet should have the ack_request set by default"
                 );
 
-                let mut ack_frame = PacketBuffer::default();
+                let mut ack_frame = FrameBuffer::default();
                 ack_frame.buffer[0] = 42;
                 ack_frame.buffer[1] = 42;
                 ack_frame.buffer[2] = 42;
@@ -767,7 +767,7 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             assert_eq!(
                 monitor.errors.receive().await,
-                driver::Error::CCAFailed, // CCA has failed, so we propagate an error up
+                driver::Error::CcaFailed, // CCA has failed, so we propagate an error up
                 "Packet transmission should fail due to CCA"
             );
         })
@@ -789,7 +789,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -837,7 +837,7 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             assert_eq!(
                 monitor.errors.receive().await,
-                driver::Error::ACKFailed, // ACK has failed, so we propagate an error up
+                driver::Error::AckFailed, // ACK has failed, so we propagate an error up
                 "Packet transmission should fail due to ACK not received after to many times"
             );
         })
@@ -870,9 +870,9 @@ pub mod tests {
         );
 
         select::select(csma.run(), async {
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let sequence_number = 123;
-            let mut packet = PacketBuffer::default();
+            let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::BROADCAST)

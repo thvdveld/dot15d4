@@ -106,7 +106,7 @@ pub mod tests {
     use crate::{
         phy::{
             config::{RxConfig, TxConfig},
-            driver::PacketBuffer,
+            driver::FrameBuffer,
         },
         sync::{
             select,
