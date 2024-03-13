@@ -23,7 +23,7 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Format
-      run: cargo fmt --check --verbose
+      run: cargo +nightly fmt --check --verbose
 
 
   clippy:
