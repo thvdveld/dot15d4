@@ -3,4 +3,4 @@
 resolver = "2"
 
 members = ["dot15d4", "dot15d4-cat", "dot15d4-macros"]
-exclude = ["ensure-no-std"]
+exclude = ["ensure-no-std", "dot15d4-fuzz"]
