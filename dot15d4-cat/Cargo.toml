@@ -12,3 +12,7 @@ dot15d4 = { path = "../dot15d4" }
 colored = "2"
 clap = { version = "4.5.1", features = ["derive"] }
 hex = "0.4.3"
+
+[[bin]]
+name = "dot15d4"
+path = "src/main.rs"
