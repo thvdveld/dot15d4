@@ -1,14 +1,9 @@
-#![no_std]
 //! Simple oneshot Channel implementation based on the one described in the book
 //! of Mara Bos, but adapted to work as a signaling mechanism. Sending will
 //! remain non-blocking and just overwrite the previous message.
-use core::cell::RefCell;
 use core::cell::UnsafeCell;
 use core::future::poll_fn;
-use core::future::Future;
 use core::mem::MaybeUninit;
-use core::pin::Pin;
-use core::task::Context;
 use core::task::Poll;
 use core::task::Waker;
 
@@ -59,7 +54,7 @@ impl<T> Sender<'_, T> {
     pub fn send(&self, message: T) -> bool {
         // If the channel is ready, make the message drop
         // Safety: The state is only accessed inside a function body and never across an await point. No concurrent access here (same task)
-        let mut state = unsafe { &mut *self.channel.state.get() };
+        let state = unsafe { &mut *self.channel.state.get() };
         let did_replace = if state.is_ready {
             unsafe {
                 // Drop previous message
@@ -180,6 +175,7 @@ impl<T> Receiver<'_, T> {
     }
 
     /// Check if there is an item in the channel
+    #[allow(dead_code)]
     pub fn has_item(&self) -> bool {
         let state = unsafe { &mut *self.channel.state.get() };
         state.is_ready
@@ -190,9 +186,8 @@ impl<T> Receiver<'_, T> {
 mod tests {
     use pollster::FutureExt as _;
 
-    use crate::sync::tests::Delay;
     use crate::sync::yield_now;
-    use crate::sync::{join::join, select::select, yield_now::yield_now};
+    use crate::sync::{join::join, yield_now::yield_now};
 
     use super::Channel;
 
@@ -200,7 +195,7 @@ mod tests {
     pub fn test_channel_no_concurrency() {
         async {
             let mut channel = Channel::new();
-            let (mut send, mut recv) = channel.split();
+            let (send, recv) = channel.split();
             send.send(1);
             assert_eq!(recv.receive().await, 1);
         }
@@ -211,7 +206,7 @@ mod tests {
     pub fn test_channel_join_concurrency() {
         async {
             let mut channel = Channel::new();
-            let (mut send, mut recv) = channel.split();
+            let (send, recv) = channel.split();
 
             join(
                 async {
@@ -236,7 +231,7 @@ mod tests {
     pub fn test_drop_by_leaking() {
         async {
             let mut channel = Channel::new();
-            let (mut send, mut recv) = channel.split();
+            let (send, recv) = channel.split();
             send.send(Box::new(0));
             send.send(Box::new(1));
             send.send(Box::new(2));

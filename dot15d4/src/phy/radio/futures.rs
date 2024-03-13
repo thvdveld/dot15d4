@@ -1,12 +1,8 @@
 use core::cell::RefCell;
-use core::future::Future;
 use core::mem::MaybeUninit;
-use core::pin::Pin;
-use core::task::{ready, Poll};
 
 use super::Radio;
 use crate::phy::config::{RxConfig, TxConfig};
-use crate::sync::mutex::Mutex;
 
 /// Helper structure to have cleanup logic when dropping a future
 struct OnDrop<F: FnOnce()> {
@@ -38,20 +34,6 @@ impl<F: FnOnce()> Drop for OnDrop<F> {
     }
 }
 
-enum TransmissionTaskState {
-    Preparing,
-    Transmitting,
-}
-
-/// Future around transmitting through a radio. Use the `transmit` function when you want to
-/// use this future.
-pub struct TransmitTask<'task, T, R: Radio> {
-    data: &'task T,
-    radio: &'task mut R,
-    state: TransmissionTaskState,
-    config: TxConfig,
-}
-
 /// Convenience Future around transmitting through the radio. This future first prepares the radio,
 /// then transmits before succeeding. This future, upon canceling, stops the radio from transmitting
 /// and puts the radio in an IDLE state.
@@ -63,7 +45,7 @@ pub async fn transmit<'task, T: AsMut<[u8]>, R: Radio>(
 ) -> bool {
     let radio = RefCell::new(radio);
     // Should just work as a drop is handled at the end, after the other radio uses
-    let on_drop = OnDrop::new(|| unsafe { radio.borrow_mut().cancel_current_opperation() });
+    let on_drop = OnDrop::new(|| radio.borrow_mut().cancel_current_opperation());
 
     let mut radio = radio.borrow_mut();
     unsafe {
@@ -86,7 +68,7 @@ pub async fn receive<'task, R: Radio>(
 ) -> bool {
     let radio = RefCell::new(radio);
     // Should just work as a drop is handled at the end, after the other radio uses
-    let on_drop = OnDrop::new(|| unsafe { radio.borrow_mut().cancel_current_opperation() });
+    let on_drop = OnDrop::new(|| radio.borrow_mut().cancel_current_opperation());
 
     let mut radio = radio.borrow_mut();
     unsafe {

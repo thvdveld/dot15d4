@@ -1,6 +1,4 @@
 use core::future::Future;
-use core::task::Context;
-use core::task::Poll;
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -49,12 +47,7 @@ impl Default for FrameBuffer {
 
 #[cfg(test)]
 pub mod tests {
-    use std::future::poll_fn;
-
-    use crate::sync::{
-        channel::{Channel, Receiver, Sender},
-        mutex::Mutex,
-    };
+    use crate::sync::channel::{Channel, Receiver, Sender};
 
     use super::*;
 

@@ -1,7 +1,6 @@
 use embedded_hal_async::delay::DelayNs;
 use rand_core::RngCore;
 
-use super::constants::*;
 use super::user_configurable_constants::*;
 use super::utils;
 
@@ -16,7 +15,7 @@ use crate::sync::mutex::MutexGuard;
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TransmissionError {
-    CCAError,
+    CcaError,
 }
 
 pub async fn transmit_cca<'m, R, TIMER, Rng>(
@@ -25,7 +24,6 @@ pub async fn transmit_cca<'m, R, TIMER, Rng>(
     wants_to_transmit_signal: &Sender<'_, ()>,
     tx_frame: &mut FrameBuffer,
     timer: &mut TIMER,
-    rng: &Mutex<Rng>,
     mut backoff_strategy: CCABackoffStrategy<'_, Rng>,
 ) -> Result<(), TransmissionError>
 where
@@ -33,7 +31,6 @@ where
     TIMER: DelayNs,
     Rng: RngCore,
 {
-    let mut backoff_exponent = MAC_MIN_BE;
     'cca: for number_of_backoffs in 1..MAC_MAX_CSMA_BACKOFFS + 1 {
         // try to transmit
         let transmission_result = {
@@ -56,7 +53,7 @@ where
         // CCA did not go succesfully
         // Was this the last attempt?
         if number_of_backoffs == MAC_MAX_CSMA_BACKOFFS {
-            return Err(TransmissionError::CCAError); // Fail transmission
+            return Err(TransmissionError::CcaError); // Fail transmission
         }
 
         backoff_strategy.perform_backoff(timer).await;

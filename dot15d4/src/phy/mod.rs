@@ -4,6 +4,5 @@
 //! recieving frames, [Device].
 
 pub mod config;
-pub mod device;
 pub mod driver;
 pub mod radio;

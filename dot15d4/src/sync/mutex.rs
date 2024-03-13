@@ -1,12 +1,8 @@
-#![no_std]
-
 use core::cell::RefCell;
 use core::cell::UnsafeCell;
-use core::future::poll_fn;
 use core::future::Future;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use core::pin::pin;
 use core::pin::Pin;
 use core::task::Waker;
 use core::task::{Context, Poll};
@@ -79,19 +75,15 @@ impl<'a, T> Deref for MutexGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        /// Safety: Only one mutex can exist at a time
-        unsafe {
-            &*self.mutex.value.get()
-        }
+        // Safety: Only one mutex can exist at a time
+        unsafe { &*self.mutex.value.get() }
     }
 }
 
 impl<'a, T> DerefMut for MutexGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        /// Safety: Only one mutex can exist at a time
-        unsafe {
-            &mut *self.mutex.value.get()
-        }
+        // Safety: Only one mutex can exist at a time
+        unsafe { &mut *self.mutex.value.get() }
     }
 }
 
@@ -244,6 +236,7 @@ mod tests {
                             panic!("Try lock takes to long!");
                         }
 
+                        i += 1;
                         yield_now::yield_now().await;
                     }
                 },
@@ -259,8 +252,8 @@ mod tests {
     /// Check with Miri whether or not drop is called correctly. If true, then all heap allocation should be deallocated correctly
     pub fn test_drop_by_leaking() {
         async {
-            let mut mutex = Mutex::new(Box::new(0));
-            let mut guard = mutex.lock().await;
+            let mutex = Mutex::new(Box::new(0));
+            let _guard = mutex.lock().await;
         }
         .block_on()
     }

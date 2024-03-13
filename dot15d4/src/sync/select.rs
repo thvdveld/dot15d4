@@ -1,10 +1,6 @@
-#![no_std]
-
-use super::mutex::MutexGuard;
 use super::Either;
 use core::{
     future::Future,
-    pin::pin,
     pin::Pin,
     task::{Context, Poll},
 };

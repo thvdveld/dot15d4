@@ -1,5 +1,3 @@
-#![no_std]
-
 use core::{future::poll_fn, task::Poll};
 
 /// Simple function that makes the current task yield immediatly, such that
@@ -27,7 +25,7 @@ mod tests {
     pub fn test_yield_finishes() {
         assert!(
             async {
-                yield_now();
+                yield_now().await;
                 true
             }
             .block_on(),

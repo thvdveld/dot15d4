@@ -9,7 +9,7 @@ use rand_core::RngCore;
 use user_configurable_constants::*;
 
 use crate::{
-    frame::{Address, Frame, FrameBuilder, FrameRepr, FrameType},
+    frame::{Address, Frame, FrameBuilder, FrameType},
     phy::{
         config::{RxConfig, TxConfig},
         driver::{self, Driver, FrameBuffer},
@@ -134,7 +134,7 @@ where
         }
     }
 
-    async fn receive_frame_task(&self, mut wants_to_transmit_signal: Receiver<'_, ()>) -> ! {
+    async fn receive_frame_task(&self, wants_to_transmit_signal: Receiver<'_, ()>) -> ! {
         let mut rx = FrameBuffer::default();
         let mut radio_guard = None;
         let mut timer = self.timer.clone();
@@ -299,7 +299,7 @@ where
         }
     }
 
-    async fn transmit_package_task(&self, mut wants_to_transmit_signal: Sender<'_, ()>) -> !
+    async fn transmit_package_task(&self, wants_to_transmit_signal: Sender<'_, ()>) -> !
     where
         R: Radio,
         for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
@@ -322,7 +322,7 @@ where
                     // Invalid IEEE frame encountered
                     self.driver.error(driver::Error::InvalidStructure).await;
                 }
-                Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
+                Err(TransmissionTaskError::InvalidDeviceFrame(_err)) => {
                     // Invalid device frame encountered
                     self.driver.error(driver::Error::InvalidStructure).await;
                 }
@@ -340,13 +340,12 @@ where
                     &wants_to_transmit_signal,
                     &mut tx,
                     &mut timer,
-                    &self.rng,
                     backoff_strategy,
                 )
                 .await
                 {
                     Ok(()) => {}
-                    Err(err) => {
+                    Err(_err) => {
                         self.driver.error(driver::Error::CcaFailed).await;
                         break 'ack; // Transmission failed
                     }
@@ -400,22 +399,14 @@ where
 
 #[cfg(test)]
 pub mod tests {
-    use std::collections::VecDeque;
-    use std::iter;
-    use std::sync::Arc;
-
-    use pollster::FutureExt;
-
     use self::driver::tests::*;
-    use crate::phy::driver::Error;
-    use crate::phy::radio::futures::TransmitTask;
     use crate::{phy::radio::tests::*, phy::radio::*, sync::tests::*, sync::*};
 
     use super::*;
 
     #[pollster::test]
     pub async fn test_happy_path_transmit_no_ack() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
@@ -451,7 +442,7 @@ pub mod tests {
 
     #[pollster::test]
     pub async fn test_happy_path_transmit_with_ack() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
@@ -483,7 +474,7 @@ pub mod tests {
 
             // Check if frame is correct
             let frame = TestRadioFrame::new_checked(&packet.buffer).unwrap();
-            let frame = Frame::new(frame.data()).unwrap();
+            let _frame = Frame::new(frame.data()).unwrap();
 
             monitor.tx.send_async(packet.clone()).await;
             radio.inner(|inner| {
@@ -518,7 +509,10 @@ pub mod tests {
                 let ack_repr = FrameBuilder::new_imm_ack(sequence_number)
                     .finalize()
                     .unwrap();
-                token.consume(ack_repr.buffer_len(), |buf| {});
+                token.consume(ack_repr.buffer_len(), |buf| {
+                    let mut frame = Frame::new_unchecked(buf);
+                    ack_repr.emit(&mut frame);
+                });
                 inner.should_receive = Some(ack_frame.buffer);
 
                 inner.assert_nxt.append(
@@ -537,7 +531,7 @@ pub mod tests {
 
     #[pollster::test]
     pub async fn test_happy_path_receive() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
 
         radio.inner(|inner| {
             inner.assert_nxt.append(
@@ -561,7 +555,6 @@ pub mod tests {
         );
 
         select::select(csma.run(), async {
-            let mut packet = FrameBuffer::default();
             let sequence_number = 123;
             let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
@@ -607,7 +600,7 @@ pub mod tests {
 
     #[pollster::test]
     pub async fn test_receive_no_ack() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
 
         radio.inner(|inner| {
             inner.assert_nxt.append(
@@ -631,7 +624,6 @@ pub mod tests {
         );
 
         select::select(csma.run(), async {
-            let mut packet = FrameBuffer::default();
             let sequence_number = 123;
             let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
@@ -670,7 +662,7 @@ pub mod tests {
 
     #[pollster::test]
     pub async fn test_wait_for_ack_but_receive_garbage_and_cca_issues() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
@@ -702,7 +694,7 @@ pub mod tests {
 
             // Check if frame is correct
             let frame = TestRadioFrame::new_checked(&packet.buffer).unwrap();
-            let frame = Frame::new(frame.data()).unwrap();
+            let _frame = Frame::new(frame.data()).unwrap();
 
             monitor.tx.send_async(packet.clone()).await;
             radio.inner(|inner| {
@@ -776,7 +768,7 @@ pub mod tests {
 
     #[pollster::test]
     pub async fn test_transmit_no_ack_received() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
         let mut channel = TestDriverChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
@@ -808,7 +800,7 @@ pub mod tests {
 
             // Check if frame is correct
             let frame = TestRadioFrame::new_checked(&packet.buffer).unwrap();
-            let frame = Frame::new(frame.data()).unwrap();
+            let _frame = Frame::new(frame.data()).unwrap();
 
             monitor.tx.send_async(packet.clone()).await;
             radio.inner(|inner| {
@@ -846,7 +838,7 @@ pub mod tests {
 
     #[pollster::test]
     pub async fn test_do_not_ack_by_default_on_broadcast() {
-        let mut radio = TestRadio::default();
+        let radio = TestRadio::default();
 
         radio.inner(|inner| {
             inner.assert_nxt.append(
@@ -870,7 +862,6 @@ pub mod tests {
         );
 
         select::select(csma.run(), async {
-            let mut packet = FrameBuffer::default();
             let sequence_number = 123;
             let mut packet = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])

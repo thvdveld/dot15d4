@@ -1,7 +1,6 @@
 pub mod futures;
 
 use core::future::Future;
-use core::task::{Context, Poll};
 
 use super::config::{RxConfig, TxConfig};
 
@@ -103,16 +102,7 @@ pub mod tests {
 
     use embedded_hal_async::delay::DelayNs;
 
-    use crate::{
-        phy::{
-            config::{RxConfig, TxConfig},
-            driver::FrameBuffer,
-        },
-        sync::{
-            select,
-            tests::{StdDelay, StdDelayFuture},
-        },
-    };
+    use crate::sync::{select, tests::StdDelay};
 
     use super::{Radio, RadioFrame, RadioFrameMut, RxToken, TxToken};
 
@@ -246,7 +236,7 @@ pub mod tests {
 
         async unsafe fn prepare_receive(
             &mut self,
-            cfg: &crate::phy::config::RxConfig,
+            _cfg: &crate::phy::config::RxConfig,
             bytes: &mut [u8; 128],
         ) {
             self.new_event(TestRadioEvent::PrepareReceive);
@@ -349,7 +339,7 @@ pub mod tests {
         }
     }
     impl<'a> From<&'a mut [u8]> for TestRxToken<'a> {
-        fn from(mut value: &'a mut [u8]) -> Self {
+        fn from(value: &'a mut [u8]) -> Self {
             Self { buffer: value }
         }
     }

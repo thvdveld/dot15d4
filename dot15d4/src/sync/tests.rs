@@ -13,7 +13,7 @@ use super::yield_now;
 pub struct Delay {}
 
 impl DelayNs for Delay {
-    async fn delay_ns(&mut self, ns: u32) {
+    async fn delay_ns(&mut self, _ns: u32) {
         for _ in 0..10 {
             yield_now::yield_now().await
         }
@@ -67,7 +67,7 @@ impl Future for StdDelayFuture {
                 StdDelayFuture::Init { wake_at } => {
                     let (tx, rx) = std::sync::mpsc::channel();
                     let waker = std::sync::Arc::new(std::sync::Mutex::new(cx.waker().clone()));
-                    let thread = std::thread::spawn({
+                    std::thread::spawn({
                         let wake_at = *wake_at;
                         let waker = waker.clone();
                         move || {
@@ -145,7 +145,7 @@ impl Drop for StdDelayFuture {
 mod inner_tests {
     use std::time::{Duration, Instant};
 
-    use embedded_hal_async::delay::{self, DelayNs};
+    use embedded_hal_async::delay::DelayNs;
 
     use super::StdDelay;
 
