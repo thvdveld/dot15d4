@@ -95,7 +95,7 @@ fn emit_ack_frame() {
         ]))
         .add_header_information_element(HeaderInformationElementRepr::TimeCorrection(
             TimeCorrectionRepr {
-                time_correction: Duration::from_us(-31),
+                time_correction: crate::time::Duration::from_us(-31),
                 nack: true,
             },
         ))
@@ -307,9 +307,9 @@ fn emit_enhanced_beacon() {
             ])),
         }),
         information_elements: Some(InformationElementsRepr {
-            header_information_elements: Vec::new(),
-            payload_information_elements: Vec::from_iter([PayloadInformationElementRepr::Mlme(
-                Vec::from_iter([
+            header_information_elements: heapless::Vec::new(),
+            payload_information_elements: heapless::Vec::from_iter([
+                PayloadInformationElementRepr::Mlme(heapless::Vec::from_iter([
                     NestedInformationElementRepr::TschSynchronization(TschSynchronizationRepr {
                         absolute_slot_number: 14,
                         join_metric: 0,
@@ -321,8 +321,8 @@ fn emit_enhanced_beacon() {
                     NestedInformationElementRepr::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
                         number_of_slot_frames: 0,
                     }),
-                ]),
-            )]),
+                ])),
+            ]),
         }),
         payload: None,
     };
