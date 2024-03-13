@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![cfg_attr(not(any(test, std)), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 #[macro_use]
 pub(crate) mod utils;
