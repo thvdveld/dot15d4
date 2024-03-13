@@ -41,7 +41,8 @@ impl NestedInformationElementRepr {
         2 + self.inner_len()
     }
 
-    /// The buffer length required to emit the inner part of the Nested Information Element.
+    /// The buffer length required to emit the inner part of the Nested
+    /// Information Element.
     pub fn inner_len(&self) -> usize {
         match self {
             Self::TschSynchronization(repr) => repr.buffer_len(),
@@ -95,7 +96,8 @@ impl From<&NestedInformationElementRepr> for NestedSubId {
     }
 }
 
-/// A high-level representation of a TSCH Synchronization Nested Information Element.
+/// A high-level representation of a TSCH Synchronization Nested Information
+/// Element.
 #[derive(Debug)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschSynchronizationRepr {
@@ -114,7 +116,8 @@ impl TschSynchronizationRepr {
         }
     }
 
-    /// The buffer length required to emit the TSCH Synchronization Information Element.
+    /// The buffer length required to emit the TSCH Synchronization Information
+    /// Element.
     pub const fn buffer_len(&self) -> usize {
         6
     }
@@ -126,7 +129,8 @@ impl TschSynchronizationRepr {
     }
 }
 
-/// A high-level representation of a TSCH Slotframe and Link Nested Information Element.
+/// A high-level representation of a TSCH Slotframe and Link Nested Information
+/// Element.
 #[derive(Debug)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschSlotframeAndLinkRepr {
@@ -142,7 +146,8 @@ impl TschSlotframeAndLinkRepr {
         }
     }
 
-    /// The buffer length required to emit the TSCH Slotframe and Link Information Element.
+    /// The buffer length required to emit the TSCH Slotframe and Link
+    /// Information Element.
     pub fn buffer_len(&self) -> usize {
         1
     }
@@ -167,7 +172,8 @@ impl TschTimeslotRepr {
         Self { id: ie.id() }
     }
 
-    /// The buffer length required to emit the TSCH Timeslot Information Element.
+    /// The buffer length required to emit the TSCH Timeslot Information
+    /// Element.
     pub fn buffer_len(&self) -> usize {
         // TODO: allow to set other time slots than the default one.
         1
@@ -195,7 +201,8 @@ impl ChannelHoppingRepr {
         }
     }
 
-    /// The buffer length required to emit the Channel Hopping Information Element.
+    /// The buffer length required to emit the Channel Hopping Information
+    /// Element.
     pub fn buffer_len(&self) -> usize {
         1
     }

@@ -74,12 +74,14 @@ impl<T: AsRef<[u8]>> FrameControl<T> {
         Ok(fc)
     }
 
-    /// Returns `false` if the buffer is too short to contain the Frame Control field.
+    /// Returns `false` if the buffer is too short to contain the Frame Control
+    /// field.
     fn check_len(&self) -> bool {
         self.buffer.as_ref().len() >= 2
     }
 
-    /// Create a new [`FrameControl`] reader/writer from a given buffer without length checking.
+    /// Create a new [`FrameControl`] reader/writer from a given buffer without
+    /// length checking.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }

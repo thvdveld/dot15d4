@@ -52,7 +52,8 @@ where
 }
 
 /// # Safety
-/// The future behind the f may not be moved while this function is being executed
+/// The future behind the f may not be moved while this function is being
+/// executed
 unsafe fn poll_future<F: Future>(
     f: &mut Either<F, Option<F::Output>>,
     cx: &mut Context,

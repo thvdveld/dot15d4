@@ -73,11 +73,15 @@ impl Future for StdDelayFuture {
                         move || {
                             let now = std::time::Instant::now();
                             if now < wake_at {
-                                // We use the channel here as a timer, has the advantage that we do not have to manage the sleeping logic ourselves
+                                // We use the channel here as a timer, has the advantage that we do
+                                // not have to manage the sleeping logic ourselves
                                 match rx.recv_timeout(wake_at - now) {
-                                    Ok(_) => return,                               // We got a kill signal
-                                    Err(RecvTimeoutError::Timeout) => (), // Continue to wake
-                                    Err(RecvTimeoutError::Disconnected) => return, // Channel is dead, stop thread
+                                    // We got a kill signal
+                                    Ok(_) => return,
+                                    // Continue to wake
+                                    Err(RecvTimeoutError::Timeout) => (),
+                                    // Channel is dead, stop thread
+                                    Err(RecvTimeoutError::Disconnected) => return,
                                 }
                             }
 
@@ -105,7 +109,8 @@ impl Future for StdDelayFuture {
 
                     if *wake_at < now {
                         // Make the thread terminate without calling the waker
-                        let _ = shutdown_signal.send(()); // We do not care if the thread has already terminated, just notfying it
+                        // We do not care if the thread has already terminated, just notfying it
+                        let _ = shutdown_signal.send(());
 
                         *this = Self::Finished;
                         continue; // Delegate to other state
@@ -136,7 +141,8 @@ impl Drop for StdDelayFuture {
             shutdown_signal, ..
         } = self
         {
-            let _ = shutdown_signal.send(()); // We do not care if the thread has already terminated
+            // We do not care if the thread has already terminated
+            let _ = shutdown_signal.send(());
         }
     }
 }

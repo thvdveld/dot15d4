@@ -29,14 +29,16 @@ impl<F: FnOnce()> OnDrop<F> {
 
 impl<F: FnOnce()> Drop for OnDrop<F> {
     fn drop(&mut self) {
-        // Safety: Drop is only called once and we can only construct OnDrop from initialized memory
+        // Safety: Drop is only called once and we can only construct OnDrop from
+        // initialized memory
         unsafe { self.f.as_ptr().read()() };
     }
 }
 
-/// Convenience Future around transmitting through the radio. This future first prepares the radio,
-/// then transmits before succeeding. This future, upon canceling, stops the radio from transmitting
-/// and puts the radio in an IDLE state.
+/// Convenience Future around transmitting through the radio. This future first
+/// prepares the radio, then transmits before succeeding. This future, upon
+/// canceling, stops the radio from transmitting and puts the radio in an IDLE
+/// state.
 #[allow(clippy::await_holding_refcell_ref)]
 pub async fn transmit<'task, T: AsMut<[u8]>, R: Radio>(
     radio: &'task mut R,
@@ -57,9 +59,10 @@ pub async fn transmit<'task, T: AsMut<[u8]>, R: Radio>(
     result
 }
 
-/// Convenience Future around receiving through the radio. This future first prepares the radio,
-/// then receives before succeeding. This future, upon canceling, stops the radio from receiving
-/// and puts the radio in an IDLE state.
+/// Convenience Future around receiving through the radio. This future first
+/// prepares the radio, then receives before succeeding. This future, upon
+/// canceling, stops the radio from receiving and puts the radio in an IDLE
+/// state.
 #[allow(clippy::await_holding_refcell_ref)]
 pub async fn receive<'task, R: Radio>(
     radio: &'task mut R,

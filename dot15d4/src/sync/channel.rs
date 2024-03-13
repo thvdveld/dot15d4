@@ -53,7 +53,8 @@ impl<T> Sender<'_, T> {
     /// not the previous message was overwritten
     pub fn send(&self, message: T) -> bool {
         // If the channel is ready, make the message drop
-        // Safety: The state is only accessed inside a function body and never across an await point. No concurrent access here (same task)
+        // Safety: The state is only accessed inside a function body and never across an
+        // await point. No concurrent access here (same task)
         let state = unsafe { &mut *self.channel.state.get() };
         let did_replace = if state.is_ready {
             unsafe {
@@ -77,7 +78,8 @@ impl<T> Sender<'_, T> {
             true
         } else {
             // The channel is not yet ready -> store the message and make it ready
-            // Safety: We are the only one with access to the Sender and no concurrent access with the Receiver possible
+            // Safety: We are the only one with access to the Sender and no concurrent
+            // access with the Receiver possible
             unsafe {
                 let maybe_uninit = &mut *self.channel.message.get();
                 maybe_uninit.as_mut_ptr().write(message);
@@ -117,7 +119,8 @@ impl<T> Sender<'_, T> {
                             waker.clone_from(new_waker);
                             Some(waker)
                         } else {
-                            // We have a different waker now, wake the previous one before replacing it
+                            // We have a different waker now, wake the previous one before replacing
+                            // it
                             waker.wake();
                             Some(new_waker.clone())
                         }
@@ -143,7 +146,8 @@ pub struct Receiver<'a, T> {
 impl<T> Receiver<'_, T> {
     pub async fn receive(&self) -> T {
         poll_fn(|cx| {
-            // Safety: We only access the state in the bounds of this call and never across an await point
+            // Safety: We only access the state in the bounds of this call and never across
+            // an await point
             let state = unsafe { &mut *self.channel.state.get() };
 
             if !state.is_ready {
@@ -155,7 +159,8 @@ impl<T> Receiver<'_, T> {
 
                 Poll::Pending
             } else {
-                // Safety: We have a message, and exclusive access to the channel as there is no concurrent access possible
+                // Safety: We have a message, and exclusive access to the channel as there is no
+                // concurrent access possible
                 let message = unsafe {
                     let maybe_uninit = &mut *self.channel.message.get();
                     maybe_uninit.assume_init_read()
@@ -227,7 +232,8 @@ mod tests {
     }
 
     #[test]
-    /// Check with Miri whether or not drop is called correctly. If true, then all heap allocation should be deallocated correctly
+    /// Check with Miri whether or not drop is called correctly. If true, then
+    /// all heap allocation should be deallocated correctly
     pub fn test_drop_by_leaking() {
         async {
             let mut channel = Channel::new();

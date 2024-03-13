@@ -77,7 +77,8 @@ impl InformationElementsRepr {
     }
 
     /// The header terminations required to emit the Information Elements.
-    /// The first bool is the HT1, the second is the HT2, and the third is the PT.
+    /// The first bool is the HT1, the second is the HT2, and the third is the
+    /// PT.
     fn header_terminations(&self, contains_payload: bool) -> (bool, bool, bool) {
         match (
             !self.header_information_elements.is_empty(),

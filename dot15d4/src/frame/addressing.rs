@@ -141,8 +141,9 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     ///
     /// # Errors
     ///
-    /// This function will check the length of the buffer to ensure it is large enough to contain
-    /// the addressing fields. If the buffer is too small, an error will be returned.
+    /// This function will check the length of the buffer to ensure it is large
+    /// enough to contain the addressing fields. If the buffer is too small,
+    /// an error will be returned.
     pub fn new(buffer: T, fc: &FrameControl<T>) -> Result<Self> {
         let af = Self::new_unchecked(buffer);
 
@@ -174,8 +175,8 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
         self.buffer.as_ref().len() >= expected_len
     }
 
-    /// Create a new [`AddressingFields`] reader/writer from a given buffer without checking the
-    /// length.
+    /// Create a new [`AddressingFields`] reader/writer from a given buffer
+    /// without checking the length.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }
     }
