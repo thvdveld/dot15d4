@@ -19,7 +19,7 @@
 //! ## Reading a frame
 //! For an incoming frame, use the [`Frame`] structure to read its content.
 //! ```
-//! # use dot15d4::frame::{
+//! # use dot15d4_frame::{
 //! #   Frame,
 //! #   FrameControl,
 //! #   FrameType,
@@ -175,8 +175,12 @@
 //! [`payload_information_elements`]: InformationElements::payload_information_elements
 //! [`nested_information_elements`]: PayloadInformationElement::nested_information_elements
 
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
+
 #[cfg(test)]
 mod tests;
+
+mod time;
 
 mod frame_control;
 pub use frame_control::*;

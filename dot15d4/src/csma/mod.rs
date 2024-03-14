@@ -9,7 +9,6 @@ use rand_core::RngCore;
 use user_configurable_constants::*;
 
 use crate::{
-    frame::{Address, Frame, FrameBuilder, FrameType},
     phy::{
         config::{RxConfig, TxConfig},
         driver::{self, Driver, FrameBuffer},
@@ -28,6 +27,7 @@ use crate::{
     },
     time::Duration,
 };
+use dot15d4_frame::{Address, Frame, FrameBuilder, FrameType};
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]

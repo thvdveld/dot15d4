@@ -1,5 +1,5 @@
 use afl::*;
-use dot15d4::frame::{Frame, FrameRepr};
+use dot15d4_frame::{Frame, FrameRepr};
 
 fn main() {
     fuzz!(|data: &[u8]| {

@@ -1,7 +1,7 @@
 //! IEEE 802.15.4 Header Information Element reader and writers.
 
-use crate::frame::{Error, Result};
 use crate::time::Duration;
+use crate::{Error, Result};
 use dot15d4_macros::frame;
 
 /// A reader/writer for the IEEE 802.15.4 Header Information Elements
