@@ -387,12 +387,14 @@ impl<T: AsRef<[u8]>> TschSynchronization<T> {
         Ok(ts)
     }
 
-    /// Returns `false` if the buffer is too short to contain a valid TSCH Synchronization IE.
+    /// Returns `false` if the buffer is too short to contain a valid TSCH
+    /// Synchronization IE.
     fn check_len(&self) -> bool {
         self.data.as_ref().len() >= 6
     }
 
-    /// Create a new [`TschSynchronization`] reader/writer from a given buffer without length checking.
+    /// Create a new [`TschSynchronization`] reader/writer from a given buffer
+    /// without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -469,7 +471,8 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
         Ok(ts)
     }
 
-    /// Returns `false` if the buffer is too short to contain a valid TSCH Timeslot IE.
+    /// Returns `false` if the buffer is too short to contain a valid TSCH
+    /// Timeslot IE.
     fn check_len(&self) -> bool {
         let len = self.data.as_ref().len();
 
@@ -484,7 +487,8 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
         len >= 25
     }
 
-    /// Create a new [`TschTimeslot`] reader/writer from a given buffer without length checking.
+    /// Create a new [`TschTimeslot`] reader/writer from a given buffer without
+    /// length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -848,7 +852,8 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
         Ok(ts)
     }
 
-    /// Returns `false` if the buffer is too short to contain a valid TSCH Slotframe and Link IE.
+    /// Returns `false` if the buffer is too short to contain a valid TSCH
+    /// Slotframe and Link IE.
     fn check_len(&self) -> bool {
         let len = self.data.as_ref().len();
 
@@ -863,7 +868,8 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
         len > slotframe_descriptors_len
     }
 
-    /// Create a new [`TschSlotframeAndLink`] reader/writer from a given buffer without length checking.
+    /// Create a new [`TschSlotframeAndLink`] reader/writer from a given buffer
+    /// without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -918,7 +924,8 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
         Ok(descriptor)
     }
 
-    /// Returns `false` if the buffer is too short to contain a valid Slotframe Descriptor.
+    /// Returns `false` if the buffer is too short to contain a valid Slotframe
+    /// Descriptor.
     fn check_len(&self) -> bool {
         let len = self.data.as_ref().len();
 
@@ -929,7 +936,8 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
         len > 4 + (self.links() as usize * LinkDescriptor::<&[u8]>::len())
     }
 
-    /// Create a new [`SlotframeDescriptor`] reader/writer from a given buffer without length checking.
+    /// Create a new [`SlotframeDescriptor`] reader/writer from a given buffer
+    /// without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }

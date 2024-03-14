@@ -177,6 +177,7 @@
 
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![deny(missing_docs)]
+#![deny(unsafe_code)]
 
 #[cfg(test)]
 mod tests;

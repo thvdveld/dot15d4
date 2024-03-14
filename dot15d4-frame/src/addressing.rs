@@ -361,7 +361,11 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
         }
     }
 
-    pub(crate) fn fmt(&self, f: &mut core::fmt::Formatter<'_>, fc: &FrameControl<T>) -> core::fmt::Result {
+    pub(crate) fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+        fc: &FrameControl<T>,
+    ) -> core::fmt::Result {
         writeln!(f, "Addressing Fields")?;
 
         if let Some(id) = self.dst_pan_id(fc) {
