@@ -57,6 +57,6 @@ mod tests {
 
     #[test]
     fn inv_symbol_rate() {
-        assert_eq!(SYMBOL_RATE_INV_US, 4);
+        assert_eq!(SYMBOL_RATE_INV_US, 16);
     }
 }
