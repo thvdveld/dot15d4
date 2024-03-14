@@ -7,8 +7,11 @@ use crate::time::Duration;
 #[derive(Debug)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum HeaderInformationElementRepr {
+    /// Time Correction Header Information Element.
     TimeCorrection(TimeCorrectionRepr),
+    /// Header Termination 1.
     HeaderTermination1,
+    /// Header Termination 2.
     HeaderTermination2,
 }
 

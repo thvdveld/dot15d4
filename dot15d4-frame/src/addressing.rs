@@ -8,8 +8,11 @@ use super::{Error, Result};
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum Address {
+    /// The address is absent.
     Absent,
+    /// A short address.
     Short([u8; 2]),
+    /// An extended address.
     Extended([u8; 8]),
 }
 
@@ -27,6 +30,7 @@ impl Address {
         *self == Self::BROADCAST
     }
 
+    /// Create an [`Address`] from a slice of bytes.
     pub fn from_bytes(a: &[u8]) -> Self {
         if a.is_empty() {
             Address::Absent
@@ -43,6 +47,7 @@ impl Address {
         }
     }
 
+    /// Return the address as a slice of bytes.
     pub const fn as_bytes(&self) -> &[u8] {
         match self {
             Address::Absent => &[],
@@ -69,8 +74,19 @@ impl Address {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    /// Query whether the address is absent.
+    pub fn is_absent(&self) -> bool {
         matches!(self, Address::Absent)
+    }
+
+    /// Query whether the address is short.
+    pub fn is_short(&self) -> bool {
+        matches!(self, Address::Short(_))
+    }
+
+    /// Query whether the address is extended.
+    pub fn is_extended(&self) -> bool {
+        matches!(self, Address::Extended(_))
     }
 }
 
@@ -102,9 +118,13 @@ impl core::fmt::Display for Address {
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum AddressingMode {
+    /// The address is absent.
     Absent = 0b00,
+    /// The address is a short address.
     Short = 0b10,
+    /// The address is an extended address.
     Extended = 0b11,
+    /// Unknown addressing mode.
     Unknown,
 }
 
@@ -341,7 +361,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
         }
     }
 
-    pub fn fmt(&self, f: &mut core::fmt::Formatter<'_>, fc: &FrameControl<T>) -> core::fmt::Result {
+    pub(crate) fn fmt(&self, f: &mut core::fmt::Formatter<'_>, fc: &FrameControl<T>) -> core::fmt::Result {
         writeln!(f, "Addressing Fields")?;
 
         if let Some(id) = self.dst_pan_id(fc) {
@@ -365,6 +385,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
+    /// Write the addressing fields to the buffer.
     pub fn write_fields(&mut self, fields: &super::repr::AddressingFieldsRepr) {
         let mut offset = 0;
 

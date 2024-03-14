@@ -20,9 +20,10 @@ pub fn frame(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut impls = vec![];
 
     impls.push(quote! {
-            pub fn new(buffer: T) -> Self {
-                Self { buffer }
-            }
+        /// Create a new [`#name`] reader/writer from a given buffer.
+        pub fn new(buffer: T) -> Self {
+            Self { buffer }
+        }
     });
 
     let mut offset = 0;

@@ -7,13 +7,21 @@ use super::{Error, Result};
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum FrameType {
+    /// Beacon frame.
     Beacon = 0b000,
+    /// Data frame.
     Data = 0b001,
+    /// Acknowledgement frame.
     Ack = 0b010,
+    /// MAC command frame.
     MacCommand = 0b011,
+    /// Multipurpose frame.
     Multipurpose = 0b101,
+    /// Fragmentation frame.
     FragmentOrFrak = 0b110,
+    /// Extended frame.
     Extended = 0b111,
+    /// Unknown frame type.
     Unknown,
 }
 
@@ -36,9 +44,13 @@ impl From<u8> for FrameType {
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum FrameVersion {
+    /// IEEE 802.15.4-2003 frame version.
     Ieee802154_2003 = 0b00,
+    /// IEEE 802.15.4-2006 frame version.
     Ieee802154_2006 = 0b01,
+    /// IEEE 802.15.4-2020 frame version.
     Ieee802154_2020 = 0b10,
+    /// Unknown frame version.
     Unknown,
 }
 

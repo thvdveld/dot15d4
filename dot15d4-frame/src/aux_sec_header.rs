@@ -1,5 +1,8 @@
 //! Auxiliary Security Header readers and writers.
 
+// TODO: once this part is finished, remove the `allow` directive.
+#![allow(missing_docs)]
+
 /// A reader/writer for the IEEE 802.15.4 Auxiliary Security Header.
 #[derive(Debug)]
 pub struct AuxiliarySecurityHeader<T: AsRef<[u8]>> {

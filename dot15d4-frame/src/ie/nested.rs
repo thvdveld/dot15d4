@@ -97,10 +97,12 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> NestedInformationElement<T> {
+    /// Clear the content of this Nested Information Element.
     pub fn clear(&mut self) {
         self.data.as_mut().fill(0);
     }
 
+    /// Set the length of the Nested Information Element.
     pub fn set_length(&mut self, len: u16, id: NestedSubId) {
         let mask: u16 = if id.is_short() {
             0b0000_1111_1111
@@ -114,6 +116,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> NestedInformationElement<T> {
         b[0..2].copy_from_slice(&value.to_le_bytes());
     }
 
+    /// Set the [`NestedSubId`].
     pub fn set_sub_id(&mut self, id: NestedSubId) {
         let mask: u16 = if id.is_short() {
             0b0111_1111_0000_0000
@@ -131,6 +134,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> NestedInformationElement<T> {
         b[0..2].copy_from_slice(&value.to_le_bytes());
     }
 
+    /// Return a mutable reference to the content of this Nested Information
     pub fn content_mut(&mut self) -> &mut [u8] {
         &mut self.data.as_mut()[2..]
     }
@@ -207,39 +211,73 @@ impl NestedSubId {
 /// Short Nested Information Element ID.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum NestedSubIdShort {
+    /// TSCH Synchronization.
     TschSynchronization = 0x1a,
+    /// TSCH Slotframe and Link.
     TschSlotframeAndLink = 0x1b,
+    /// TSCH Timeslot.
     TschTimeslot = 0x1c,
+    /// Hopping Timing.
     HoppingTiming = 0x1d,
+    /// Enhanced Beacon Filter.
     EnhancedBeaconFilter = 0x1e,
+    /// MAC Metrics.
     MacMetrics = 0x1f,
+    /// All MAC Metrics.
     AllMacMetrics = 0x20,
+    /// Coexistence Specification.
     CoexistenceSpecification = 0x21,
+    /// Sun Device Capabilities.
     SunDeviceCapabilities = 0x22,
+    /// Sun FSK Generic PHY.
     SunFskGenericPhy = 0x23,
+    /// Mode Switch Parameter.
     ModeSwitchParameter = 0x24,
+    /// PHY Parameter Change.
     PhyParameterChange = 0x25,
+    /// O-QPSK PHY Mode.
     OQpskPhyMode = 0x26,
+    /// PCA Allocation.
     PcaAllocation = 0x27,
+    /// LECIM DSSS Operating Mode.
     LecimDsssOperatingMode = 0x28,
+    /// LECIM FSK Operating Mode.
     LecimFskOperatingMode = 0x29,
+    /// TVWS PHY Operating Mode.
     TvwsPhyOperatingMode = 0x2b,
+    /// TVWS Device Capabilities.
     TvwsDeviceCapabilities = 0x2c,
+    /// TVWS Device Category.
     TvwsDeviceCategory = 0x2d,
+    /// TVWS Device Identification.
     TvwsDeviceIdentification = 0x2e,
+    /// TVWS Device Location.
     TvwsDeviceLocation = 0x2f,
+    /// TVWS Channel Information Query.
     TvwsChannelInformationQuery = 0x30,
+    /// TVWS Channel Information Source.
     TvwsChannelInformationSource = 0x31,
+    /// CTM.
     Ctm = 0x32,
+    /// Timestamp.
     Timestamp = 0x33,
+    /// Timestamp Difference.
     TimestampDifference = 0x34,
+    /// TMCTP Specification.
     TmctpSpecification = 0x35,
+    /// RCC PHY Operating Mode.
     RccPhyOperatingMode = 0x36,
+    /// Link Margin.
     LinkMargin = 0x37,
+    /// RS-GFSK Device Capabilities.
     RsGfskDeviceCapabilities = 0x38,
+    /// Multi-PHY.
     MultiPhy = 0x39,
+    /// Vendor Specific.
     VendorSpecific = 0x40,
+    /// SRM.
     Srm = 0x46,
+    /// Unknown.
     Unkown,
 }
 
@@ -298,8 +336,11 @@ impl core::fmt::Display for NestedSubIdShort {
 /// Long Nested Information Element ID.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum NestedSubIdLong {
+    /// Vendor Specific Nested Information Elements.
     VendorSpecificNested = 0x08,
+    /// Channel Hopping.
     ChannelHopping = 0x09,
+    /// Unnown.
     Unkown,
 }
 
@@ -335,6 +376,7 @@ pub struct TschSynchronization<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> TschSynchronization<T> {
+    /// Create a new [`TschSynchronization`] reader/writer from a given buffer.
     pub fn new(data: T) -> Result<Self> {
         let ts = Self::new_unchecked(data);
 
@@ -345,10 +387,12 @@ impl<T: AsRef<[u8]>> TschSynchronization<T> {
         Ok(ts)
     }
 
+    /// Returns `false` if the buffer is too short to contain a valid TSCH Synchronization IE.
     fn check_len(&self) -> bool {
         self.data.as_ref().len() >= 6
     }
 
+    /// Create a new [`TschSynchronization`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -411,8 +455,10 @@ pub struct TschTimeslot<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> TschTimeslot<T> {
+    /// The default timeslot ID.
     pub const DEFAULT_ID: u8 = 0;
 
+    /// Create a new [`TschTimeslot`] reader/writer from a given buffer.
     pub fn new(data: T) -> Result<Self> {
         let ts = Self::new_unchecked(data);
 
@@ -423,6 +469,7 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
         Ok(ts)
     }
 
+    /// Returns `false` if the buffer is too short to contain a valid TSCH Timeslot IE.
     fn check_len(&self) -> bool {
         let len = self.data.as_ref().len();
 
@@ -437,6 +484,7 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
         len >= 25
     }
 
+    /// Create a new [`TschTimeslot`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -743,7 +791,7 @@ impl TschTimeslotTimings {
         buffer[23..][..2].copy_from_slice(&(self.time_slot_length.as_us() as u16).to_le_bytes());
     }
 
-    pub fn fmt(&self, indent: usize, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, indent: usize, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "{:indent$}cca_offset: {}", "", self.cca_offset(),)?;
         writeln!(f, "{:indent$}cca: {}", "", self.cca(), indent = indent)?;
         writeln!(f, "{:indent$}tx offset: {}", "", self.tx_offset(),)?;
@@ -789,6 +837,7 @@ pub struct TschSlotframeAndLink<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
+    /// Create a new [`TschSlotframeAndLink`] reader/writer from a given buffer.
     pub fn new(data: T) -> Result<Self> {
         let ts = Self::new_unchecked(data);
 
@@ -799,6 +848,7 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
         Ok(ts)
     }
 
+    /// Returns `false` if the buffer is too short to contain a valid TSCH Slotframe and Link IE.
     fn check_len(&self) -> bool {
         let len = self.data.as_ref().len();
 
@@ -813,6 +863,7 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
         len > slotframe_descriptors_len
     }
 
+    /// Create a new [`TschSlotframeAndLink`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -856,6 +907,7 @@ pub struct SlotframeDescriptor<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
+    /// Create a new [`SlotframeDescriptor`] reader/writer from a given buffer.
     pub fn new(data: T) -> Result<Self> {
         let descriptor = Self::new_unchecked(data);
 
@@ -866,6 +918,7 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
         Ok(descriptor)
     }
 
+    /// Returns `false` if the buffer is too short to contain a valid Slotframe Descriptor.
     fn check_len(&self) -> bool {
         let len = self.data.as_ref().len();
 
@@ -876,6 +929,7 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
         len > 4 + (self.links() as usize * LinkDescriptor::<&[u8]>::len())
     }
 
+    /// Create a new [`SlotframeDescriptor`] reader/writer from a given buffer without length checking.
     pub fn new_unchecked(data: T) -> Self {
         Self { data }
     }
@@ -920,6 +974,7 @@ pub struct SlotframeDescriptorIterator<'f> {
 }
 
 impl<'f> SlotframeDescriptorIterator<'f> {
+    /// Create a new [`SlotframeDescriptorIterator`].
     pub fn new(slotframes: usize, data: &'f [u8]) -> Self {
         let terminated = slotframes == 0;
 
@@ -969,6 +1024,7 @@ pub struct LinkDescriptor<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> LinkDescriptor<T> {
+    /// Create a new [`LinkDescriptor`] reader/writer from a given buffer.
     pub fn new(data: T) -> Self {
         Self { data }
     }
@@ -1004,6 +1060,7 @@ pub struct LinkDescriptorIterator<'f> {
 }
 
 impl<'f> LinkDescriptorIterator<'f> {
+    /// Create a new [`LinkDescriptorIterator`].
     pub fn new(data: &'f [u8]) -> Self {
         Self {
             data,
@@ -1039,10 +1096,15 @@ bitflags! {
     /// ```
     #[derive(Copy, Clone)]
     pub struct TschLinkOption: u8 {
+        /// Transmit.
         const Tx = 0b0000_0001;
+        /// Receive.
         const Rx = 0b0000_0010;
+        /// Shared.
         const Shared = 0b0000_0100;
+        /// Time keeping.
         const TimeKeeping = 0b0000_1000;
+        /// Priority.
         const Priority = 0b0001_0000;
     }
 }
@@ -1120,6 +1182,7 @@ pub struct NestedInformationElementsIterator<'f> {
 }
 
 impl<'f> NestedInformationElementsIterator<'f> {
+    /// Create a new [`NestedInformationElementsIterator`].
     pub fn new(data: &'f [u8]) -> Self {
         Self {
             data,

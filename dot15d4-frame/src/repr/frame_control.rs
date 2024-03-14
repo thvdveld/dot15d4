@@ -5,15 +5,25 @@ use super::super::{AddressingMode, FrameControl, FrameType, FrameVersion};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct FrameControlRepr {
+    /// Frame type.
     pub frame_type: FrameType,
+    /// Security enabled.
     pub security_enabled: bool,
+    /// Frame pending.
     pub frame_pending: bool,
+    /// Acknowledgement request.
     pub ack_request: bool,
+    /// PAN ID compression.
     pub pan_id_compression: bool,
+    /// Sequence number suppression.
     pub sequence_number_suppression: bool,
+    /// Information elements present.
     pub information_elements_present: bool,
+    /// Destination addressing mode.
     pub dst_addressing_mode: AddressingMode,
+    /// Source addressing mode.
     pub src_addressing_mode: AddressingMode,
+    /// Frame version.
     pub frame_version: FrameVersion,
 }
 

@@ -8,9 +8,13 @@ use super::super::super::{Error, Result};
 #[derive(Debug)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub enum NestedInformationElementRepr {
+    /// TSCH Synchronization Information Element.
     TschSynchronization(TschSynchronizationRepr),
+    /// TSCH Timeslot Information Element.
     TschTimeslot(TschTimeslotRepr),
+    /// TSCH Slotframe and Link Information Element.
     TschSlotframeAndLink(TschSlotframeAndLinkRepr),
+    /// Channel Hopping Information Element.
     ChannelHopping(ChannelHoppingRepr),
 }
 

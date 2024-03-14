@@ -176,6 +176,7 @@
 //! [`nested_information_elements`]: PayloadInformationElement::nested_information_elements
 
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![deny(missing_docs)]
 
 #[cfg(test)]
 mod tests;

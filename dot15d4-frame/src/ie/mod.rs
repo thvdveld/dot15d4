@@ -59,6 +59,7 @@ impl<T: AsRef<[u8]>> InformationElements<T> {
         Self { data }
     }
 
+    /// Returns the length of the information elements.
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         let mut len = 0;

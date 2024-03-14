@@ -9,7 +9,9 @@ use heapless::Vec;
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum PayloadInformationElementRepr {
+    /// MLME Payload Information Element.
     Mlme(Vec<NestedInformationElementRepr, 16>),
+    /// Payload Termination Information Element.
     PayloadTermination,
 }
 

@@ -7,6 +7,7 @@ pub struct EnhancedBeacon;
 pub struct Ack;
 pub struct Data;
 
+/// A helper for building IEEE 802.15.4 frames.
 pub struct FrameBuilder<'p, T> {
     frame: FrameRepr<'p>,
     r#type: core::marker::PhantomData<T>,

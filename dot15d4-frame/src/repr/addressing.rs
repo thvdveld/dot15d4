@@ -5,9 +5,13 @@ use super::FrameControlRepr;
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct AddressingFieldsRepr {
+    /// Destination PAN identifier.
     pub dst_pan_id: Option<u16>,
-    pub src_pan_id: Option<u16>,
+    /// Destination address.
     pub dst_address: Option<Address>,
+    /// Source PAN identifier.
+    pub src_pan_id: Option<u16>,
+    /// Source address.
     pub src_address: Option<Address>,
 }
 
@@ -16,8 +20,8 @@ impl AddressingFieldsRepr {
     pub fn parse<'f>(addressing: AddressingFields<&'f [u8]>, fc: FrameControl<&'f [u8]>) -> Self {
         Self {
             dst_pan_id: addressing.dst_pan_id(&fc),
-            src_pan_id: addressing.src_pan_id(&fc),
             dst_address: addressing.dst_address(&fc),
+            src_pan_id: addressing.src_pan_id(&fc),
             src_address: addressing.src_address(&fc),
         }
     }

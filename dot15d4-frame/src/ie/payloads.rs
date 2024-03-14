@@ -70,6 +70,7 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> PayloadInformationElement<T> {
+    /// Clear the content of this Header Information Element.
     pub fn clear(&mut self) {
         self.data.as_mut().fill(0);
     }

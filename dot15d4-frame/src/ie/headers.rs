@@ -126,24 +126,43 @@ impl<T: AsRef<[u8]>> core::fmt::Display for HeaderInformationElement<T> {
 /// Header Information Element ID.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum HeaderElementId {
+    /// Vendor specific header.
     VendorSpecificHeader = 0x00,
+    /// Csl header.
     Csl = 0x1a,
+    /// Rit header.
     Rit = 0x1b,
+    /// Dsme Pan Descriptor header.
     DsmePanDescriptor = 0x1c,
+    /// Rendezvous Time header.
     RendezvousTime = 0x1d,
+    /// Time Correction header.
     TimeCorrection = 0x1e,
+    /// Extended Dsme Pan Descriptor header.
     ExtendedDsmePanDescriptor = 0x21,
+    /// Fragment Sequence Context Description header.
     FragmentSequenceContextDescription = 0x22,
+    /// Simplified Superframe Specification header.
     SimplifiedSuperframeSpecification = 0x23,
+    /// Simplified Gts Specification header.
     SimplifiedGtsSpecification = 0x24,
+    /// Lecim Capabilities header.
     LecimCapabilities = 0x25,
+    /// Trle Descriptor header.
     TrleDescriptor = 0x26,
+    /// Rcc Capabilities header.
     RccCapabilities = 0x27,
+    /// Rccn Descriptor header.
     RccnDescriptor = 0x28,
+    /// Global Time header.
     GlobalTime = 0x29,
+    /// Da header.
     Da = 0x2b,
+    /// Header Termination 1.
     HeaderTermination1 = 0x7e,
+    /// Header Termination 2.
     HeaderTermination2 = 0x7f,
+    /// Unkown header.
     Unkown,
 }
 
@@ -222,6 +241,7 @@ impl<'f> Iterator for HeaderInformationElementsIterator<'f> {
     }
 }
 
+/// Vendor Specific Header Information Element.
 #[frame]
 #[derive(Debug)]
 pub struct VendorSpecific {
@@ -234,6 +254,7 @@ pub struct VendorSpecific {
     vendor_specific_payload: &[u8],
 }
 
+/// CSL Header Information Element.
 #[frame]
 #[derive(Debug)]
 pub struct Csl {
@@ -246,6 +267,7 @@ pub struct Csl {
     rendezvous_time: u16,
 }
 
+/// RIT Header Information Element.
 #[frame]
 #[derive(Debug)]
 pub struct Rit {
@@ -257,6 +279,7 @@ pub struct Rit {
     repeat_listen_interval: u16,
 }
 
+/// DSME Superframe Specification Header Information Element.
 #[frame]
 pub struct DsmeSuperframeSpecification {
     #[bits(4)]
@@ -275,6 +298,7 @@ pub struct DsmeSuperframeSpecification {
     deferred_beacon: bool,
 }
 
+/// Time Synchronization Specification Header Information Element.
 #[frame]
 pub struct TimeSynchronizationSpecification {
     #[bytes(8)]
@@ -285,6 +309,7 @@ pub struct TimeSynchronizationSpecification {
     beacon_offset_timestamp: u16,
 }
 
+/// Channel Hopping Specification Header Information Element.
 #[frame]
 pub struct ChannelHoppingSpecification {
     /// Return the hopping sequence ID field value.
@@ -300,6 +325,7 @@ pub struct ChannelHoppingSpecification {
     channel_offset_bitmap: &[u8],
 }
 
+/// Renzdevous Time Header Information Element.
 #[frame]
 pub struct RendezvousTime {
     /// Return the rendezvous time field value.
@@ -343,6 +369,7 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
     }
 
     #[allow(clippy::len_without_is_empty)]
+    /// Returns the length of the Time Correction field.
     pub const fn len(&self) -> usize {
         2
     }
@@ -362,12 +389,14 @@ impl<T: AsRef<[u8]>> TimeCorrection<T> {
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> TimeCorrection<T> {
+    /// Set the time correction value.
     pub fn set_time_correction(&mut self, time_correction: Duration) {
         let time = (((time_correction.as_us() as i16) << 4) >> 4) & 0x0fff;
         let b = &mut self.buffer.as_mut()[0..2];
         b[0..2].copy_from_slice(&time.to_le_bytes());
     }
 
+    /// Set the NACK field.
     pub fn set_nack(&mut self, nack: bool) {
         let b = &mut self.buffer.as_mut()[0..2];
         let value = i16::from_le_bytes([b[0], b[1]]);
@@ -411,18 +440,24 @@ pub struct SimplifiedSuperframeSpecification {
 /// Information Element.
 pub struct SuperframeSpecification {
     #[bits(4)]
+    /// Return the beacon order field value.
     beacon_order: u8,
     #[bits(4)]
+    /// Return the superframe order field value.
     superframe_order: u8,
     #[bits(4)]
+    /// Return the final cap slot field value.
     final_cap_slot: u8,
     #[bits(1)]
+    /// Return the battery life extension field value.
     battery_life_extension: bool,
     #[bits(1)]
     _reserved: bool,
     #[bits(1)]
+    /// Return the PAN coordinator field value.
     pan_coordinator: bool,
     #[bits(1)]
+    /// Return the association permit field value.
     association_permit: bool,
 }
 
@@ -432,69 +467,119 @@ pub struct SuperframeSpecification {
 /// Element.
 pub struct CfpSpecification {
     #[bits(3)]
+    /// Return the GTS field value.
     gts_count: u8,
     #[bits(5)]
+    /// Return the first CFP slot field value.
     first_cfp_slot: u8,
     #[bits(4)]
+    /// Return the last CFP slot field value.
     last_cfp_slot: u8,
     #[bits(1)]
+    /// Return the CFP field value.
     gts_permit: bool,
 }
 
 bitflags::bitflags! {
+    /// Supported Frequency Bands values.
     pub struct SupportedFrequencyBands: u16 {
+        /// 169 MHz band.
         const BAND_161_MHZ = 0b0000_0000_0000_0001;
+        /// 216 MHz band.
         const BAND_216_MHZ = 0b0000_0000_0000_0010;
+        /// 217 MHz band.
         const BAND_217_MHZ = 0b0000_0000_0000_0100;
+        /// 220 MHz band.
         const BAND_220_MHZ = 0b0000_0000_0000_1000;
+        /// 450 MHz band.
         const BAND_450_MHZ = 0b0000_0000_0001_0000;
+        /// 779 MHz band.
         const BAND_779_MHZ = 0b0000_0000_0010_0000;
+        /// 800 MHz band.
         const BAND_800_MHZ = 0b0000_0000_0100_0000;
+        /// 806 MHz band.
         const BAND_806_MHZ = 0b0000_0000_1000_0000;
+        /// 896 MHz band.
         const BAND_896_MHZ = 0b0000_0001_0000_0000;
+        /// 915 MHz band.
         const BAND_915_MHZ = 0b0000_0010_0000_0000;
+        /// 928 MHz band.
         const BAND_928_MHZ = 0b0000_0100_0000_0000;
+        /// 2450 MHz band.
         const BAND_2450_MHZ = 0b0000_1000_0000_0000;
+        /// 4965 MHz band.
         const BAND_4965_MHZ = 0b0001_0000_0000_0000;
+        /// 5800 MHz band.
         const BAND_5800_MHZ = 0b0010_0000_0000_0000;
+        /// Reserved.
         const BAND_RESERVED = 0b1100_0000_0000_0000;
     }
 }
 
 bitflags::bitflags! {
+    /// Supported Modulation values.
     pub struct SupportedRccPhyAndModulation: u16 {
+        /// GMSK 9.6 kbps.
         const GMSK_9_6_KBPS = 0b0000_0000_0000_0001;
+        /// GMSK 19.2 kbps.
         const GMSK_19_2_KBPS = 0b0000_0000_0000_0010;
+        /// 4 FSK 9.6 kbps.
         const FOUR_FSK_9_6_KBPS = 0b0000_0000_0000_0100;
+        /// 4 FSK 19.2 kbps.
         const FOUR_FSK_19_2_KBPS = 0b0000_0000_0000_1000;
+        /// 4 FSK 38.4 kbps.
         const FOUR_FSK_38_4_KBPS = 0b0000_0000_0001_0000;
+        /// QPSK 16 kbps.
         const QPSK_16_KBPS = 0b0000_0000_0010_0000;
+        /// QPSK 32 kbps.
         const QPSK_32_KBPS = 0b0000_0000_0100_0000;
+        /// PI/4 DQPSK 16 kbps.
         const PI_4_DQPSK_16_KBPS = 0b0000_0000_1000_0000;
+        /// PI/4 DQPSK 32 kbps.
         const PI_4_DQPSK_32_KBPS = 0b0000_0001_0000_0000;
+        /// PI/4 DQPSK 64 kbps.
         const PI_4_DQPSK_64_KBPS = 0b0000_0010_0000_0000;
+        /// DSSS DPSK.
         const DSSS_DPSK = 0b0000_0100_0000_0000;
+        /// DSSS BPSK.
         const DSSS_BPSK = 0b0000_1000_0000_0000;
+        /// Reserved.
         const RESERVED = 0b1111_0000_0000_0000;
     }
 }
 
 bitflags::bitflags! {
+    /// Supported DSSS DPSK Modulation values.
     pub struct SupportedDsssDpskModulation: u16 {
+        /// 100 Kcps.
         const RATE_300_KCPS = 0b0000_0000_0000_0001;
+        /// 600 Kcps.
         const RATE_600_KCPS = 0b0000_0000_0000_0010;
+        /// 800 Kcps.
         const RATE_800_KCPS = 0b0000_0000_0000_0100;
+        /// 1 Mcps.
         const RATE_1_MCPS = 0b0000_0000_0000_1000;
+        /// 1.6 Mcps.
         const RATE_1_6_MCPS = 0b0000_0000_0001_0000;
+        /// 2 Mcps.
         const RATE_2_MCPS = 0b0000_0000_0010_0000;
+        /// 3 Mcps.
         const RATE_3_MCPS = 0b0000_0000_0100_0000;
+        /// 4 Mcps.
         const RATE_4_MCPS = 0b0000_0000_1000_0000;
+        /// 11 chip spreading.
         const SPREADING_11_CHIP = 0b0000_0001_0000_0000;
+        /// 15 chip spreading.
         const SPREADING_15_CHIP = 0b0000_0010_0000_0000;
+        /// 20 chip spreading.
         const SPREADING_20_CHIP = 0b0000_0100_0000_0000;
+        /// 40 chip spreading.
         const SPREADING_40_CHIP = 0b0000_1000_0000_0000;
+        /// DSSS DBPSK.
         const DSSS_DBPSK = 0b0001_0000_0000_0000;
+        /// DSSS DQPSK.
         const DSSS_DQPSK = 0b0010_0000_0000_0000;
+        /// Reserved.
         const RESERVED = 0b1100_0000_0000_0000;
     }
 }
