@@ -1,6 +1,6 @@
 use clap::Parser;
 use colored::*;
-use dot15d4::frame::*;
+use dot15d4_frame::*;
 
 struct Writer {
     indent: usize,

@@ -1,4 +1,4 @@
-use dot15d4::frame::*;
+use dot15d4_frame::*;
 
 fn main() {
     env_logger::init();

@@ -1,6 +1,6 @@
 use super::*;
-use crate::frame::{Address, AddressingMode, FrameType, FrameVersion};
-use crate::frame::{Error, Result};
+use crate::{Address, AddressingMode, FrameType, FrameVersion};
+use crate::{Error, Result};
 
 pub struct Beacon;
 pub struct EnhancedBeacon;

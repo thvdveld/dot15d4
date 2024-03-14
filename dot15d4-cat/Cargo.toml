@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dot15d4 = { path = "../dot15d4" }
+dot15d4-frame = { path = "../dot15d4-frame" }
 
 colored = "2"
 clap = { version = "4.5.1", features = ["derive"] }
