@@ -276,21 +276,32 @@ where
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
         let mut frame =
             Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
+
+        // TODO: What about other types of MAC frames
         if frame.frame_control().frame_type() == FrameType::Data {
             match frame
                 .addressing()
                 .and_then(|addr| addr.dst_address(&frame.frame_control()))
             {
                 Some(addr) if addr.is_unicast() && self.config.ack_unicast => {
-                    frame.frame_control_mut().set_ack_request(true)
+                    frame.frame_control_mut().set_ack_request(true);
+                    Ok(frame.sequence_number())
                 }
                 Some(addr) if addr.is_broadcast() && self.config.ack_broadcast => {
-                    frame.frame_control_mut().set_ack_request(true)
+                    frame.frame_control_mut().set_ack_request(true);
+                    Ok(frame.sequence_number())
                 }
-                Some(_) | None => {}
+                Some(_) | None => {
+                    // Make sure that the ack_request field is set to false independent on how the frame was actually created
+                    frame.frame_control_mut().set_ack_request(false);
+                    Ok(None)
+                }
             }
+        } else {
+            // We want an ACK, and here is the sequence number
+            frame.frame_control_mut().set_ack_request(false);
+            Ok(None)
         }
-        Ok(frame.sequence_number())
     }
 
     async fn wait_for_valid_ack(radio: &mut R, sequence_number: u8, ack_rx: &mut [u8; 128]) {
