@@ -10,18 +10,14 @@ pub struct Instant {
 }
 
 impl Instant {
+    /// Create a new `Instant` from microseconds since the epoch.
     pub const fn from_us(us: i64) -> Self {
         Self { us }
     }
 
+    /// Returns the point in time as microseconds since the epoch.
     pub const fn as_us(&self) -> i64 {
         self.us
-    }
-}
-
-impl core::fmt::Display for Instant {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:.2}ms", self.as_us() as f32 / 1000.0)
     }
 }
 
@@ -30,18 +26,14 @@ impl core::fmt::Display for Instant {
 pub struct Duration(i64);
 
 impl Duration {
+    /// Create a new `Duration` from microseconds.
     pub const fn from_us(us: i64) -> Self {
         Self(us)
     }
 
+    /// Returns the duration as microseconds.
     pub const fn as_us(&self) -> i64 {
         self.0
-    }
-}
-
-impl core::fmt::Display for Duration {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:.2}ms", self.as_us() as f32 / 1000.0)
     }
 }
 
@@ -98,5 +90,63 @@ impl core::ops::Add<Duration> for Duration {
 
     fn add(self, rhs: Duration) -> Self::Output {
         Self::from_us(self.as_us() + rhs.as_us())
+    }
+}
+
+impl core::fmt::Display for Instant {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:.2}ms", self.as_us() as f32 / 1000.0)
+    }
+}
+
+impl core::fmt::Display for Duration {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:.2}ms", self.as_us() as f32 / 1000.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn instant() {
+        let a = Instant::from_us(100);
+        assert_eq!(a.us, 100);
+        assert_eq!(a.as_us(), 100);
+    }
+
+    #[test]
+    fn instant_operations() {
+        let a = Instant::from_us(100);
+        let b = Instant::from_us(50);
+        assert_eq!((a - b).as_us(), 50);
+        assert_eq!((a - Duration::from_us(50)).as_us(), 50);
+        assert_eq!((a + Duration::from_us(50)).as_us(), 150);
+    }
+
+    #[test]
+    fn duration() {
+        let a = Duration::from_us(100);
+        assert_eq!(a.0, 100);
+        assert_eq!(a.as_us(), 100);
+    }
+
+    #[test]
+    fn duration_operations() {
+        let a = Duration::from_us(100);
+        let b = Duration::from_us(50);
+        assert_eq!((a - b).as_us(), 50);
+        assert_eq!((a * 2).as_us(), 200);
+        assert_eq!((a / 2).as_us(), 50);
+        assert_eq!((a + b).as_us(), 150);
+    }
+
+    #[test]
+    fn formatting() {
+        let a = Instant::from_us(100);
+        let b = Duration::from_us(100);
+        assert_eq!(format!("{}", a), "0.10ms");
+        assert_eq!(format!("{}", b), "0.10ms");
     }
 }
