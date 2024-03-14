@@ -277,8 +277,9 @@ where
         let mut frame =
             Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
 
-        // TODO: What about other types of MAC frames
-        if frame.frame_control().frame_type() == FrameType::Data {
+        // Only Data and MAC Commands should be able to get an ACK
+        let frame_type = frame.frame_control().frame_type();
+        if frame_type == FrameType::Data || frame_type == FrameType::MacCommand {
             match frame
                 .addressing()
                 .and_then(|addr| addr.dst_address(&frame.frame_control()))
