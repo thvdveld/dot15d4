@@ -46,7 +46,8 @@ pub const UNIT_BACKOFF_PERIOD: u32 = TURNAROUND_TIME + CCA_TIME;
 pub const RCCN_BASE_SLOT_DURATION: u32 = 60;
 
 /// The symbol rate of IEEE 802.15.4 on 2.5 Ghz (symbols/s)
-pub const SYMBOL_RATE: u32 = 250000;
+// pub const SYMBOL_RATE: u32 = 250_000;
+pub const SYMBOL_RATE: u32 = 62_500;
 /// The symbol rate of IEEE 802.15.4 on 2.5 Ghz (µs/symbol)
 pub const SYMBOL_RATE_INV_US: u32 = 1_000_000 / SYMBOL_RATE;
 
