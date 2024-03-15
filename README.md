@@ -63,6 +63,10 @@ Information Elements
         #slot frames: 0
 ```
 
+## Coverage
+
+![Coverage](https://codecov.io/gh/thvdveld/dot15d4/graphs/sunburst.svg?token=XETJ1SV5B0)
+
 ## License
 
 Licensed under either of
