@@ -261,7 +261,8 @@ where
 
     /// If the frame is malformed/invalid -> parsing error will be returned.
     /// If the frame is no ack'able -> the sequence number will be None.
-    /// Second argument in the option is the frame length -> useful to find out how long we should wait for an ACK
+    /// Second argument in the option is the frame length -> useful to find out
+    /// how long we should wait for an ACK
     fn set_ack_request_if_possible<'a, RadioFrame>(
         &self,
         buffer: &'a mut [u8],
@@ -288,7 +289,8 @@ where
                     Ok(frame.sequence_number().map(|seq| (seq, frame_len)))
                 }
                 Some(_) | None => {
-                    // Make sure that the ack_request field is set to false independent on how the frame was actually created
+                    // Make sure that the ack_request field is set to false independent on how the
+                    // frame was actually created
                     frame.frame_control_mut().set_ack_request(false);
                     Ok(None)
                 }
