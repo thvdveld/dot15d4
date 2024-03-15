@@ -31,7 +31,7 @@ impl Address {
     }
 
     /// Create an [`Address`] from a slice of bytes.
-    pub fn from_bytes(a: &[u8]) -> Self {
+    pub fn from(a: &[u8]) -> Self {
         if a.is_empty() {
             Address::Absent
         } else if a.len() == 2 {
@@ -516,29 +516,17 @@ mod tests {
 
     #[test]
     fn from_bytes() {
-        assert_eq!(
-            Address::from_bytes(&[0xff, 0xff]),
-            Address::Short([0xff, 0xff])
-        );
-        assert_eq!(
-            Address::from_bytes(&[0xff, 0xfe]),
-            Address::Short([0xff, 0xfe])
-        );
-        assert_eq!(
-            Address::from_bytes(&[0xff; 8]),
-            Address::Extended([0xff; 8])
-        );
-        assert_eq!(
-            Address::from_bytes(&[0x01; 8]),
-            Address::Extended([0x01; 8])
-        );
-        assert_eq!(Address::from_bytes(&[]), Address::Absent);
+        assert_eq!(Address::from(&[0xff, 0xff]), Address::Short([0xff, 0xff]));
+        assert_eq!(Address::from(&[0xff, 0xfe]), Address::Short([0xff, 0xfe]));
+        assert_eq!(Address::from(&[0xff; 8]), Address::Extended([0xff; 8]));
+        assert_eq!(Address::from(&[0x01; 8]), Address::Extended([0x01; 8]));
+        assert_eq!(Address::from(&[]), Address::Absent);
     }
 
     #[test]
     #[should_panic]
     fn from_bytes_panic() {
-        Address::from_bytes(&[0xff, 0xff, 0xff]);
+        Address::from(&[0xff, 0xff, 0xff]);
     }
 
     #[test]
