@@ -176,8 +176,8 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Check if the buffer is large enough to contain the addressing fields.
     fn check_len(&self, fc: &FrameControl<T>) -> bool {
-        let Some((dst_pan_id_present, dst_addr_mode, src_pan_id_present, src_addr_mode)) = self
-            .address_present_flags(
+        let Some((dst_pan_id_present, dst_addr_mode, src_pan_id_present, src_addr_mode)) =
+            Self::address_present_flags(
                 fc.frame_version(),
                 fc.dst_addressing_mode(),
                 fc.src_addressing_mode(),
@@ -223,7 +223,6 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 
     fn address_present_flags(
-        &self,
         frame_version: FrameVersion,
         dst_addr_mode: AddressingMode,
         src_addr_mode: AddressingMode,
@@ -232,12 +231,28 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
         use AddressingMode::*;
         match frame_version {
             FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006 => {
-                match (dst_addr_mode, src_addr_mode) {
-                    (Absent, src) => Some((false, Absent, true, src)),
-                    (dst, Absent) => Some((true, dst, false, Absent)),
+                match (dst_addr_mode, src_addr_mode, pan_id_compression) {
+                    // If both destination and source address information is present, and the
+                    // destination and source PAN IDs are identical, then the source PAN ID is
+                    // omitted.
+                    // In the following case, the destination and source PAN IDs are not identical,
+                    // and thus both are present.
+                    (dst @ (Short | Extended), src @ (Short | Extended), false) => {
+                        Some((true, dst, true, src))
+                    }
+                    // In the following case, the destination and source PAN IDs are identical, and
+                    // thus only the destination PAN ID is present.
+                    (dst @ (Short | Extended), src @ (Short | Extended), true) => {
+                        Some((true, dst, false, src))
+                    }
 
-                    (dst, src) if pan_id_compression => Some((true, dst, false, src)),
-                    (dst, src) if !pan_id_compression => Some((true, dst, true, src)),
+                    // If either the destination or the source address is present, then the PAN ID
+                    // of the corresponding address is present and the PAN ID compression field is
+                    // set to 0.
+                    (Absent, src @ (Short | Extended), false) => Some((false, Absent, true, src)),
+                    (dst @ (Short | Extended), Absent, false) => Some((true, dst, false, Absent)),
+
+                    // All other cases are invalid.
                     _ => None,
                 }
             }
@@ -248,7 +263,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
                     (dst, Absent, false) if !matches!(dst, Absent) => (true, dst, false, Absent),
                     (dst, Absent, true) if !matches!(dst, Absent) => (false, dst, false, Absent),
                     (Absent, src, false) if !matches!(src, Absent) => (false, Absent, true, src),
-                    (Absent, src, true) if !matches!(src, Absent) => (false, Absent, true, src),
+                    (Absent, src, true) if !matches!(src, Absent) => (false, Absent, false, src),
                     (Extended, Extended, false) => (true, Extended, false, Extended),
                     (Extended, Extended, true) => (false, Extended, false, Extended),
                     (Short, Short, false) => (true, Short, true, Short),
@@ -266,7 +281,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 destination [`Address`] if not absent.
     pub fn dst_address(&self, fc: &FrameControl<T>) -> Option<Address> {
-        if let Some((dst_pan_id, dst_addr, _, _)) = self.address_present_flags(
+        if let Some((dst_pan_id, dst_addr, _, _)) = Self::address_present_flags(
             fc.frame_version(),
             fc.dst_addressing_mode(),
             fc.src_addressing_mode(),
@@ -297,7 +312,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 source [`Address`] if not absent.
     pub fn src_address(&self, fc: &FrameControl<T>) -> Option<Address> {
-        if let Some((dst_pan_id, dst_addr, src_pan_id, src_addr)) = self.address_present_flags(
+        if let Some((dst_pan_id, dst_addr, src_pan_id, src_addr)) = Self::address_present_flags(
             fc.frame_version(),
             fc.dst_addressing_mode(),
             fc.src_addressing_mode(),
@@ -330,7 +345,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 destination PAN ID if not elided.
     pub fn dst_pan_id(&self, fc: &FrameControl<T>) -> Option<u16> {
-        if let Some((true, _, _, _)) = self.address_present_flags(
+        if let Some((true, _, _, _)) = Self::address_present_flags(
             fc.frame_version(),
             fc.dst_addressing_mode(),
             fc.src_addressing_mode(),
@@ -345,7 +360,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Return the IEEE 802.15.4 source PAN ID if not elided.
     pub fn src_pan_id(&self, fc: &FrameControl<T>) -> Option<u16> {
-        if let Some((dst_pan_id, dst_addr, true, _)) = self.address_present_flags(
+        if let Some((dst_pan_id, dst_addr, true, _)) = Self::address_present_flags(
             fc.frame_version(),
             fc.dst_addressing_mode(),
             fc.src_addressing_mode(),
@@ -447,6 +462,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn address_type() {
+        assert!(Address::Absent.is_absent());
+        assert!(!Address::Absent.is_short());
+        assert!(!Address::Absent.is_extended());
+
+        assert!(!Address::Short([0xff, 0xff]).is_absent());
+        assert!(Address::Short([0xff, 0xff]).is_short());
+        assert!(!Address::Short([0xff, 0xff]).is_extended());
+
+        assert!(!Address::Extended([0xff; 8]).is_absent());
+        assert!(!Address::Extended([0xff; 8]).is_short());
+        assert!(Address::Extended([0xff; 8]).is_extended());
+
+        assert_eq!(Address::Absent.len(), 0);
+        assert_eq!(Address::Short([0xff, 0xff]).len(), 2);
+        assert_eq!(Address::Extended([0xff; 8]).len(), 8);
+    }
+
+    #[test]
+    fn addressing_mode() {
+        assert_eq!(AddressingMode::from(0b00), AddressingMode::Absent);
+        assert_eq!(AddressingMode::from(0b10), AddressingMode::Short);
+        assert_eq!(AddressingMode::from(0b11), AddressingMode::Extended);
+        assert_eq!(AddressingMode::from(0b01), AddressingMode::Unknown);
+
+        assert_eq!(AddressingMode::Unknown.size(), 0);
+        assert_eq!(AddressingMode::Absent.size(), 0);
+        assert_eq!(AddressingMode::Short.size(), 2);
+        assert_eq!(AddressingMode::Extended.size(), 8);
+    }
+
+    #[test]
     fn is_broadcast() {
         assert!(Address::BROADCAST.is_broadcast());
         assert!(Address::Short([0xff, 0xff]).is_broadcast());
@@ -492,5 +539,82 @@ mod tests {
     #[should_panic]
     fn from_bytes_panic() {
         Address::from_bytes(&[0xff, 0xff, 0xff]);
+    }
+
+    #[test]
+    fn address_present_flags() {
+        use AddressingMode::*;
+        use FrameVersion::*;
+
+        macro_rules! check {
+            (($version:ident, $dst:ident, $src:ident, $compression:literal) -> $expected:expr) => {
+                assert_eq!(
+                    AddressingFields::<&[u8]>::address_present_flags(
+                        $version,
+                        $dst,
+                        $src,
+                        $compression
+                    ),
+                    $expected
+                );
+            };
+        }
+
+        check!((Ieee802154_2003, Short, Short, false) -> Some((true, Short, true, Short)));
+        check!((Ieee802154_2003, Short, Short, true) -> Some((true, Short, false, Short)));
+        check!((Ieee802154_2003, Extended, Extended, false) -> Some((true, Extended, true, Extended)));
+        check!((Ieee802154_2003, Extended, Extended, true) -> Some((true, Extended, false, Extended)));
+        check!((Ieee802154_2003, Short, Extended, false) -> Some((true, Short, true, Extended)));
+        check!((Ieee802154_2003, Short, Extended, true) -> Some((true, Short, false, Extended)));
+        check!((Ieee802154_2003, Extended, Short, false) -> Some((true, Extended, true, Short)));
+        check!((Ieee802154_2003, Extended, Short, true) -> Some((true, Extended, false, Short)));
+        check!((Ieee802154_2003, Absent, Short, false) -> Some((false, Absent, true, Short)));
+        check!((Ieee802154_2003, Absent, Extended, false) -> Some((false, Absent, true, Extended)));
+        check!((Ieee802154_2003, Short, Absent, false) -> Some((true, Short, false, Absent)));
+        check!((Ieee802154_2003, Extended, Absent, false) -> Some((true, Extended, false, Absent)));
+        check!((Ieee802154_2003, Absent, Short, true) -> None);
+        check!((Ieee802154_2003, Absent, Extended, true) -> None);
+        check!((Ieee802154_2003, Short, Absent, true) -> None);
+        check!((Ieee802154_2003, Extended, Absent, true) -> None);
+        check!((Ieee802154_2003, Absent, Absent, false) -> None);
+        check!((Ieee802154_2003, Absent, Absent, true) -> None);
+
+        check!((Ieee802154_2006, Short, Short, false) -> Some((true, Short, true, Short)));
+        check!((Ieee802154_2006, Short, Short, true) -> Some((true, Short, false, Short)));
+        check!((Ieee802154_2006, Extended, Extended, false) -> Some((true, Extended, true, Extended)));
+        check!((Ieee802154_2006, Extended, Extended, true) -> Some((true, Extended, false, Extended)));
+        check!((Ieee802154_2006, Short, Extended, false) -> Some((true, Short, true, Extended)));
+        check!((Ieee802154_2006, Short, Extended, true) -> Some((true, Short, false, Extended)));
+        check!((Ieee802154_2006, Extended, Short, false) -> Some((true, Extended, true, Short)));
+        check!((Ieee802154_2006, Extended, Short, true) -> Some((true, Extended, false, Short)));
+        check!((Ieee802154_2006, Absent, Short, false) -> Some((false, Absent, true, Short)));
+        check!((Ieee802154_2006, Absent, Extended, false) -> Some((false, Absent, true, Extended)));
+        check!((Ieee802154_2006, Short, Absent, false) -> Some((true, Short, false, Absent)));
+        check!((Ieee802154_2006, Extended, Absent, false) -> Some((true, Extended, false, Absent)));
+        check!((Ieee802154_2006, Absent, Short, true) -> None);
+        check!((Ieee802154_2006, Absent, Extended, true) -> None);
+        check!((Ieee802154_2006, Short, Absent, true) -> None);
+        check!((Ieee802154_2006, Extended, Absent, true) -> None);
+        check!((Ieee802154_2006, Absent, Absent, false) -> None);
+        check!((Ieee802154_2006, Absent, Absent, true) -> None);
+
+        check!((Ieee802154_2020, Short, Short, false) -> Some((true, Short, true, Short)));
+        check!((Ieee802154_2020, Short, Short, true) -> Some((true, Short, false, Short)));
+        check!((Ieee802154_2020, Extended, Extended, false) -> Some((true, Extended, false, Extended)));
+        check!((Ieee802154_2020, Extended, Extended, true) -> Some((false, Extended, false, Extended)));
+        check!((Ieee802154_2020, Short, Extended, false) -> Some((true, Short, true, Extended)));
+        check!((Ieee802154_2020, Short, Extended, true) -> Some((true, Short, false, Extended)));
+        check!((Ieee802154_2020, Extended, Short, false) -> Some((true, Extended, true, Short)));
+        check!((Ieee802154_2020, Extended, Short, true) -> Some((true, Extended, false, Short)));
+        check!((Ieee802154_2020, Absent, Short, false) -> Some((false, Absent, true, Short)));
+        check!((Ieee802154_2020, Absent, Extended, false) -> Some((false, Absent, true, Extended)));
+        check!((Ieee802154_2020, Short, Absent, false) -> Some((true, Short, false, Absent)));
+        check!((Ieee802154_2020, Extended, Absent, false) -> Some((true, Extended, false, Absent)));
+        check!((Ieee802154_2020, Absent, Short, true) -> Some((false, Absent, false, Short)));
+        check!((Ieee802154_2020, Absent, Extended, true) -> Some((false, Absent, false, Extended)));
+        check!((Ieee802154_2020, Short, Absent, true) -> Some((false, Short, false, Absent)));
+        check!((Ieee802154_2020, Extended, Absent, true) -> Some((false, Extended, false, Absent)));
+        check!((Ieee802154_2020, Absent, Absent, false) -> Some((false, Absent, false, Absent)));
+        check!((Ieee802154_2020, Absent, Absent, true) -> Some((true, Absent, false, Absent)));
     }
 }
