@@ -583,3 +583,61 @@ bitflags::bitflags! {
         const RESERVED = 0b1100_0000_0000_0000;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn header_iformation_element_id() {
+        assert_eq!(
+            HeaderElementId::from(0x00),
+            HeaderElementId::VendorSpecificHeader
+        );
+        assert_eq!(HeaderElementId::from(0x1a), HeaderElementId::Csl);
+        assert_eq!(HeaderElementId::from(0x1b), HeaderElementId::Rit);
+        assert_eq!(
+            HeaderElementId::from(0x1c),
+            HeaderElementId::DsmePanDescriptor
+        );
+        assert_eq!(HeaderElementId::from(0x1d), HeaderElementId::RendezvousTime);
+        assert_eq!(HeaderElementId::from(0x1e), HeaderElementId::TimeCorrection);
+        assert_eq!(
+            HeaderElementId::from(0x21),
+            HeaderElementId::ExtendedDsmePanDescriptor
+        );
+        assert_eq!(
+            HeaderElementId::from(0x22),
+            HeaderElementId::FragmentSequenceContextDescription
+        );
+        assert_eq!(
+            HeaderElementId::from(0x23),
+            HeaderElementId::SimplifiedSuperframeSpecification
+        );
+        assert_eq!(
+            HeaderElementId::from(0x24),
+            HeaderElementId::SimplifiedGtsSpecification
+        );
+        assert_eq!(
+            HeaderElementId::from(0x25),
+            HeaderElementId::LecimCapabilities
+        );
+        assert_eq!(HeaderElementId::from(0x26), HeaderElementId::TrleDescriptor);
+        assert_eq!(
+            HeaderElementId::from(0x27),
+            HeaderElementId::RccCapabilities
+        );
+        assert_eq!(HeaderElementId::from(0x28), HeaderElementId::RccnDescriptor);
+        assert_eq!(HeaderElementId::from(0x29), HeaderElementId::GlobalTime);
+        assert_eq!(HeaderElementId::from(0x2b), HeaderElementId::Da);
+        assert_eq!(
+            HeaderElementId::from(0x7e),
+            HeaderElementId::HeaderTermination1
+        );
+        assert_eq!(
+            HeaderElementId::from(0x7f),
+            HeaderElementId::HeaderTermination2
+        );
+        assert_eq!(HeaderElementId::from(0x80), HeaderElementId::Unkown);
+    }
+}
