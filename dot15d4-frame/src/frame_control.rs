@@ -345,4 +345,45 @@ mod tests {
         fc.set_frame_version(FrameVersion::Ieee802154_2020);
         assert_eq!(*fc.into_inner(), [0b0010_1001, 0b1010_1010]);
     }
+
+    #[test]
+    fn frame_type() {
+        assert_eq!(FrameType::from(0b000), FrameType::Beacon);
+        assert_eq!(FrameType::from(0b001), FrameType::Data);
+        assert_eq!(FrameType::from(0b010), FrameType::Ack);
+        assert_eq!(FrameType::from(0b011), FrameType::MacCommand);
+        assert_eq!(FrameType::from(0b101), FrameType::Multipurpose);
+        assert_eq!(FrameType::from(0b110), FrameType::FragmentOrFrak);
+        assert_eq!(FrameType::from(0b111), FrameType::Extended);
+        assert_eq!(FrameType::from(0b100), FrameType::Unknown);
+    }
+
+    #[test]
+    fn frame_version() {
+        assert_eq!(FrameVersion::from(0b00), FrameVersion::Ieee802154_2003);
+        assert_eq!(FrameVersion::from(0b01), FrameVersion::Ieee802154_2006);
+        assert_eq!(FrameVersion::from(0b10), FrameVersion::Ieee802154_2020);
+        assert_eq!(FrameVersion::from(0b11), FrameVersion::Unknown);
+    }
+
+    #[test]
+    fn formatting() {
+        let fc = [0b0010_1001, 0b1010_1010];
+        let fc = FrameControl::new(&fc).unwrap();
+        assert_eq!(
+            format!("{}", fc),
+            r"Frame Control
+  type: Data
+  security enabled: 1
+  frame pending: 0
+  ack request: 1
+  pan id compression: 0
+  sequence number suppression: 0
+  information elements present: 1
+  dst addressing mode: Short
+  src addressing mode: Short
+  frame version: Ieee802154_2020
+"
+        );
+    }
 }
