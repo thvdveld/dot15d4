@@ -98,6 +98,11 @@ impl<T: AsRef<[u8]>> FrameControl<T> {
         Self { buffer }
     }
 
+    /// Return the inner buffer.
+    pub fn into_inner(self) -> T {
+        self.buffer
+    }
+
     /// Return the [`FrameType`] field.
     pub fn frame_type(&self) -> FrameType {
         let b = &self.buffer.as_ref()[..2];
@@ -274,5 +279,70 @@ impl<T: AsRef<[u8]>> core::fmt::Display for FrameControl<T> {
         writeln!(f, "  src addressing mode: {:?}", self.src_addressing_mode())?;
         writeln!(f, "  frame version: {:?}", self.frame_version())?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_fields() {
+        let fc = [0x0, 0x0];
+        let fc = FrameControl::new(&fc).unwrap();
+        assert_eq!(fc.frame_type(), FrameType::Beacon);
+        assert_eq!(fc.security_enabled(), false);
+        assert_eq!(fc.frame_pending(), false);
+        assert_eq!(fc.ack_request(), false);
+        assert_eq!(fc.pan_id_compression(), false);
+        assert_eq!(fc.sequence_number_suppression(), false);
+        assert_eq!(fc.information_elements_present(), false);
+        assert_eq!(fc.dst_addressing_mode(), AddressingMode::Absent);
+        assert_eq!(fc.src_addressing_mode(), AddressingMode::Absent);
+        assert_eq!(fc.frame_version(), FrameVersion::Ieee802154_2003);
+
+        let fc = [0b0010_1001, 0b1010_1010];
+        let fc = FrameControl::new(&fc).unwrap();
+        assert_eq!(fc.frame_type(), FrameType::Data);
+        assert_eq!(fc.security_enabled(), true);
+        assert_eq!(fc.frame_pending(), false);
+        assert_eq!(fc.ack_request(), true);
+        assert_eq!(fc.pan_id_compression(), false);
+        assert_eq!(fc.sequence_number_suppression(), false);
+        assert_eq!(fc.information_elements_present(), true);
+        assert_eq!(fc.dst_addressing_mode(), AddressingMode::Short);
+        assert_eq!(fc.src_addressing_mode(), AddressingMode::Short);
+        assert_eq!(fc.frame_version(), FrameVersion::Ieee802154_2020);
+    }
+
+    #[test]
+    fn set_fields() {
+        let mut fc = [0x0, 0x0];
+        let mut fc = FrameControl::new_unchecked(&mut fc);
+        fc.set_frame_type(FrameType::Beacon);
+        fc.set_security_enabled(false);
+        fc.set_frame_pending(false);
+        fc.set_ack_request(false);
+        fc.set_pan_id_compression(false);
+        fc.set_sequence_number_suppression(false);
+        fc.set_information_elements_present(false);
+        fc.set_dst_addressing_mode(AddressingMode::Absent);
+        fc.set_src_addressing_mode(AddressingMode::Absent);
+        fc.set_frame_version(FrameVersion::Ieee802154_2003);
+        assert_eq!(*fc.into_inner(), [0x0, 0x0]);
+
+        let mut fc = [0x0, 0x0];
+        let mut fc = FrameControl::new_unchecked(&mut fc);
+        fc.set_frame_type(FrameType::Data);
+        fc.set_security_enabled(true);
+        fc.set_frame_pending(false);
+        fc.set_ack_request(true);
+        fc.set_pan_id_compression(false);
+        fc.set_sequence_number_suppression(false);
+        fc.set_information_elements_present(true);
+        fc.set_dst_addressing_mode(AddressingMode::Short);
+        fc.set_src_addressing_mode(AddressingMode::Short);
+        fc.set_frame_version(FrameVersion::Ieee802154_2020);
+        assert_eq!(*fc.into_inner(), [0b0010_1001, 0b1010_1010]);
     }
 }
