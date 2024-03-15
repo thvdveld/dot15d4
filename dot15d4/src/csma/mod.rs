@@ -259,29 +259,45 @@ where
         }
     }
 
+    /// If the frame is malformed/invalid -> parsing error will be returned.
+    /// If the frame is no ack'able -> the sequence number will be None.
+    /// Second argument in the option is the frame length -> useful to find out how long we should wait for an ACK
     fn set_ack_request_if_possible<'a, RadioFrame>(
         &self,
         buffer: &'a mut [u8],
-    ) -> Result<Option<u8>, TransmissionTaskError<RadioFrame::Error>>
+    ) -> Result<Option<(u8, u8)>, TransmissionTaskError<RadioFrame::Error>>
     where
         RadioFrame: RadioFrameMut<&'a mut [u8]>,
     {
         let mut frame =
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
+        let frame_len = frame.data().len() as u8;
         let mut frame =
             Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
-        if frame.frame_control().frame_type() == FrameType::Data {
+
+        // Only Data and MAC Commands should be able to get an ACK
+        let frame_type = frame.frame_control().frame_type();
+        if frame_type == FrameType::Data || frame_type == FrameType::MacCommand {
             match frame.addressing().and_then(|addr| addr.dst_address()) {
                 Some(addr) if addr.is_unicast() && self.config.ack_unicast => {
-                    frame.frame_control_mut().set_ack_request(true)
+                    frame.frame_control_mut().set_ack_request(true);
+                    Ok(frame.sequence_number().map(|seq| (seq, frame_len)))
                 }
                 Some(addr) if addr.is_broadcast() && self.config.ack_broadcast => {
-                    frame.frame_control_mut().set_ack_request(true)
+                    frame.frame_control_mut().set_ack_request(true);
+                    Ok(frame.sequence_number().map(|seq| (seq, frame_len)))
                 }
-                Some(_) | None => {}
+                Some(_) | None => {
+                    // Make sure that the ack_request field is set to false independent on how the frame was actually created
+                    frame.frame_control_mut().set_ack_request(false);
+                    Ok(None)
+                }
             }
+        } else {
+            // We want an ACK, and here is the sequence number
+            frame.frame_control_mut().set_ack_request(false);
+            Ok(None)
         }
-        Ok(frame.sequence_number())
     }
 
     async fn wait_for_valid_ack(radio: &mut R, sequence_number: u8, ack_rx: &mut [u8; 128]) {
@@ -327,7 +343,7 @@ where
             // Enable ACK in frame coming from higher layers
             let mut sequence_number = None;
             match self.set_ack_request_if_possible::<R::RadioFrame<_>>(&mut tx.buffer) {
-                Ok(seq_number) => sequence_number = Some(seq_number).flatten(),
+                Ok(seq_number) => sequence_number = seq_number,
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
                     self.driver.error(driver::Error::InvalidStructure).await;
@@ -363,12 +379,14 @@ where
                 }
 
                 // We now want to try and receive an ACK
-                if let Some(sequence_number) = sequence_number {
+                if let Some((sequence_number, frame_length)) = sequence_number {
                     utils::acquire_lock(&self.radio, &wants_to_transmit_signal, &mut radio_guard)
                         .await;
 
                     let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
-                        + MAC_SIFT_PERIOD.max(Duration::from_us(TURNAROUND_TIME as i64));
+                        + (MAC_SIFT_PERIOD.max(Duration::from_us(
+                            (TURNAROUND_TIME * SYMBOL_RATE_INV_US * frame_length as u32) as i64,
+                        )));
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
@@ -400,7 +418,9 @@ where
                 radio_guard = None;
 
                 // Wait for SIFS here
-                let delay = MAC_SIFT_PERIOD.max(Duration::from_us(TURNAROUND_TIME as i64));
+                let delay = MAC_SIFT_PERIOD.max(Duration::from_us(
+                    (TURNAROUND_TIME * SYMBOL_RATE_INV_US) as i64,
+                ));
                 timer.delay_us(delay.as_us() as u32).await;
 
                 // Was this the last attempt?
