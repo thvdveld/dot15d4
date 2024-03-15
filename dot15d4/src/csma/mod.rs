@@ -45,10 +45,10 @@ pub struct CsmaConfig {
     /// All to be transmitted frames will get the ack_request flag set if they
     /// are broadcast and a data frame
     ack_broadcast: bool,
-    /// If false, all incoming packets will be sent up the layer stack, useful
+    /// If false, all incoming frames will be sent up the layer stack, useful
     /// if making a sniffer. This does not include MAC layer control traffic.
-    /// The default is true, meaning that packets not ment for us (non-broadcast
-    /// or packets with a different destination address) will be filtered out.
+    /// The default is true, meaning that frames not ment for us (non-broadcast
+    /// or frames with a different destination address) will be filtered out.
     ignore_not_for_us: bool,
     /// Even if there is no ack_request flag set, ack it anyway
     ack_everything: bool,
@@ -458,7 +458,7 @@ pub mod tests {
 
         // Select here, such that everything ends when the test is over
         select::select(csma.run(), async {
-            let packet = FrameBuffer::default();
+            let frame = FrameBuffer::default();
             radio.inner(|inner| {
                 inner.assert_nxt.append(
                     &mut [
@@ -476,7 +476,7 @@ pub mod tests {
                     .into(),
                 );
             });
-            monitor.tx.send_async(packet.clone()).await;
+            monitor.tx.send_async(frame.clone()).await;
             radio.wait_until_asserts_are_consumed().await;
         })
         .await;
@@ -497,7 +497,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = FrameBuffer::default();
+            let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -509,17 +509,17 @@ pub mod tests {
             // Set ACK to false, such that we can test if it acks
             frame_repr.frame_control.ack_request = false;
 
-            let token = TestTxToken::from(&mut packet.buffer[..]);
+            let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
 
             // Check if frame is correct
-            let frame = TestRadioFrame::new_checked(&packet.buffer).unwrap();
+            let frame = TestRadioFrame::new_checked(&f.buffer).unwrap();
             let _frame = Frame::new(frame.data()).unwrap();
 
-            monitor.tx.send_async(packet.clone()).await;
+            monitor.tx.send_async(f.clone()).await;
             radio.inner(|inner| {
                 inner.assert_nxt.clear();
                 inner.assert_nxt.append(
@@ -541,13 +541,13 @@ pub mod tests {
             });
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
-                // Assert that we have the correct transmitted packet
-                let mut frame = Frame::new_unchecked(&mut packet.buffer);
+                // Assert that we have the correct transmitted frame
+                let mut frame = Frame::new_unchecked(&mut f.buffer);
                 frame.frame_control_mut().set_ack_request(true);
                 assert_eq!(
                     inner.last_transmitted,
-                    Some(packet.buffer),
-                    "The transmitted packet should have the ack_request set by default"
+                    Some(f.buffer),
+                    "The transmitted frame should have the ack_request set by default"
                 );
 
                 let mut ack_frame = FrameBuffer::default();
@@ -603,7 +603,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = FrameBuffer::default();
+            let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -614,19 +614,19 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = true;
 
-            let token = TestTxToken::from(&mut packet.buffer[..]);
+            let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
-                inner.should_receive = Some(packet.buffer);
+                inner.should_receive = Some(f.buffer);
                 inner
                     .assert_nxt
                     .append(&mut [TestRadioEvent::PrepareTransmit, TestRadioEvent::Transmit].into())
             });
-            assert_eq!(monitor.rx.receive().await.buffer, packet.buffer);
+            assert_eq!(monitor.rx.receive().await.buffer, f.buffer);
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 assert_eq!(
@@ -672,7 +672,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = FrameBuffer::default();
+            let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -683,19 +683,19 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = false;
 
-            let token = TestTxToken::from(&mut packet.buffer[..]);
+            let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
-                inner.should_receive = Some(packet.buffer);
+                inner.should_receive = Some(f.buffer);
                 inner
                     .assert_nxt
                     .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
             });
-            assert_eq!(monitor.rx.receive().await.buffer, packet.buffer);
+            assert_eq!(monitor.rx.receive().await.buffer, f.buffer);
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 assert!(
@@ -722,7 +722,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = FrameBuffer::default();
+            let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -734,17 +734,17 @@ pub mod tests {
             // Set ACK to false, such that we can test if it acks
             frame_repr.frame_control.ack_request = false;
 
-            let token = TestTxToken::from(&mut packet.buffer[..]);
+            let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
 
             // Check if frame is correct
-            let frame = TestRadioFrame::new_checked(&packet.buffer).unwrap();
+            let frame = TestRadioFrame::new_checked(&f.buffer).unwrap();
             let _frame = Frame::new(frame.data()).unwrap();
 
-            monitor.tx.send_async(packet.clone()).await;
+            monitor.tx.send_async(f.clone()).await;
             radio.inner(|inner| {
                 inner.assert_nxt.clear();
                 inner.assert_nxt.append(
@@ -766,13 +766,13 @@ pub mod tests {
             });
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
-                // Assert that we have the correct transmitted packet
-                let mut frame = Frame::new_unchecked(&mut packet.buffer);
+                // Assert that we have the correct transmitted frame
+                let mut frame = Frame::new_unchecked(&mut f.buffer);
                 frame.frame_control_mut().set_ack_request(true);
                 assert_eq!(
                     inner.last_transmitted,
-                    Some(packet.buffer),
-                    "The transmitted packet should have the ack_request set by default"
+                    Some(f.buffer),
+                    "The transmitted frame should have the ack_request set by default"
                 );
 
                 let mut ack_frame = FrameBuffer::default();
@@ -836,7 +836,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = FrameBuffer::default();
+            let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
@@ -848,17 +848,17 @@ pub mod tests {
             // Set ACK to false, such that we can test if it acks
             frame_repr.frame_control.ack_request = false;
 
-            let token = TestTxToken::from(&mut packet.buffer[..]);
+            let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
 
             // Check if frame is correct
-            let frame = TestRadioFrame::new_checked(&packet.buffer).unwrap();
+            let frame = TestRadioFrame::new_checked(&f.buffer).unwrap();
             let _frame = Frame::new(frame.data()).unwrap();
 
-            monitor.tx.send_async(packet.clone()).await;
+            monitor.tx.send_async(f.clone()).await;
             radio.inner(|inner| {
                 inner.assert_nxt.clear();
                 inner.assert_nxt.append(
@@ -922,7 +922,7 @@ pub mod tests {
 
         select::select(csma.run(), async {
             let sequence_number = 123;
-            let mut packet = FrameBuffer::default();
+            let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::BROADCAST)
@@ -933,19 +933,19 @@ pub mod tests {
                 .unwrap();
             frame_repr.frame_control.ack_request = true; // This should be ignored
 
-            let token = TestTxToken::from(&mut packet.buffer[..]);
+            let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
                 let mut frame = Frame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
-                inner.should_receive = Some(packet.buffer);
+                inner.should_receive = Some(f.buffer);
                 inner
                     .assert_nxt
                     .append(&mut [TestRadioEvent::PrepareReceive, TestRadioEvent::Receive].into())
             });
-            assert_eq!(monitor.rx.receive().await.buffer, packet.buffer);
+            assert_eq!(monitor.rx.receive().await.buffer, f.buffer);
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 assert_eq!(

@@ -16,7 +16,7 @@ pub trait Radio {
     /// Request the radio to wake from sleep.
     fn enable(&mut self) -> impl Future<Output = ()>;
 
-    /// Request the radio to go in receive mode and try to receive a packet into
+    /// Request the radio to go in receive mode and try to receive a frame into
     /// the supplied buffer.
     ///
     /// # Safety
@@ -28,10 +28,10 @@ pub trait Radio {
         bytes: &mut [u8; 128],
     ) -> impl Future<Output = ()>;
 
-    /// Request the radio to go in receive mode and try to receive a packet.
+    /// Request the radio to go in receive mode and try to receive a frame.
     fn receive(&mut self) -> impl Future<Output = bool>;
 
-    /// Request the radio to go in transmit mode and try to send a packet.
+    /// Request the radio to go in transmit mode and try to send a frame.
     /// The mutability of the bytes argument is not really to modify the buffer,
     /// but rather to signify to hand over exclusive ownership. In addition this
     /// also helps with the easy_dma on the nRF family of chips as the buffer
@@ -53,7 +53,7 @@ pub trait Radio {
     /// not be async.
     fn cancel_current_opperation(&mut self);
 
-    /// Request the radio to transmit the queued packet.
+    /// Request the radio to transmit the queued frame.
     ///
     /// Returns whether a transmission was successful.
     fn transmit(&mut self) -> impl Future<Output = bool>;
