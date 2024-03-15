@@ -1,4 +1,5 @@
-# dot15d4
+# dot15d4 [![codecov](https://codecov.io/gh/thvdveld/dot15d4/graph/badge.svg?token=XETJ1SV5B0)](https://codecov.io/gh/thvdveld/dot15d4) ![example workflow](https://github.com/thvdveld/dot15d4/actions/workflows/rust.yml/badge.svg)
+
 
 `dot15d4` is a IEEE 802.15.4 frame parsing library written in Rust.
 It uses the same style of parsing and emitting as the [`smoltcp`](https://github.com/smoltcp-rs/smoltcp) library.
@@ -61,6 +62,10 @@ Information Elements
       TschSlotframeAndLink
         #slot frames: 0
 ```
+
+## Coverage
+
+![Coverage](https://codecov.io/gh/thvdveld/dot15d4/graphs/sunburst.svg?token=XETJ1SV5B0)
 
 ## License
 

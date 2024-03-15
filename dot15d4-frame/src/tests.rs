@@ -57,15 +57,15 @@ fn parse_ack_frame() {
     assert!(frame.sequence_number() == Some(55));
 
     let addressing = frame.addressing().unwrap();
-    assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
+    assert_eq!(addressing.dst_pan_id(), Some(0xabcd));
     assert_eq!(
-        addressing.dst_address(&fc),
+        addressing.dst_address(),
         Some(Address::Extended([
             0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02
         ]))
     );
-    assert_eq!(addressing.src_pan_id(&fc), None);
-    assert_eq!(addressing.src_address(&fc), Some(Address::Absent));
+    assert_eq!(addressing.src_pan_id(), None);
+    assert_eq!(addressing.src_address(), Some(Address::Absent));
 
     let ie = frame.information_elements().unwrap();
     let mut headers = ie.header_information_elements();
@@ -137,11 +137,11 @@ fn parse_data_frame() {
     assert!(frame.sequence_number() == Some(1));
 
     let addressing = frame.addressing().unwrap();
-    assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd));
-    assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));
-    assert_eq!(addressing.src_pan_id(&fc), None);
+    assert_eq!(addressing.dst_pan_id(), Some(0xabcd));
+    assert_eq!(addressing.dst_address(), Some(Address::BROADCAST));
+    assert_eq!(addressing.src_pan_id(), None);
     assert_eq!(
-        addressing.src_address(&fc),
+        addressing.src_address(),
         Some(Address::Extended([
             0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7
         ]))
@@ -200,16 +200,16 @@ fn parse_enhanced_beacon() {
     assert_eq!(fc.frame_version(), FrameVersion::Ieee802154_2020);
 
     let addressing = frame.addressing().unwrap();
-    assert_eq!(addressing.dst_pan_id(&fc), Some(0xabcd),);
-    assert_eq!(addressing.src_pan_id(&fc), None,);
-    assert_eq!(addressing.dst_address(&fc), Some(Address::BROADCAST));
+    assert_eq!(addressing.dst_pan_id(), Some(0xabcd),);
+    assert_eq!(addressing.src_pan_id(), None,);
+    assert_eq!(addressing.dst_address(), Some(Address::BROADCAST));
     assert_eq!(
-        addressing.src_address(&fc),
+        addressing.src_address(),
         Some(Address::Extended([
             0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01
         ]))
     );
-    assert_eq!(addressing.len(&fc), 12);
+    assert_eq!(addressing.len(), 12);
 
     let ie = frame.information_elements().unwrap();
 
