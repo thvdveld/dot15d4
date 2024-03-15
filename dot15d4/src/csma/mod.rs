@@ -124,10 +124,7 @@ where
     /// Checks if the current frame is intended for us. For the hardware
     /// address, the full 64-bit address should be provided.
     fn is_package_for_us(hardware_address: &[u8; 8], frame: &Frame<&'_ [u8]>) -> bool {
-        let Some(addr) = frame
-            .addressing()
-            .and_then(|fields| fields.dst_address(&frame.frame_control()))
-        else {
+        let Some(addr) = frame.addressing().and_then(|fields| fields.dst_address()) else {
             return false;
         };
 
@@ -204,10 +201,7 @@ where
                     continue 'outer;
                 }
 
-                let should_ack = match frame
-                    .addressing()
-                    .and_then(|addr| addr.dst_address(&frame.frame_control()))
-                {
+                let should_ack = match frame.addressing().and_then(|addr| addr.dst_address()) {
                     // Overwrite in config
                     _ if self.config.ack_everything => true,
 
@@ -277,10 +271,7 @@ where
         let mut frame =
             Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
         if frame.frame_control().frame_type() == FrameType::Data {
-            match frame
-                .addressing()
-                .and_then(|addr| addr.dst_address(&frame.frame_control()))
-            {
+            match frame.addressing().and_then(|addr| addr.dst_address()) {
                 Some(addr) if addr.is_unicast() && self.config.ack_unicast => {
                     frame.frame_control_mut().set_ack_request(true)
                 }

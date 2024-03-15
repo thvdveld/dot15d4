@@ -130,11 +130,11 @@ fn main() {
         w.writeln(format!("{}", "Addressing".underline().bold()));
         w.increase_indent();
 
-        if let Some(dst_pan_id) = addr.dst_pan_id(&fc) {
+        if let Some(dst_pan_id) = addr.dst_pan_id() {
             w.writeln(format!("{}: {:x}", "dst pan id".bold(), dst_pan_id));
         }
 
-        if let Some(dst_addr) = addr.dst_address(&fc) {
+        if let Some(dst_addr) = addr.dst_address() {
             w.writeln(format!(
                 "{}: {}{}",
                 "dst addr".bold(),
@@ -147,11 +147,11 @@ fn main() {
             ));
         }
 
-        if let Some(src_pan_id) = addr.src_pan_id(&fc) {
+        if let Some(src_pan_id) = addr.src_pan_id() {
             w.writeln(format!("{}: {:x}", "src pan id".bold(), src_pan_id));
         }
 
-        if let Some(src_addr) = addr.src_address(&fc) {
+        if let Some(src_addr) = addr.src_address() {
             w.writeln(format!(
                 "{}: {}{}",
                 "src addr".bold(),

@@ -1,4 +1,4 @@
-use super::super::{Address, AddressingFields, AddressingMode, FrameControl};
+use super::super::{Address, AddressingFields, AddressingMode};
 use super::FrameControlRepr;
 
 /// A high-level representation of the IEEE 802.15.4 Addressing Fields.
@@ -17,12 +17,12 @@ pub struct AddressingFieldsRepr {
 
 impl AddressingFieldsRepr {
     /// Parse the Addressing Fields from the given buffer.
-    pub fn parse<'f>(addressing: AddressingFields<&'f [u8]>, fc: FrameControl<&'f [u8]>) -> Self {
+    pub fn parse(addressing: AddressingFields<&'_ [u8], &'_ [u8]>) -> Self {
         Self {
-            dst_pan_id: addressing.dst_pan_id(&fc),
-            dst_address: addressing.dst_address(&fc),
-            src_pan_id: addressing.src_pan_id(&fc),
-            src_address: addressing.src_address(&fc),
+            dst_pan_id: addressing.dst_pan_id(),
+            dst_address: addressing.dst_address(),
+            src_pan_id: addressing.src_pan_id(),
+            src_address: addressing.src_address(),
         }
     }
 
@@ -48,7 +48,7 @@ impl AddressingFieldsRepr {
     }
 
     /// Emit the Addressing Fields into the given buffer.
-    pub fn emit(&self, _buffer: &AddressingFields<&'_ mut [u8]>, _fc: &FrameControl<&'_ [u8]>) {
+    pub fn emit(&self, _buffer: &AddressingFields<&'_ mut [u8], &'_ [u8]>) {
         todo!();
     }
 }

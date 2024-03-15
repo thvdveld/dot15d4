@@ -152,11 +152,12 @@ impl From<u8> for AddressingMode {
 }
 
 /// A reader/writer for the IEEE 802.15.4 Addressing Fields.
-pub struct AddressingFields<T: AsRef<[u8]>> {
+pub struct AddressingFields<T: AsRef<[u8]>, FC: AsRef<[u8]>> {
     buffer: T,
+    fc: FrameControl<FC>,
 }
 
-impl<T: AsRef<[u8]>> AddressingFields<T> {
+impl<T: AsRef<[u8]>, FC: AsRef<[u8]>> AddressingFields<T, FC> {
     /// Create a new [`AddressingFields`] reader/writer from a given buffer.
     ///
     /// # Errors
@@ -164,10 +165,10 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     /// This function will check the length of the buffer to ensure it is large
     /// enough to contain the addressing fields. If the buffer is too small,
     /// an error will be returned.
-    pub fn new(buffer: T, fc: &FrameControl<T>) -> Result<Self> {
-        let af = Self::new_unchecked(buffer);
+    pub fn new(buffer: T, fc: FrameControl<FC>) -> Result<Self> {
+        let af = Self::new_unchecked(buffer, fc);
 
-        if !af.check_len(fc) {
+        if !af.check_len() {
             return Err(Error);
         }
 
@@ -175,13 +176,13 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 
     /// Check if the buffer is large enough to contain the addressing fields.
-    fn check_len(&self, fc: &FrameControl<T>) -> bool {
+    fn check_len(&self) -> bool {
         let Some((dst_pan_id_present, dst_addr_mode, src_pan_id_present, src_addr_mode)) =
             Self::address_present_flags(
-                fc.frame_version(),
-                fc.dst_addressing_mode(),
-                fc.src_addressing_mode(),
-                fc.pan_id_compression(),
+                self.fc.frame_version(),
+                self.fc.dst_addressing_mode(),
+                self.fc.src_addressing_mode(),
+                self.fc.pan_id_compression(),
             )
         else {
             return false;
@@ -197,24 +198,25 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
 
     /// Create a new [`AddressingFields`] reader/writer from a given buffer
     /// without checking the length.
-    pub fn new_unchecked(buffer: T) -> Self {
-        Self { buffer }
+    pub fn new_unchecked(buffer: T, fc: FrameControl<FC>) -> Self {
+        Self { buffer, fc }
     }
 
     /// Return the length of the Addressing Fields in octets.
-    pub fn len(&self, fc: &FrameControl<T>) -> usize {
-        (match self.dst_pan_id(fc) {
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        (match self.dst_pan_id() {
             Some(_) => 2,
             None => 0,
-        }) + match fc.dst_addressing_mode() {
+        }) + match self.fc.dst_addressing_mode() {
             AddressingMode::Absent => 0,
             AddressingMode::Short => 2,
             AddressingMode::Extended => 8,
             _ => unreachable!(),
-        } + match self.src_pan_id(fc) {
+        } + match self.src_pan_id() {
             Some(_) => 2,
             None => 0,
-        } + match fc.src_addressing_mode() {
+        } + match self.fc.src_addressing_mode() {
             AddressingMode::Absent => 0,
             AddressingMode::Short => 2,
             AddressingMode::Extended => 8,
@@ -280,12 +282,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 
     /// Return the IEEE 802.15.4 destination [`Address`] if not absent.
-    pub fn dst_address(&self, fc: &FrameControl<T>) -> Option<Address> {
+    pub fn dst_address(&self) -> Option<Address> {
         if let Some((dst_pan_id, dst_addr, _, _)) = Self::address_present_flags(
-            fc.frame_version(),
-            fc.dst_addressing_mode(),
-            fc.src_addressing_mode(),
-            fc.pan_id_compression(),
+            self.fc.frame_version(),
+            self.fc.dst_addressing_mode(),
+            self.fc.src_addressing_mode(),
+            self.fc.pan_id_compression(),
         ) {
             let offset = if dst_pan_id { 2 } else { 0 };
 
@@ -311,12 +313,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 
     /// Return the IEEE 802.15.4 source [`Address`] if not absent.
-    pub fn src_address(&self, fc: &FrameControl<T>) -> Option<Address> {
+    pub fn src_address(&self) -> Option<Address> {
         if let Some((dst_pan_id, dst_addr, src_pan_id, src_addr)) = Self::address_present_flags(
-            fc.frame_version(),
-            fc.dst_addressing_mode(),
-            fc.src_addressing_mode(),
-            fc.pan_id_compression(),
+            self.fc.frame_version(),
+            self.fc.dst_addressing_mode(),
+            self.fc.src_addressing_mode(),
+            self.fc.pan_id_compression(),
         ) {
             let mut offset = if dst_pan_id { 2 } else { 0 };
             offset += dst_addr.size();
@@ -344,12 +346,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 
     /// Return the IEEE 802.15.4 destination PAN ID if not elided.
-    pub fn dst_pan_id(&self, fc: &FrameControl<T>) -> Option<u16> {
+    pub fn dst_pan_id(&self) -> Option<u16> {
         if let Some((true, _, _, _)) = Self::address_present_flags(
-            fc.frame_version(),
-            fc.dst_addressing_mode(),
-            fc.src_addressing_mode(),
-            fc.pan_id_compression(),
+            self.fc.frame_version(),
+            self.fc.dst_addressing_mode(),
+            self.fc.src_addressing_mode(),
+            self.fc.pan_id_compression(),
         ) {
             let b = &self.buffer.as_ref()[..2];
             Some(u16::from_le_bytes([b[0], b[1]]))
@@ -359,12 +361,12 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 
     /// Return the IEEE 802.15.4 source PAN ID if not elided.
-    pub fn src_pan_id(&self, fc: &FrameControl<T>) -> Option<u16> {
+    pub fn src_pan_id(&self) -> Option<u16> {
         if let Some((dst_pan_id, dst_addr, true, _)) = Self::address_present_flags(
-            fc.frame_version(),
-            fc.dst_addressing_mode(),
-            fc.src_addressing_mode(),
-            fc.pan_id_compression(),
+            self.fc.frame_version(),
+            self.fc.dst_addressing_mode(),
+            self.fc.src_addressing_mode(),
+            self.fc.pan_id_compression(),
         ) {
             let mut offset = if dst_pan_id { 2 } else { 0 };
             offset += dst_addr.size();
@@ -375,27 +377,25 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
             None
         }
     }
+}
 
-    pub(crate) fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-        fc: &FrameControl<T>,
-    ) -> core::fmt::Result {
+impl<T: AsRef<[u8]>, FC: AsRef<[u8]>> core::fmt::Display for AddressingFields<T, FC> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "Addressing Fields")?;
 
-        if let Some(id) = self.dst_pan_id(fc) {
+        if let Some(id) = self.dst_pan_id() {
             writeln!(f, "  dst pan id: {:0x}", id)?;
         }
 
-        if let Some(addr) = self.dst_address(fc) {
+        if let Some(addr) = self.dst_address() {
             writeln!(f, "  dst address: {}", addr)?;
         }
 
-        if let Some(id) = self.src_pan_id(fc) {
+        if let Some(id) = self.src_pan_id() {
             writeln!(f, "  src pan id: {:0x}", id)?;
         }
 
-        if let Some(addr) = self.src_address(fc) {
+        if let Some(addr) = self.src_address() {
             writeln!(f, "  src address: {}", addr)?;
         }
 
@@ -403,7 +403,7 @@ impl<T: AsRef<[u8]>> AddressingFields<T> {
     }
 }
 
-impl<T: AsRef<[u8]> + AsMut<[u8]>> AddressingFields<T> {
+impl<T: AsRef<[u8]> + AsMut<[u8]>, FC: AsRef<[u8]>> AddressingFields<T, FC> {
     /// Write the addressing fields to the buffer.
     pub fn write_fields(&mut self, fields: &super::repr::AddressingFieldsRepr) {
         let mut offset = 0;
@@ -549,7 +549,7 @@ mod tests {
         macro_rules! check {
             (($version:ident, $dst:ident, $src:ident, $compression:literal) -> $expected:expr) => {
                 assert_eq!(
-                    AddressingFields::<&[u8]>::address_present_flags(
+                    AddressingFields::<&[u8], &[u8]>::address_present_flags(
                         $version,
                         $dst,
                         $src,

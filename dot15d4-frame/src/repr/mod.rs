@@ -35,7 +35,7 @@ impl<'f> FrameRepr<'f> {
         let frame_control = FrameControlRepr::parse(reader.frame_control())?;
         let addressing_fields = reader
             .addressing()
-            .map(|af| AddressingFieldsRepr::parse(af, reader.frame_control()));
+            .map(|af| AddressingFieldsRepr::parse(af));
         let information_elements = reader
             .information_elements()
             .map(InformationElementsRepr::parse)
