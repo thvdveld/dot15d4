@@ -287,6 +287,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bad_length() {
+        let fc = [0x0];
+        assert!(FrameControl::new(&fc).is_err());
+    }
+
+    #[test]
     fn get_fields() {
         let fc = [0x0, 0x0];
         let fc = FrameControl::new(&fc).unwrap();
