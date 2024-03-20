@@ -3,9 +3,15 @@ use core::future::Future;
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Error {
+    /// Cca failed after to many fallbacks
     CcaFailed,
+    /// Ack failed, after to many retransmissions
     AckFailed,
-    InvalidStructure,
+    /// The buffer did not follow the correct device structure
+    InvalidDeviceStructure,
+    /// Invalid IEEE frame
+    InvalidIEEEStructure,
+    /// Something went wrong in the radio
     RadioError,
 }
 

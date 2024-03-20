@@ -348,11 +348,15 @@ where
                 Ok(seq_number) => sequence_number = seq_number,
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
-                    self.driver.error(driver::Error::InvalidStructure).await;
+                    defmt::trace!("INVALID frame TX incoming buffer IEEE");
+                    self.driver.error(driver::Error::InvalidIEEEStructure).await;
                 }
-                Err(TransmissionTaskError::InvalidDeviceFrame(_err)) => {
+                Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
                     // Invalid device frame encountered
-                    self.driver.error(driver::Error::InvalidStructure).await;
+                    defmt::trace!("INVALID frame TX incoming buffer device: {}", err);
+                    self.driver
+                        .error(driver::Error::InvalidDeviceStructure)
+                        .await;
                 }
             }
 
