@@ -4,6 +4,7 @@ use rand_core::RngCore;
 use super::user_configurable_constants::*;
 use super::utils;
 
+use crate::phy::config;
 use crate::phy::config::TxConfig;
 use crate::phy::driver::FrameBuffer;
 use crate::phy::radio::futures::transmit;
@@ -21,6 +22,7 @@ pub enum TransmissionError {
 pub async fn transmit_cca<'m, R, TIMER, Rng>(
     radio: &'m Mutex<R>,
     radio_guard: &mut Option<MutexGuard<'m, R>>,
+    channel: config::Channel,
     wants_to_transmit_signal: &Sender<'_, ()>,
     tx_frame: &mut FrameBuffer,
     timer: &mut TIMER,
@@ -38,7 +40,10 @@ where
             transmit(
                 &mut **radio_guard.as_mut().unwrap(),
                 &mut tx_frame.buffer,
-                TxConfig::default_with_cca(),
+                TxConfig {
+                    channel,
+                    ..TxConfig::default_with_cca()
+                },
             )
             .await
         };

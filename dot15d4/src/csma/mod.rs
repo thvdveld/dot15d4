@@ -10,7 +10,7 @@ use user_configurable_constants::*;
 
 use crate::{
     phy::{
-        config::{RxConfig, TxConfig},
+        config::{self, RxConfig, TxConfig},
         driver::{self, Driver, FrameBuffer},
         radio::{
             futures::{receive, transmit},
@@ -41,17 +41,19 @@ enum TransmissionTaskError<D: core::fmt::Debug> {
 pub struct CsmaConfig {
     /// All to be transmitted frames will get the ack_request flag set if they
     /// are unicast and a data frame
-    ack_unicast: bool,
+    pub ack_unicast: bool,
     /// All to be transmitted frames will get the ack_request flag set if they
     /// are broadcast and a data frame
-    ack_broadcast: bool,
+    pub ack_broadcast: bool,
     /// If false, all incoming frames will be sent up the layer stack, useful
     /// if making a sniffer. This does not include MAC layer control traffic.
     /// The default is true, meaning that frames not ment for us (non-broadcast
     /// or frames with a different destination address) will be filtered out.
-    ignore_not_for_us: bool,
+    pub ignore_not_for_us: bool,
     /// Even if there is no ack_request flag set, ack it anyway
-    ack_everything: bool,
+    pub ack_everything: bool,
+    /// The channel on which to transmit/receive
+    pub channel: config::Channel,
 }
 
 impl Default for CsmaConfig {
@@ -61,6 +63,7 @@ impl Default for CsmaConfig {
             ack_broadcast: false,
             ignore_not_for_us: true,
             ack_everything: false,
+            channel: config::Channel::_26,
         }
     }
 }
@@ -157,7 +160,9 @@ where
                     receive(
                         &mut **radio_guard.as_mut().unwrap(),
                         &mut rx.buffer,
-                        RxConfig::default(),
+                        RxConfig {
+                            channel: self.config.channel,
+                        },
                     ),
                     wants_to_transmit_signal.receive(),
                 )
@@ -245,7 +250,10 @@ where
                         transmit(
                             &mut **radio_guard.as_mut().unwrap(),
                             &mut tx_ack.buffer,
-                            TxConfig::default(),
+                            TxConfig {
+                                channel: self.config.channel,
+                                ..Default::default()
+                            },
                         )
                         .await;
                     }
@@ -302,9 +310,14 @@ where
         }
     }
 
-    async fn wait_for_valid_ack(radio: &mut R, sequence_number: u8, ack_rx: &mut [u8; 128]) {
+    async fn wait_for_valid_ack(
+        radio: &mut R,
+        channel: config::Channel,
+        sequence_number: u8,
+        ack_rx: &mut [u8; 128],
+    ) {
         loop {
-            let result = receive(radio, ack_rx, RxConfig::default()).await;
+            let result = receive(radio, ack_rx, RxConfig { channel }).await;
             if !result {
                 // No succesful receive, try again
                 continue;
@@ -348,12 +361,13 @@ where
                 Ok(seq_number) => sequence_number = seq_number,
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
+                    #[cfg(feature = "defmt")]
                     defmt::trace!("INVALID frame TX incoming buffer IEEE");
                     self.driver.error(driver::Error::InvalidIEEEStructure).await;
                 }
+                #[allow(unused_variables)]
                 Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
                     // Invalid device frame encountered
-                    defmt::trace!("INVALID frame TX incoming buffer device: {}", err);
                     self.driver
                         .error(driver::Error::InvalidDeviceStructure)
                         .await;
@@ -369,6 +383,7 @@ where
                 match transmission::transmit_cca(
                     &self.radio,
                     &mut radio_guard,
+                    self.config.channel,
                     &wants_to_transmit_signal,
                     &mut tx,
                     &mut timer,
@@ -396,6 +411,7 @@ where
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
+                            self.config.channel,
                             sequence_number,
                             &mut ack_rx.buffer,
                         ),
