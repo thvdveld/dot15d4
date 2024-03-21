@@ -626,7 +626,7 @@ pub mod tests {
             let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
-                .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
+                .set_dst_address(Address::Extended(radio.ieee802154_address()))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
                 .set_dst_pan_id(0xfff)
                 .set_src_pan_id(0xfff)
@@ -695,7 +695,7 @@ pub mod tests {
             let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
-                .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
+                .set_dst_address(Address::Extended(radio.ieee802154_address()))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
                 .set_dst_pan_id(0xfff)
                 .set_src_pan_id(0xfff)
