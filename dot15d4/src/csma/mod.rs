@@ -10,7 +10,7 @@ use user_configurable_constants::*;
 
 use crate::{
     phy::{
-        config::{RxConfig, TxConfig},
+        config::{self, RxConfig, TxConfig},
         driver::{self, Driver, FrameBuffer},
         radio::{
             futures::{receive, transmit},
@@ -41,17 +41,19 @@ enum TransmissionTaskError<D: core::fmt::Debug> {
 pub struct CsmaConfig {
     /// All to be transmitted frames will get the ack_request flag set if they
     /// are unicast and a data frame
-    ack_unicast: bool,
+    pub ack_unicast: bool,
     /// All to be transmitted frames will get the ack_request flag set if they
     /// are broadcast and a data frame
-    ack_broadcast: bool,
+    pub ack_broadcast: bool,
     /// If false, all incoming frames will be sent up the layer stack, useful
     /// if making a sniffer. This does not include MAC layer control traffic.
     /// The default is true, meaning that frames not ment for us (non-broadcast
     /// or frames with a different destination address) will be filtered out.
-    ignore_not_for_us: bool,
+    pub ignore_not_for_us: bool,
     /// Even if there is no ack_request flag set, ack it anyway
-    ack_everything: bool,
+    pub ack_everything: bool,
+    /// The channel on which to transmit/receive
+    pub channel: config::Channel,
 }
 
 impl Default for CsmaConfig {
@@ -61,6 +63,7 @@ impl Default for CsmaConfig {
             ack_broadcast: false,
             ignore_not_for_us: true,
             ack_everything: false,
+            channel: config::Channel::_26,
         }
     }
 }
@@ -157,7 +160,9 @@ where
                     receive(
                         &mut **radio_guard.as_mut().unwrap(),
                         &mut rx.buffer,
-                        RxConfig::default(),
+                        RxConfig {
+                            channel: self.config.channel,
+                        },
                     ),
                     wants_to_transmit_signal.receive(),
                 )
@@ -188,7 +193,7 @@ where
 
                 // Check if package is meant for us
                 if !Self::is_package_for_us(&self.hardware_address, &frame)
-                    && !self.config.ignore_not_for_us
+                    && self.config.ignore_not_for_us
                 {
                     // Package is not for us to handle, ignore
                     rx.dirty = false;
@@ -245,7 +250,10 @@ where
                         transmit(
                             &mut **radio_guard.as_mut().unwrap(),
                             &mut tx_ack.buffer,
-                            TxConfig::default(),
+                            TxConfig {
+                                channel: self.config.channel,
+                                ..Default::default()
+                            },
                         )
                         .await;
                     }
@@ -302,9 +310,14 @@ where
         }
     }
 
-    async fn wait_for_valid_ack(radio: &mut R, sequence_number: u8, ack_rx: &mut [u8; 128]) {
+    async fn wait_for_valid_ack(
+        radio: &mut R,
+        channel: config::Channel,
+        sequence_number: u8,
+        ack_rx: &mut [u8; 128],
+    ) {
         loop {
-            let result = receive(radio, ack_rx, RxConfig::default()).await;
+            let result = receive(radio, ack_rx, RxConfig { channel }).await;
             if !result {
                 // No succesful receive, try again
                 continue;
@@ -348,11 +361,16 @@ where
                 Ok(seq_number) => sequence_number = seq_number,
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
-                    self.driver.error(driver::Error::InvalidStructure).await;
+                    #[cfg(feature = "defmt")]
+                    defmt::trace!("INVALID frame TX incoming buffer IEEE");
+                    self.driver.error(driver::Error::InvalidIEEEStructure).await;
                 }
-                Err(TransmissionTaskError::InvalidDeviceFrame(_err)) => {
+                #[allow(unused_variables)]
+                Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
                     // Invalid device frame encountered
-                    self.driver.error(driver::Error::InvalidStructure).await;
+                    self.driver
+                        .error(driver::Error::InvalidDeviceStructure)
+                        .await;
                 }
             }
 
@@ -365,6 +383,7 @@ where
                 match transmission::transmit_cca(
                     &self.radio,
                     &mut radio_guard,
+                    self.config.channel,
                     &wants_to_transmit_signal,
                     &mut tx,
                     &mut timer,
@@ -392,6 +411,7 @@ where
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
+                            self.config.channel,
                             sequence_number,
                             &mut ack_rx.buffer,
                         ),
@@ -606,7 +626,7 @@ pub mod tests {
             let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
-                .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
+                .set_dst_address(Address::Extended(radio.ieee802154_address()))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
                 .set_dst_pan_id(0xfff)
                 .set_src_pan_id(0xfff)
@@ -675,7 +695,7 @@ pub mod tests {
             let mut f = FrameBuffer::default();
             let mut frame_repr = FrameBuilder::new_data(&[1, 2, 3, 4])
                 .set_sequence_number(sequence_number)
-                .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
+                .set_dst_address(Address::Extended(radio.ieee802154_address()))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
                 .set_dst_pan_id(0xfff)
                 .set_src_pan_id(0xfff)

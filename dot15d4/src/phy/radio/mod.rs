@@ -169,6 +169,11 @@ pub mod tests {
                 return;
             }
 
+            println!(
+                "New event arrived [{}]: {:?}",
+                inner.total_event_count, evnt
+            );
+
             inner.total_event_count += 1;
             if let Some(waker) = inner.assert_waker.take() {
                 waker.wake();
@@ -218,7 +223,7 @@ pub mod tests {
 
     impl Default for TestRadio {
         fn default() -> Self {
-            Self::new([0; 8])
+            Self::new([0xca; 8])
         }
     }
 
