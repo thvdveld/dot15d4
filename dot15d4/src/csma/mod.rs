@@ -193,7 +193,7 @@ where
 
                 // Check if package is meant for us
                 if !Self::is_package_for_us(&self.hardware_address, &frame)
-                    && !self.config.ignore_not_for_us
+                    && self.config.ignore_not_for_us
                 {
                     // Package is not for us to handle, ignore
                     rx.dirty = false;
