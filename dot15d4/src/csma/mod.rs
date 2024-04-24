@@ -38,6 +38,7 @@ enum TransmissionTaskError<D: core::fmt::Debug> {
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
+#[non_exhaustive]
 pub struct CsmaConfig {
     /// All to be transmitted frames will get the ack_request flag set if they
     /// are unicast and a data frame
