@@ -228,40 +228,43 @@ where
             // Concurrently send the received message to the upper layers, and if we need to
             // ACK, we ACK
             rx.dirty = true;
-            join::join(self.driver.received(core::mem::take(&mut rx)), async {
-                if should_ack {
-                    // Set correct sequence number and send an ACK only if valid sequence number
-                    if let Some(sequence_number) = sequence_number {
-                        let ieee_repr = FrameBuilder::new_imm_ack(sequence_number)
-                            .finalize()
-                            .expect("A simple imm-ACK should always be possible to build");
-                        let ack_token = R::TxToken::from(&mut tx_ack.buffer);
-                        ack_token.consume(ieee_repr.buffer_len(), |buffer| {
-                            let mut frame = Frame::new_unchecked(buffer);
-                            ieee_repr.emit(&mut frame);
-                        });
+            join::join(
+                async {
+                    if should_ack {
+                        // Set correct sequence number and send an ACK only if valid sequence number
+                        if let Some(sequence_number) = sequence_number {
+                            let ieee_repr = FrameBuilder::new_imm_ack(sequence_number)
+                                .finalize()
+                                .expect("A simple imm-ACK should always be possible to build");
+                            let ack_token = R::TxToken::from(&mut tx_ack.buffer);
+                            ack_token.consume(ieee_repr.buffer_len(), |buffer| {
+                                let mut frame = Frame::new_unchecked(buffer);
+                                ieee_repr.emit(&mut frame);
+                            });
 
-                        // Wait before sending the ACK (AIFS)
-                        let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING;
-                        timer.delay_us(delay.as_us() as u32).await;
+                            // Wait before sending the ACK (AIFS)
+                            let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING;
+                            timer.delay_us(delay.as_us() as u32).await;
 
-                        // We already have the lock on the radio, so start transmitting and do not
-                        // have to check anymore
-                        transmit(
-                            &mut **radio_guard.as_mut().unwrap(),
-                            &mut tx_ack.buffer,
-                            TxConfig {
-                                channel: self.config.channel,
-                                ..Default::default()
-                            },
-                        )
-                        .await;
+                            // We already have the lock on the radio, so start transmitting and do not
+                            // have to check anymore
+                            transmit(
+                                &mut **radio_guard.as_mut().unwrap(),
+                                &mut tx_ack.buffer,
+                                TxConfig {
+                                    channel: self.config.channel,
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                        }
+                    } else {
+                        // Immediatly drop gruard if we do not longer need it to ACK
+                        radio_guard = None;
                     }
-                } else {
-                    // Immediatly drop gruard if we do not longer need it to ACK
-                    radio_guard = None;
-                }
-            })
+                },
+                self.driver.received(core::mem::take(&mut rx)),
+            )
             .await;
             rx.dirty = false; // Reset for the following iteration
         }
