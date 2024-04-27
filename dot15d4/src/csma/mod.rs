@@ -242,8 +242,12 @@ where
                                 ieee_repr.emit(&mut frame);
                             });
 
-                            // Wait before sending the ACK (AIFS)
-                            let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING;
+                            // Wait before sending the ACK (AIFS), but we reduce
+                            // this time by half as the timer we use is not
+                            // guaranteed to be exact. This is due to how Rust futures
+                            // work and the timer becomes an 'at least this waiting time'
+                            // The goal is to transmit an ACK between 1ms and 2ms.
+                            let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING / 2;
                             timer.delay_us(delay.as_us() as u32).await;
 
                             // We already have the lock on the radio, so start transmitting and do not
@@ -403,14 +407,15 @@ where
                 }
 
                 // We now want to try and receive an ACK
-                if let Some((sequence_number, frame_length)) = sequence_number {
+                if let Some((sequence_number, _frame_length)) = sequence_number {
                     utils::acquire_lock(&self.radio, &wants_to_transmit_signal, &mut radio_guard)
                         .await;
 
+                    // We expect an ACK to come back AIFS + time for an ACK to travel + SIFS (guard)
+                    // An ACK is 3 bytes long and should take around 24 us at 250kbps to get back
                     let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
-                        + (MAC_SIFT_PERIOD.max(Duration::from_us(
-                            (TURNAROUND_TIME * SYMBOL_RATE_INV_US * frame_length as u32) as i64,
-                        )));
+                        + MAC_SIFT_PERIOD
+                        + Duration::from_us(24);
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
