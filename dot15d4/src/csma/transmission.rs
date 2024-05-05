@@ -6,10 +6,13 @@ use super::utils;
 
 use crate::phy::config;
 use crate::phy::config::TxConfig;
+use crate::phy::driver;
+use crate::phy::driver::Driver;
 use crate::phy::driver::FrameBuffer;
 use crate::phy::radio::futures::transmit;
 use crate::phy::radio::Radio;
 use crate::sync::channel::Sender;
+use crate::sync::join::join;
 use crate::sync::mutex::Mutex;
 use crate::sync::mutex::MutexGuard;
 
@@ -19,7 +22,8 @@ pub enum TransmissionError {
     CcaError,
 }
 
-pub async fn transmit_cca<'m, R, TIMER, Rng>(
+#[allow(clippy::too_many_arguments)]
+pub async fn transmit_cca<'m, R, TIMER, Rng, D>(
     radio: &'m Mutex<R>,
     radio_guard: &mut Option<MutexGuard<'m, R>>,
     channel: config::Channel,
@@ -27,11 +31,13 @@ pub async fn transmit_cca<'m, R, TIMER, Rng>(
     tx_frame: &mut FrameBuffer,
     timer: &mut TIMER,
     mut backoff_strategy: CCABackoffStrategy<'_, Rng>,
+    driver: &D,
 ) -> Result<(), TransmissionError>
 where
     R: Radio,
     TIMER: DelayNs,
     Rng: RngCore,
+    D: Driver,
 {
     'cca: for number_of_backoffs in 1..MAC_MAX_CSMA_BACKOFFS + 1 {
         // try to transmit
@@ -59,9 +65,14 @@ where
         // Was this the last attempt?
         if number_of_backoffs == MAC_MAX_CSMA_BACKOFFS {
             return Err(TransmissionError::CcaError); // Fail transmission
+        } else {
+            // Perform backoff and report current status to driver
+            join(
+                backoff_strategy.perform_backoff(timer),
+                driver.error(driver::Error::CcaBackoff(number_of_backoffs)),
+            )
+            .await;
         }
-
-        backoff_strategy.perform_backoff(timer).await;
     }
 
     Ok(())

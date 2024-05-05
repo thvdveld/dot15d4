@@ -383,7 +383,7 @@ where
             }
 
             let mut radio_guard = None;
-            'ack: for i_ack in 0..MAC_MAX_FRAME_RETIES + 1 {
+            'ack: for i_ack in 1..MAC_MAX_FRAME_RETIES + 1 {
                 // Set vars for CCA
                 let backoff_strategy =
                     transmission::CCABackoffStrategy::new_exponential_backoff(&self.rng);
@@ -396,6 +396,7 @@ where
                     &mut tx,
                     &mut timer,
                     backoff_strategy,
+                    &self.driver,
                 )
                 .await
                 {
@@ -457,6 +458,8 @@ where
                     // Fail transmission
                     self.driver.error(driver::Error::AckFailed).await;
                     break 'ack;
+                } else {
+                    self.driver.error(driver::Error::AckBackoff(i_ack)).await;
                 }
             }
         }
@@ -839,9 +842,11 @@ pub mod tests {
                 );
             });
             radio.wait_until_asserts_are_consumed().await;
-            assert_eq!(
-                monitor.errors.receive().await,
-                driver::Error::CcaFailed, // CCA has failed, so we propagate an error up
+            assert!(
+                matches!(
+                    monitor.errors.receive().await,
+                    driver::Error::CcaFailed | driver::Error::CcaBackoff(_), // CCA has failed, so we propagate an error up
+                ),
                 "Packet transmission should fail due to CCA"
             );
         })
@@ -913,9 +918,11 @@ pub mod tests {
                 inner.total_event_count = 0;
             });
             radio.wait_until_asserts_are_consumed().await;
-            assert_eq!(
-                monitor.errors.receive().await,
-                driver::Error::AckFailed, // ACK has failed, so we propagate an error up
+            assert!(
+                matches!(
+                    monitor.errors.receive().await,
+                    driver::Error::AckFailed | driver::Error::AckBackoff(_), // ACK has failed, so we propagate an error up
+                ),
                 "Packet transmission should fail due to ACK not received after to many times"
             );
         })
