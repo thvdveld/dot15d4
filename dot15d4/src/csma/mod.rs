@@ -248,7 +248,7 @@ where
                             // guaranteed to be exact. This is due to how Rust futures
                             // work and the timer becomes an 'at least this waiting time'
                             // The goal is to transmit an ACK between 1ms and 2ms.
-                            let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING / 2;
+                            let delay = MAC_AIFS_PERIOD / 2;
                             timer.delay_us(delay.as_us() as u32).await;
 
                             // We already have the lock on the radio, so start transmitting and do not
@@ -414,9 +414,7 @@ where
 
                     // We expect an ACK to come back AIFS + time for an ACK to travel + SIFS (guard)
                     // An ACK is 3 bytes long and should take around 24 us at 250kbps to get back
-                    let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
-                        + MAC_SIFT_PERIOD
-                        + Duration::from_us(24);
+                    let delay = MAC_AIFS_PERIOD + MAC_SIFS_PERIOD + Duration::from_us(24);
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
@@ -449,7 +447,7 @@ where
                 radio_guard = None;
 
                 // Wait for SIFS here
-                let delay = MAC_SIFT_PERIOD.max(Duration::from_us(
+                let delay = MAC_SIFS_PERIOD.max(Duration::from_us(
                     (TURNAROUND_TIME * SYMBOL_RATE_INV_US) as i64,
                 ));
                 timer.delay_us(delay.as_us() as u32).await;
