@@ -8,7 +8,7 @@ pub enum Error {
     /// Cca failed after to many fallbacks
     CcaFailed,
     /// Ack failed, resulting in a retry later (nth try)
-    AckBackoff(u16),
+    AckRetry(u16),
     /// Ack failed, after to many retransmissions
     AckFailed,
     /// The buffer did not follow the correct device structure

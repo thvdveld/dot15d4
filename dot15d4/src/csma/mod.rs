@@ -459,7 +459,7 @@ where
                     self.driver.error(driver::Error::AckFailed).await;
                     break 'ack;
                 } else {
-                    self.driver.error(driver::Error::AckBackoff(i_ack)).await;
+                    self.driver.error(driver::Error::AckRetry(i_ack)).await;
                 }
             }
         }
@@ -921,7 +921,7 @@ pub mod tests {
             assert!(
                 matches!(
                     monitor.errors.receive().await,
-                    driver::Error::AckFailed | driver::Error::AckBackoff(_), // ACK has failed, so we propagate an error up
+                    driver::Error::AckFailed | driver::Error::AckRetry(_), // ACK has failed, so we propagate an error up
                 ),
                 "Packet transmission should fail due to ACK not received after to many times"
             );
