@@ -413,10 +413,10 @@ where
                         .await;
 
                     // We expect an ACK to come back AIFS + time for an ACK to travel + SIFS (guard)
-                    // An ACK is 3 bytes long and should take around 24 us at 250kbps to get back
+                    // An ACK is 3 bytes + 6 bytes (PHY header) long and should take around 288us at 250kbps to get back
                     let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
                         + MAC_SIFT_PERIOD
-                        + Duration::from_us(24);
+                        + Duration::from_us(288);
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
