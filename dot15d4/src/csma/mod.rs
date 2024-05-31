@@ -414,9 +414,9 @@ where
                         .await;
 
                     // We expect an ACK to come back AIFS + time for an ACK to travel + SIFS (guard)
-                    // An ACK is 3 bytes + 6 bytes (PHY header) long 
+                    // An ACK is 3 bytes + 6 bytes (PHY header) long
                     // and should take around 288us at 250kbps to get back
-                    let delay = MAC_AIFS_PERIOD + MAC_SIFT_PERIOD + Duration::from_us(288);
+                    let delay = MAC_AIFS_PERIOD + MAC_SIFS_PERIOD + Duration::from_us(288);
 
                     match select::select(
                         Self::wait_for_valid_ack(
