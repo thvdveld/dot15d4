@@ -248,7 +248,7 @@ where
                             // guaranteed to be exact. This is due to how Rust futures
                             // work and the timer becomes an 'at least this waiting time'
                             // The goal is to transmit an ACK between 1ms and 2ms.
-                            let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING / 2;
+                            let delay = MAC_AIFS_PERIOD / 2;
                             timer.delay_us(delay.as_us() as u32).await;
 
                             // We already have the lock on the radio, so start transmitting and do not
@@ -383,7 +383,7 @@ where
             }
 
             let mut radio_guard = None;
-            'ack: for i_ack in 0..MAC_MAX_FRAME_RETIES + 1 {
+            'ack: for i_ack in 1..MAC_MAX_FRAME_RETIES + 1 {
                 // Set vars for CCA
                 let backoff_strategy =
                     transmission::CCABackoffStrategy::new_exponential_backoff(&self.rng);
@@ -396,6 +396,7 @@ where
                     &mut tx,
                     &mut timer,
                     backoff_strategy,
+                    &self.driver,
                 )
                 .await
                 {
@@ -413,10 +414,10 @@ where
                         .await;
 
                     // We expect an ACK to come back AIFS + time for an ACK to travel + SIFS (guard)
-                    // An ACK is 3 bytes + 6 bytes (PHY header) long and should take around 288us at 250kbps to get back
-                    let delay = ACKNOWLEDGEMENT_INTERFRAME_SPACING
-                        + MAC_SIFT_PERIOD
-                        + Duration::from_us(288);
+                    // An ACK is 3 bytes + 6 bytes (PHY header) long
+                    // and should take around 288us at 250kbps to get back
+                    let delay = MAC_AIFS_PERIOD + MAC_SIFS_PERIOD + Duration::from_us(288);
+
                     match select::select(
                         Self::wait_for_valid_ack(
                             &mut *radio_guard.unwrap(),
@@ -449,7 +450,7 @@ where
                 radio_guard = None;
 
                 // Wait for SIFS here
-                let delay = MAC_SIFT_PERIOD.max(Duration::from_us(
+                let delay = MAC_SIFS_PERIOD.max(Duration::from_us(
                     (TURNAROUND_TIME * SYMBOL_RATE_INV_US) as i64,
                 ));
                 timer.delay_us(delay.as_us() as u32).await;
@@ -459,6 +460,8 @@ where
                     // Fail transmission
                     self.driver.error(driver::Error::AckFailed).await;
                     break 'ack;
+                } else {
+                    self.driver.error(driver::Error::AckRetry(i_ack)).await;
                 }
             }
         }
@@ -841,9 +844,11 @@ pub mod tests {
                 );
             });
             radio.wait_until_asserts_are_consumed().await;
-            assert_eq!(
-                monitor.errors.receive().await,
-                driver::Error::CcaFailed, // CCA has failed, so we propagate an error up
+            assert!(
+                matches!(
+                    monitor.errors.receive().await,
+                    driver::Error::CcaFailed | driver::Error::CcaBackoff(_), // CCA has failed, so we propagate an error up
+                ),
                 "Packet transmission should fail due to CCA"
             );
         })
@@ -915,9 +920,11 @@ pub mod tests {
                 inner.total_event_count = 0;
             });
             radio.wait_until_asserts_are_consumed().await;
-            assert_eq!(
-                monitor.errors.receive().await,
-                driver::Error::AckFailed, // ACK has failed, so we propagate an error up
+            assert!(
+                matches!(
+                    monitor.errors.receive().await,
+                    driver::Error::AckFailed | driver::Error::AckRetry(_), // ACK has failed, so we propagate an error up
+                ),
                 "Packet transmission should fail due to ACK not received after to many times"
             );
         })
