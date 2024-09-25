@@ -27,7 +27,7 @@ use crate::{
     },
     time::Duration,
 };
-use dot15d4_frame::{Address, Frame, FrameBuilder, FrameType};
+use dot15d4_frame::{Address, AddressingFieldsRepr, Frame, FrameBuilder, FrameType, FrameVersion};
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
@@ -55,6 +55,10 @@ pub struct CsmaConfig {
     pub ack_everything: bool,
     /// The channel on which to transmit/receive
     pub channel: config::Channel,
+    /// Overwrite all frames' destination PAN ID (default = false)
+    pub overwrite_dst_pan_id: bool,
+    /// Overwrite all frames' source PAN ID (default = true)
+    pub overwrite_src_pan_id: bool,
 }
 
 impl Default for CsmaConfig {
@@ -65,6 +69,8 @@ impl Default for CsmaConfig {
             ignore_not_for_us: true,
             ack_everything: false,
             channel: config::Channel::_26,
+            overwrite_dst_pan_id: false,
+            overwrite_src_pan_id: true,
         }
     }
 }
@@ -128,10 +134,32 @@ where
     /// Checks if the current frame is intended for us. For the hardware
     /// address, the full 64-bit address should be provided.
     fn is_package_for_us(hardware_address: &[u8; 8], frame: &Frame<&'_ [u8]>) -> bool {
-        let Some(addr) = frame.addressing().and_then(|fields| fields.dst_address()) else {
+        // Check if the type is known, otherwise drop
+        if matches!(frame.frame_control().frame_type(), FrameType::Unknown) {
             return false;
+        }
+        // Check if the Frame version is valid, otherwise drop
+        if matches!(frame.frame_control().frame_version(), FrameVersion::Unknown) {
+            return false;
+        }
+
+        let addr = match frame.addressing().and_then(|fields| fields.dst_address()) {
+            Some(addr) => addr,
+            None if MAC_IMPLICIT_BROADCAST => Address::BROADCAST,
+            _ => return false,
         };
 
+        // Check if dst_pan (in present) is provided
+        let dst_pan_id = frame
+            .addressing()
+            .and_then(|fields| fields.dst_pan_id())
+            .unwrap_or(BROADCAST_PAN_ID);
+        if dst_pan_id != MAC_PAN_ID && dst_pan_id != BROADCAST_PAN_ID {
+            return false;
+        }
+
+        // TODO: Check rules if frame comes from PAN coordinator and the same MAC_PAN_ID
+        // TODO: Implement `macGroupRxMode` check here
         match &addr {
             _ if addr.is_broadcast() => true,
             Address::Absent => false,
@@ -318,6 +346,52 @@ where
         }
     }
 
+    fn overwrite_pan_id<'a, RadioFrame>(
+        &self,
+        buffer: &'a mut [u8],
+    ) -> Result<(), TransmissionTaskError<RadioFrame::Error>>
+    where
+        RadioFrame: RadioFrameMut<&'a mut [u8]>,
+    {
+        let mut frame =
+            RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
+        let mut frame =
+            Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
+
+        let Some(mut addr) = frame
+            .addressing()
+            .map(|fields| AddressingFieldsRepr::parse(fields))
+        else {
+            return Ok(());
+        };
+
+        let mut changed = false;
+        if self.config.overwrite_src_pan_id
+            && addr
+                .src_pan_id
+                .map(|pan_id| pan_id != MAC_PAN_ID)
+                .unwrap_or(false)
+        {
+            addr.src_pan_id = Some(MAC_PAN_ID);
+            changed = true;
+        }
+        if self.config.overwrite_dst_pan_id
+            && addr
+                .dst_pan_id
+                .map(|pan_id| pan_id != MAC_PAN_ID)
+                .unwrap_or(false)
+        {
+            addr.dst_pan_id = Some(MAC_PAN_ID);
+            changed = true;
+        }
+
+        if changed {
+            frame.set_addressing_fields(&addr);
+        }
+
+        Ok(())
+    }
+
     async fn wait_for_valid_ack(
         radio: &mut R,
         channel: config::Channel,
@@ -367,6 +441,22 @@ where
             let mut sequence_number = None;
             match self.set_ack_request_if_possible::<R::RadioFrame<_>>(&mut tx.buffer) {
                 Ok(seq_number) => sequence_number = seq_number,
+                Err(TransmissionTaskError::InvalidIEEEFrame) => {
+                    // Invalid IEEE frame encountered
+                    #[cfg(feature = "defmt")]
+                    defmt::trace!("INVALID frame TX incoming buffer IEEE");
+                    self.driver.error(driver::Error::InvalidIEEEStructure).await;
+                }
+                #[allow(unused_variables)]
+                Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
+                    // Invalid device frame encountered
+                    self.driver
+                        .error(driver::Error::InvalidDeviceStructure)
+                        .await;
+                }
+            }
+            match self.overwrite_pan_id::<R::RadioFrame<_>>(&mut tx.buffer) {
+                Ok(()) => (),
                 Err(TransmissionTaskError::InvalidIEEEFrame) => {
                     // Invalid IEEE frame encountered
                     #[cfg(feature = "defmt")]
@@ -640,8 +730,8 @@ pub mod tests {
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended(radio.ieee802154_address()))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
-                .set_dst_pan_id(0xfff)
-                .set_src_pan_id(0xfff)
+                .set_dst_pan_id(MAC_PAN_ID)
+                .set_src_pan_id(MAC_PAN_ID)
                 .finalize()
                 .unwrap();
             frame_repr.frame_control.ack_request = true;
@@ -709,8 +799,8 @@ pub mod tests {
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended(radio.ieee802154_address()))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
-                .set_dst_pan_id(0xfff)
-                .set_src_pan_id(0xfff)
+                .set_dst_pan_id(MAC_PAN_ID)
+                .set_src_pan_id(MAC_PAN_ID)
                 .finalize()
                 .unwrap();
             frame_repr.frame_control.ack_request = false;
@@ -759,8 +849,8 @@ pub mod tests {
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::Extended([1, 2, 3, 4, 5, 6, 7, 8]))
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
-                .set_dst_pan_id(0xfff)
-                .set_src_pan_id(0xfff)
+                .set_dst_pan_id(MAC_PAN_ID)
+                .set_src_pan_id(MAC_PAN_ID)
                 .finalize()
                 .unwrap();
             // Set ACK to false, such that we can test if it acks
@@ -963,8 +1053,8 @@ pub mod tests {
                 .set_sequence_number(sequence_number)
                 .set_dst_address(Address::BROADCAST)
                 .set_src_address(Address::Extended([1, 2, 3, 4, 9, 8, 7, 6]))
-                .set_dst_pan_id(0xfff)
-                .set_src_pan_id(0xfff)
+                .set_dst_pan_id(MAC_PAN_ID)
+                .set_src_pan_id(MAC_PAN_ID)
                 .finalize()
                 .unwrap();
             frame_repr.frame_control.ack_request = true; // This should be ignored

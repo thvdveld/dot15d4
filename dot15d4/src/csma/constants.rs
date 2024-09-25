@@ -9,6 +9,8 @@ pub const TURNAROUND_TIME: u32 = 12;
 /// The time required to perform CCA detection in symbol periods.
 pub const CCA_TIME: u32 = 8;
 
+pub const BROADCAST_PAN_ID: u16 = 0xffff;
+
 // /// The delay between the start of the SFD and the LEIP, as described in
 // /// 18.6.
 // const A_LEIP_DELAY_TIME: u32 = 0.815 ms

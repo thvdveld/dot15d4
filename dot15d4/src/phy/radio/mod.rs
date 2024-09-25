@@ -91,6 +91,7 @@ pub trait TxToken {
 
 #[cfg(test)]
 pub mod tests {
+    use core::panic;
     use std::{
         cell::RefCell,
         collections::VecDeque,
@@ -178,6 +179,10 @@ pub mod tests {
             if let Some(waker) = inner.assert_waker.take() {
                 waker.wake();
             }
+            // Do not check if we are already panicking
+            if std::thread::panicking() {
+                return;
+            }
             if let Some(assert_nxt) = inner.assert_nxt.pop_front() {
                 assert_eq!(
                     assert_nxt, evnt,
@@ -215,7 +220,9 @@ pub mod tests {
             match select::select(wait_for_events, StdDelay::default().delay_ms(5000)).await {
                 crate::sync::Either::First(_) => {}
                 crate::sync::Either::Second(_) => {
-                    panic!("Waiting timedout for events -> there is a bug in the code")
+                    if !std::thread::panicking() {
+                        panic!("Waiting timedout for events -> there is a bug in the code")
+                    }
                 }
             }
         }
