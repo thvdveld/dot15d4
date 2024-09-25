@@ -16,6 +16,8 @@ critical-section = "1.1"
 rand_core = { version = "0.6.4", default-features = false }
 embedded-hal-async = { version = "1.0.0" }
 
+arbitrary = { version = "1.3.2", features = ["derive"], optional = true }
+
 [dev-dependencies]
 critical-section = { version = "1.1", features = ["std"] }
 env_logger = "0.11.3"
@@ -31,3 +33,6 @@ default = ["std"]
 log = ["dep:log"]
 ## Use defmt for logging
 defmt = ["dep:defmt"]
+
+## Enable fuzzing
+fuzz = ["arbitrary"]
