@@ -47,7 +47,7 @@ fn main() {
     for (var, value) in std::env::vars() {
         if let Some(name) = var.strip_prefix("DOT15D4_") {
             // discard from hashmap as a way of consuming the setting
-            let Some((ty, _)) = configs.remove_entry(name) else {
+            let Some((_, (ty, _))) = configs.remove_entry(name) else {
                 panic!("Wrong configuration name {name}");
             };
 
