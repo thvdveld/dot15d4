@@ -24,6 +24,8 @@ fn main() {
         ("MAC_AIFS_PERIOD", ("Duration", "Duration::from_us(1000)")),
         ("MAC_SIFS_PERIOD", ("Duration", "Duration::from_us(1000)")),
         ("MAC_LIFS_PERIOD", ("Duration", "Duration::from_us(10_000)")),
+        ("MAC_PAN_ID", ("u16", "0xffff")),
+        ("MAC_IMPLICIT_BROADCAST", ("bool", "false")),
     ]);
 
     // Make sure we get rerun if needed
@@ -45,7 +47,7 @@ fn main() {
     for (var, value) in std::env::vars() {
         if let Some(name) = var.strip_prefix("DOT15D4_") {
             // discard from hashmap as a way of consuming the setting
-            let Some((ty, _)) = configs.remove_entry(name) else {
+            let Some((_, (ty, _))) = configs.remove_entry(name) else {
                 panic!("Wrong configuration name {name}");
             };
 

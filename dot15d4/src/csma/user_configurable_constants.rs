@@ -20,6 +20,9 @@ mod constants {
     pub const MAC_AIFS_PERIOD: Duration = Duration::from_us(1000);
     pub const MAC_SIFS_PERIOD: Duration = Duration::from_us(1000); // TODO: SIFS=XXX
     pub const MAC_LIFS_PERIOD: Duration = Duration::from_us(10_000); // TODO: LIFS=XXX
+                                                                     // PAN Id
+    pub const MAC_PAN_ID: u16 = 0xffff;
+    pub const MAC_IMPLICIT_BROADCAST: bool = false;
 }
 
 #[cfg(not(test))]
