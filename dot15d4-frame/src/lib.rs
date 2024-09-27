@@ -108,7 +108,7 @@
 //! - [ ] `Esdu`
 //! - [x] `Mlme`: The MLME group contains a set of nested IEs. Call
 //!   [`nested_information_elements`]
-//! to get an iterator over the nested IEs.
+//!   to get an iterator over the nested IEs.
 //! - [ ] `VendorSpecific`
 //! - [ ] `PayloadTermination`
 //!
