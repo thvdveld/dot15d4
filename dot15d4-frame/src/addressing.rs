@@ -103,6 +103,33 @@ impl Address {
     pub fn is_extended(&self) -> bool {
         matches!(self, Address::Extended(_))
     }
+
+    /// Parse an address from a string.
+    #[cfg(any(feature = "std", test))]
+    pub fn parse(s: &str) -> Result<Self> {
+        if s.is_empty() {
+            return Ok(Address::Absent);
+        }
+
+        let parts: Vec<&str> = s.split(':').collect();
+        match parts.len() {
+            2 => {
+                let mut bytes = [0u8; 2];
+                for (i, part) in parts.iter().enumerate() {
+                    bytes[i] = u8::from_str_radix(part, 16).unwrap();
+                }
+                Ok(Address::Short(bytes))
+            }
+            8 => {
+                let mut bytes = [0u8; 8];
+                for (i, part) in parts.iter().enumerate() {
+                    bytes[i] = u8::from_str_radix(part, 16).unwrap();
+                }
+                Ok(Address::Extended(bytes))
+            }
+            _ => Err(Error),
+        }
+    }
 }
 
 impl From<Address> for AddressingMode {
@@ -619,5 +646,25 @@ mod tests {
         check!((Ieee802154_2020, Extended, Absent, true) -> Some((false, Extended, false, Absent)));
         check!((Ieee802154_2020, Absent, Absent, false) -> Some((false, Absent, false, Absent)));
         check!((Ieee802154_2020, Absent, Absent, true) -> Some((true, Absent, false, Absent)));
+    }
+
+    #[test]
+    fn parse() {
+        let mut addresses = vec![
+            ("", Address::Absent),
+            ("ff:ff", Address::Short([0xff, 0xff])),
+            ("ff:fe", Address::Short([0xff, 0xfe])),
+            ("ff:ff:ff:ff:ff:ff:ff:ff", Address::Extended([0xff; 8])),
+            ("01:01:01:01:01:01:01:01", Address::Extended([0x01; 8])),
+            ("00:00:00:00:00:00:00:00", Address::Extended([0x00; 8])),
+            (
+                "00:00:00:00:00:00:00:01",
+                Address::Extended([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]),
+            ),
+        ];
+
+        for (s, expected) in addresses.drain(..) {
+            assert_eq!(Address::parse(s).unwrap(), expected);
+        }
     }
 }
