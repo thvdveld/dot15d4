@@ -56,10 +56,25 @@ impl Address {
         }
     }
 
+    /// Return the short address form of the address.
+    pub fn to_short(&self) -> Option<Self> {
+        match self {
+            short @ Address::Short(_) => Some(*short),
+            Address::Extended(value) => {
+                let mut raw = [0u8; 2];
+                raw.copy_from_slice(&value[..2]);
+                Some(Address::Short(raw))
+            }
+            _ => None,
+        }
+    }
+
+    /// Create a short [`Address`] from an array of 2 bytes.
     const fn short_from_bytes(a: [u8; 2]) -> Self {
         Self::Short(a)
     }
 
+    /// Create an extended [`Address`] from an array of 8 bytes.
     const fn extended_from_bytes(a: [u8; 8]) -> Self {
         Self::Extended(a)
     }
