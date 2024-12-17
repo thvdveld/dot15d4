@@ -74,7 +74,7 @@ pub struct MutexGuard<'a, T> {
     mutex: &'a Mutex<T>,
 }
 
-impl<'a, T> Deref for MutexGuard<'a, T> {
+impl<T> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -83,14 +83,14 @@ impl<'a, T> Deref for MutexGuard<'a, T> {
     }
 }
 
-impl<'a, T> DerefMut for MutexGuard<'a, T> {
+impl<T> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // Safety: Only one mutex can exist at a time
         unsafe { &mut *self.mutex.value.get() }
     }
 }
 
-impl<'a, T> Drop for MutexGuard<'a, T> {
+impl<T> Drop for MutexGuard<'_, T> {
     fn drop(&mut self) {
         let mut mutex_state = self.mutex.state.borrow_mut();
 
@@ -108,7 +108,7 @@ struct LockFuture<'a, T> {
     mutex: &'a Mutex<T>,
 }
 
-impl<'a, T> Future for LockFuture<'a, T> {
+impl<T> Future for LockFuture<'_, T> {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
