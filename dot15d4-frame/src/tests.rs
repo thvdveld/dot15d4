@@ -339,3 +339,26 @@ fn emit_enhanced_beacon() {
         ],
     );
 }
+
+/// https://github.com/thvdveld/dot15d4/issues/29
+/// Setting `dst_pan_id` to a different value than `src_pan_id` made the `emit` function panic.
+#[test]
+fn issue29() {
+    let frame = FrameBuilder::new_data(&[0x2b, 0x00, 0x00, 0x00])
+        .set_sequence_number(1)
+        .set_dst_pan_id(0xabce)
+        .set_dst_address(Address::Short([0x02, 0x04]))
+        .set_src_pan_id(0xabcd)
+        .set_src_address(Address::Extended([
+            0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7,
+        ]))
+        .finalize()
+        .unwrap();
+
+    let mut buffer = vec![0; frame.buffer_len()];
+
+    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+
+    println!("{:?}", frame);
+    println!("packet = {:#04X?}", buffer);
+}
