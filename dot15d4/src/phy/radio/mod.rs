@@ -235,7 +235,10 @@ pub mod tests {
     }
 
     impl Radio for TestRadio {
-        type RadioFrame<T> = TestRadioFrame<T> where T: AsRef<[u8]>;
+        type RadioFrame<T>
+            = TestRadioFrame<T>
+        where
+            T: AsRef<[u8]>;
         type RxToken<'a> = TestRxToken<'a>;
         type TxToken<'b> = TestTxToken<'b>;
 
