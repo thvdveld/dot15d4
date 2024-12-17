@@ -2,12 +2,14 @@
 name = "dot15d4"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/thvdveld/dot15d4"
+description = "IEEE 802.15.4 implementation in Rust"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dot15d4-frame = { path = "../dot15d4-frame" }
+dot15d4-frame = { version = "0.1.0", path = "../dot15d4-frame" }
 
 log = { version = "0.4.21", optional = true }
 defmt = { version = "0.3", optional = true }

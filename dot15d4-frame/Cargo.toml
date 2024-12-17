@@ -2,12 +2,15 @@
 name = "dot15d4-frame"
 version = "0.1.0"
 edition = "2021"
+authors = ["Thibaut Vandervelden <thvdveld@vub.be>"]
+repository = "https://github.com/thvdveld/dot15d4"
+description = "Frame parsing and building for the dot15d4 crate"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dot15d4-macros = { path = "../dot15d4-macros" }
+dot15d4-macros = { version = "0.1.0", path = "../dot15d4-macros" }
 
 bitflags = "2.4.2"
 heapless = "0.8.0"
