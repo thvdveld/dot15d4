@@ -8,6 +8,8 @@ It uses the same style of parsing and emitting as the [`smoltcp`](https://github
 
 Another library that is similar to `dot15d4-frame` is the [`ieee802154`](https://github.com/rust-iot/rust-ieee802.15.4) library.
 
+The `dot15d4-macros` library contains utility macros that are used in the `dot15d4-frame` library.
+
 ## Usage
 
 > [!NOTE]
