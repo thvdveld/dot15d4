@@ -1,11 +1,12 @@
 # dot15d4 [![codecov](https://codecov.io/gh/thvdveld/dot15d4/graph/badge.svg?token=XETJ1SV5B0)](https://codecov.io/gh/thvdveld/dot15d4) ![example workflow](https://github.com/thvdveld/dot15d4/actions/workflows/rust.yml/badge.svg)
 
+`dot15d4` is an IEEE 802.15.4 implementation written in Rust.
+The library is designed to be used in embedded systems, and is `no_std` by default.
 
-`dot15d4` is a IEEE 802.15.4 frame parsing library written in Rust.
+The `dot15d4-frame` library is used to parse and emit IEEE 802.15.4 frames.
 It uses the same style of parsing and emitting as the [`smoltcp`](https://github.com/smoltcp-rs/smoltcp) library.
 
-Another library that is similar to `dot15d4` is the [`ieee802154`](https://github.com/rust-iot/rust-ieee802.15.4) library.
-However, `dot15d4` is more focused on implementing MAC layer functionality (unslotted CSMA and TSCH), and parsing frames.
+Another library that is similar to `dot15d4-frame` is the [`ieee802154`](https://github.com/rust-iot/rust-ieee802.15.4) library.
 
 ## Usage
 
