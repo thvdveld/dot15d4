@@ -26,6 +26,8 @@ impl Instant {
 pub struct Duration(i64);
 
 impl Duration {
+    pub const ZERO: Self = Self(0);
+
     /// Create a new `Duration` from microseconds.
     pub const fn from_us(us: i64) -> Self {
         Self(us)

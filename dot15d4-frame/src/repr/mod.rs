@@ -1,5 +1,6 @@
-use super::Frame;
-use super::Result;
+use crate::FrameType;
+
+use super::{Error, Frame, Result};
 
 mod addressing;
 pub use addressing::AddressingFieldsRepr;
@@ -48,6 +49,34 @@ impl<'f> FrameRepr<'f> {
             information_elements,
             payload: reader.payload(),
         })
+    }
+
+    /// Validate the frame.
+    pub fn validate(&self) -> Result<()> {
+        // If the frame type is data, then the addressing fields must be present.
+        if self.frame_control.frame_type == FrameType::Data {
+            if self.addressing_fields.is_none() {
+                return Err(Error);
+            }
+
+            if self.payload.is_none() {
+                return Err(Error);
+            }
+        }
+
+        // If the addressing fields are present, they must be valid.
+        if let Some(af) = &self.addressing_fields {
+            af.validate(&self.frame_control)?;
+        }
+
+        // If the payload is present, it must not be empty.
+        if let Some(payload) = self.payload {
+            if payload.is_empty() {
+                return Err(Error);
+            }
+        }
+
+        Ok(())
     }
 
     /// Return the length of the frame when emitted into a buffer.

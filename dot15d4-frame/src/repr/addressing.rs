@@ -1,5 +1,6 @@
-use super::super::{Address, AddressingFields, AddressingMode};
 use super::FrameControlRepr;
+
+use crate::{Address, AddressingFields, AddressingMode, Error, FrameType, Result};
 
 /// A high-level representation of the IEEE 802.15.4 Addressing Fields.
 #[derive(Debug, Default)]
@@ -24,6 +25,24 @@ impl AddressingFieldsRepr {
             src_pan_id: addressing.src_pan_id(),
             src_address: addressing.src_address(),
         }
+    }
+
+    /// Validate the Addressing Fields.
+    pub fn validate(&self, fc: &FrameControlRepr) -> Result<()> {
+        if fc.frame_type == FrameType::Data
+            && matches!(
+                (
+                    self.dst_pan_id,
+                    self.dst_address,
+                    self.src_pan_id,
+                    self.src_address
+                ),
+                (None, None, None, None)
+            )
+        {
+            return Err(Error);
+        }
+        Ok(())
     }
 
     /// Return the length of the Addressing Fields in octets.
