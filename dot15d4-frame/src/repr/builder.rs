@@ -328,8 +328,10 @@ impl<'p, T> FrameBuilder<'p, T> {
                 addr.src_pan_id,
             ) {
                 (Some(_), Some(_), Some(dst_pan_id), Some(src_pan_id)) => {
-                    self.frame.frame_control.pan_id_compression = dst_pan_id == src_pan_id;
-                    addr.src_pan_id = None;
+                    if dst_pan_id == src_pan_id {
+                        self.frame.frame_control.pan_id_compression = true;
+                        addr.src_pan_id = None;
+                    }
                 }
                 (Some(_), None, Some(_), _) => {
                     self.frame.frame_control.pan_id_compression = false;
