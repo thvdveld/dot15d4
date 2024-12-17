@@ -1,0 +1,29 @@
+[package]
+name = "fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.dot15d4-frame]
+path = "../dot15d4-frame/"
+features = ["std", "fuzz"] 
+
+[[bin]]
+name = "frame"
+path = "fuzz_targets/frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "repr"
+path = "fuzz_targets/repr.rs"
+test = false
+doc = false
+bench = false
