@@ -6,7 +6,7 @@ repository = "https://github.com/thvdveld/dot15d4"
 description = "IEEE 802.15.4 implementation in Rust"
 license = "MIT OR Apache-2.0"
 categories = ["embedded", "network-programming", "no-std"]
-keywords = ["IEEE 802.15.4", "ieee802154", "WPAN", "smoltcp"]
+keywords = ["ieee802154", "WPAN", "smoltcp"]
 
 [dependencies]
 dot15d4-frame = { version = "0.1.0", path = "../dot15d4-frame" }
