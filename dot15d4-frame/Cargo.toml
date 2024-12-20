@@ -6,8 +6,8 @@ authors = ["Thibaut Vandervelden <thvdveld@vub.be>"]
 repository = "https://github.com/thvdveld/dot15d4"
 description = "Frame parsing and building for the dot15d4 crate"
 license = "MIT OR Apache-2.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+categories = ["embedded", "network-programming", "no-std"]
+keywords = ["IEEE 802.15.4", "ieee802154", "WPAN", "smoltcp"]
 
 [dependencies]
 dot15d4-macros = { version = "0.1.0", path = "../dot15d4-macros" }
