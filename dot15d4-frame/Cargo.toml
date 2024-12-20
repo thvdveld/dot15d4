@@ -1,6 +1,6 @@
 [package]
 name = "dot15d4-frame"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Thibaut Vandervelden <thvdveld@vub.be>"]
 repository = "https://github.com/thvdveld/dot15d4"
