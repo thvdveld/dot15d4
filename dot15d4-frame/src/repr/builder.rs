@@ -13,7 +13,7 @@ pub struct FrameBuilder<'p, T> {
     r#type: core::marker::PhantomData<T>,
 }
 
-impl<'p> FrameBuilder<'p, Ack> {
+impl FrameBuilder<'_, Ack> {
     /// Create a new builder for an immediate acknowledgment frame.
     pub fn new_imm_ack(sequence_number: u8) -> Self {
         Self {
@@ -65,7 +65,7 @@ impl<'p> FrameBuilder<'p, Ack> {
     }
 }
 
-impl<'p> FrameBuilder<'p, Beacon> {
+impl FrameBuilder<'_, Beacon> {
     /// Create a new builder for a beacon frame.
     pub fn new_beacon() -> Self {
         Self {
@@ -92,7 +92,7 @@ impl<'p> FrameBuilder<'p, Beacon> {
     }
 }
 
-impl<'p> FrameBuilder<'p, EnhancedBeacon> {
+impl FrameBuilder<'_, EnhancedBeacon> {
     /// Create a new builder for an enhanced beacon frame.
     pub fn new_enhanced_beacon() -> Self {
         Self {

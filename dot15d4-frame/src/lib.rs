@@ -470,7 +470,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     }
 }
 
-impl<'f, T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&'f T> {
+impl<T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let fc = self.frame_control();
         write!(f, "{}", fc)?;
