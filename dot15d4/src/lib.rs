@@ -1,4 +1,8 @@
-#![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![no_std]
+
+#[cfg(any(feature = "std", test))]
+#[macro_use]
+extern crate std;
 
 #[macro_use]
 pub(crate) mod utils;

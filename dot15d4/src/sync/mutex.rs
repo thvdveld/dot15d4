@@ -150,6 +150,8 @@ mod tests {
 
     use super::Mutex;
 
+    use std::boxed::Box;
+
     #[test]
     pub fn test_mutex_no_concurrency() {
         async {

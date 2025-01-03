@@ -196,6 +196,8 @@ mod tests {
 
     use super::Channel;
 
+    use std::boxed::Box;
+
     #[test]
     pub fn test_channel_no_concurrency() {
         async {

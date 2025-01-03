@@ -99,6 +99,7 @@ pub mod tests {
         ptr::NonNull,
         rc::Rc,
         task::{Poll, Waker},
+        vec::Vec,
     };
 
     use embedded_hal_async::delay::DelayNs;
