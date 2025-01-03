@@ -174,10 +174,13 @@
 //! [`header_information_elements`]: InformationElements::header_information_elements
 //! [`payload_information_elements`]: InformationElements::payload_information_elements
 //! [`nested_information_elements`]: PayloadInformationElement::nested_information_elements
-
-#![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![no_std]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
+
+#[cfg(any(feature = "std", test))]
+#[macro_use]
+extern crate std;
 
 #[cfg(test)]
 mod tests;

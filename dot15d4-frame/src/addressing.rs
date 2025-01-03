@@ -111,7 +111,7 @@ impl Address {
             return Ok(Address::Absent);
         }
 
-        let parts: Vec<&str> = s.split(':').collect();
+        let parts: std::vec::Vec<&str> = s.split(':').collect();
         match parts.len() {
             2 => {
                 let mut bytes = [0u8; 2];
