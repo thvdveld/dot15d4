@@ -9,7 +9,7 @@ fn main() {
         0xc8, 0x00, 0x01, 0x1b, 0x00,
     ];
 
-    let frame = Frame::new(&data[..]).unwrap();
+    let frame = DataFrame::new(&data[..]).unwrap();
     log::trace!("{frame}");
     let parsed = FrameRepr::parse(&frame);
     log::trace!("{parsed:#?}");
@@ -18,7 +18,7 @@ fn main() {
         0x02, 0x2e, 0x37, 0xcd, 0xab, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x0f,
         0xe1, 0x8f,
     ];
-    let frame = Frame::new(&data[..]).unwrap();
+    let frame = DataFrame::new(&data[..]).unwrap();
     log::trace!("{frame}");
     let parsed = FrameRepr::parse(&frame);
     log::trace!("{parsed:#?}");
@@ -27,7 +27,7 @@ fn main() {
         0x41, 0xd8, 0x01, 0xcd, 0xab, 0xff, 0xff, 0xc7, 0xd9, 0xb5, 0x14, 0x00, 0x4b, 0x12, 0x00,
         0x2b, 0x00, 0x00, 0x00,
     ];
-    let frame = Frame::new(&data[..]).unwrap();
+    let frame = DataFrame::new(&data[..]).unwrap();
     log::trace!("{frame}");
     let parsed = FrameRepr::parse(&frame);
     log::trace!("{parsed:#?}");

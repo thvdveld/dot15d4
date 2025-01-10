@@ -1,6 +1,6 @@
 use crate::FrameType;
 
-use super::{Error, Frame, Result};
+use super::{Error, DataFrame, Result};
 
 mod addressing;
 pub use addressing::AddressingFieldsRepr;
@@ -32,7 +32,7 @@ pub struct FrameRepr<'p> {
 
 impl<'f> FrameRepr<'f> {
     /// Parse an IEEE 802.15.4 frame.
-    pub fn parse(reader: &Frame<&'f [u8]>) -> Result<Self> {
+    pub fn parse(reader: &DataFrame<&'f [u8]>) -> Result<Self> {
         let frame_control = FrameControlRepr::parse(reader.frame_control())?;
         let addressing_fields = reader
             .addressing()
@@ -103,7 +103,7 @@ impl<'f> FrameRepr<'f> {
     }
 
     /// Emit the frame into a buffer.
-    pub fn emit(&self, frame: &mut Frame<&'_ mut [u8]>) {
+    pub fn emit(&self, frame: &mut DataFrame<&'_ mut [u8]>) {
         frame.set_frame_control(&self.frame_control);
 
         if let Some(sequence_number) = self.sequence_number {

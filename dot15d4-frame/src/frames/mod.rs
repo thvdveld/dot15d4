@@ -1,3 +1,3 @@
 mod data;
 
-pub use data::Frame;
+pub use data::DataFrame;

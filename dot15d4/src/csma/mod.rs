@@ -27,7 +27,7 @@ use crate::{
     },
     time::Duration,
 };
-use dot15d4_frame::{Address, AddressingFieldsRepr, Frame, FrameBuilder, FrameType, FrameVersion};
+use dot15d4_frame::{Address, AddressingFieldsRepr, DataFrame, FrameBuilder, FrameType, FrameVersion};
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
@@ -133,7 +133,7 @@ where
 
     /// Checks if the current frame is intended for us. For the hardware
     /// address, the full 64-bit address should be provided.
-    fn is_package_for_us(hardware_address: &[u8; 8], frame: &Frame<&'_ [u8]>) -> bool {
+    fn is_package_for_us(hardware_address: &[u8; 8], frame: &DataFrame<&'_ [u8]>) -> bool {
         // Check if the type is known, otherwise drop
         if matches!(frame.frame_control().frame_type(), FrameType::Unknown) {
             return false;
@@ -215,7 +215,7 @@ where
                     rx.dirty = false;
                     continue 'outer;
                 };
-                let Ok(frame) = Frame::new(frame.data()) else {
+                let Ok(frame) = DataFrame::new(frame.data()) else {
                     rx.dirty = false;
                     continue 'outer;
                 };
@@ -267,7 +267,7 @@ where
                                 .expect("A simple imm-ACK should always be possible to build");
                             let ack_token = R::TxToken::from(&mut tx_ack.buffer);
                             ack_token.consume(ieee_repr.buffer_len(), |buffer| {
-                                let mut frame = Frame::new_unchecked(buffer);
+                                let mut frame = DataFrame::new_unchecked(buffer);
                                 ieee_repr.emit(&mut frame);
                             });
 
@@ -318,7 +318,7 @@ where
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
         let frame_len = frame.data().len() as u8;
         let mut frame =
-            Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
+            DataFrame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
 
         // Only Data and MAC Commands should be able to get an ACK
         let frame_type = frame.frame_control().frame_type();
@@ -356,7 +356,7 @@ where
         let mut frame =
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
         let mut frame =
-            Frame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
+            DataFrame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
 
         let Some(mut addr) = frame
             .addressing()
@@ -409,7 +409,7 @@ where
             let Ok(frame) = R::RadioFrame::new_checked(ack_rx) else {
                 continue;
             };
-            let Ok(frame) = Frame::new(frame.data()) else {
+            let Ok(frame) = DataFrame::new(frame.data()) else {
                 continue;
             };
 
@@ -633,13 +633,13 @@ pub mod tests {
 
             let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
-                let mut frame = Frame::new_unchecked(buf);
+                let mut frame = DataFrame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
 
             // Check if frame is correct
             let frame = TestRadioFrame::new_checked(&f.buffer).unwrap();
-            let _frame = Frame::new(frame.data()).unwrap();
+            let _frame = DataFrame::new(frame.data()).unwrap();
 
             monitor.tx.send_async(f.clone()).await;
             radio.inner(|inner| {
@@ -664,7 +664,7 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 // Assert that we have the correct transmitted frame
-                let mut frame = Frame::new_unchecked(&mut f.buffer);
+                let mut frame = DataFrame::new_unchecked(&mut f.buffer);
                 frame.frame_control_mut().set_ack_request(true);
                 assert_eq!(
                     inner.last_transmitted,
@@ -678,7 +678,7 @@ pub mod tests {
                     .finalize()
                     .unwrap();
                 token.consume(ack_repr.buffer_len(), |buf| {
-                    let mut frame = Frame::new_unchecked(buf);
+                    let mut frame = DataFrame::new_unchecked(buf);
                     ack_repr.emit(&mut frame);
                 });
                 inner.should_receive = Some(ack_frame.buffer);
@@ -738,7 +738,7 @@ pub mod tests {
 
             let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
-                let mut frame = Frame::new_unchecked(buf);
+                let mut frame = DataFrame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
             radio.wait_until_asserts_are_consumed().await;
@@ -755,7 +755,7 @@ pub mod tests {
                     inner.last_transmitted.map(|frame| {
                         let frame = TestRadioFrame::new_checked(frame)
                             .expect("The frame should be a valid TestTxFrame");
-                        let frame = Frame::new(frame.data()).expect("Should be a valid IEEE frame");
+                        let frame = DataFrame::new(frame.data()).expect("Should be a valid IEEE frame");
 
                         frame.frame_control().frame_type()
                     }),
@@ -807,7 +807,7 @@ pub mod tests {
 
             let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
-                let mut frame = Frame::new_unchecked(buf);
+                let mut frame = DataFrame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
             radio.wait_until_asserts_are_consumed().await;
@@ -858,13 +858,13 @@ pub mod tests {
 
             let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
-                let mut frame = Frame::new_unchecked(buf);
+                let mut frame = DataFrame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
 
             // Check if frame is correct
             let frame = TestRadioFrame::new_checked(&f.buffer).unwrap();
-            let _frame = Frame::new(frame.data()).unwrap();
+            let _frame = DataFrame::new(frame.data()).unwrap();
 
             monitor.tx.send_async(f.clone()).await;
             radio.inner(|inner| {
@@ -889,7 +889,7 @@ pub mod tests {
             radio.wait_until_asserts_are_consumed().await;
             radio.inner(|inner| {
                 // Assert that we have the correct transmitted frame
-                let mut frame = Frame::new_unchecked(&mut f.buffer);
+                let mut frame = DataFrame::new_unchecked(&mut f.buffer);
                 frame.frame_control_mut().set_ack_request(true);
                 assert_eq!(
                     inner.last_transmitted,
@@ -974,13 +974,13 @@ pub mod tests {
 
             let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
-                let mut frame = Frame::new_unchecked(buf);
+                let mut frame = DataFrame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
 
             // Check if frame is correct
             let frame = TestRadioFrame::new_checked(&f.buffer).unwrap();
-            let _frame = Frame::new(frame.data()).unwrap();
+            let _frame = DataFrame::new(frame.data()).unwrap();
 
             monitor.tx.send_async(f.clone()).await;
             radio.inner(|inner| {
@@ -1061,7 +1061,7 @@ pub mod tests {
 
             let token = TestTxToken::from(&mut f.buffer[..]);
             token.consume(frame_repr.buffer_len(), |buf| {
-                let mut frame = Frame::new_unchecked(buf);
+                let mut frame = DataFrame::new_unchecked(buf);
                 frame_repr.emit(&mut frame);
             });
             radio.wait_until_asserts_are_consumed().await;

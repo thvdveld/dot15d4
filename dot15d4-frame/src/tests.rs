@@ -4,7 +4,7 @@ use super::*;
 fn parse_imm_ack() {
     let frame = [0x02, 0x10, 0x01];
 
-    let frame = Frame::new(&frame).unwrap();
+    let frame = DataFrame::new(&frame).unwrap();
 
     let fc = frame.frame_control();
     assert_eq!(fc.frame_type(), FrameType::Ack);
@@ -28,7 +28,7 @@ fn emit_imm_ack() {
     let imm_ack = FrameBuilder::new_imm_ack(1).finalize().unwrap();
 
     let mut buffer = vec![0; imm_ack.buffer_len()];
-    imm_ack.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+    imm_ack.emit(&mut DataFrame::new_unchecked(&mut buffer[..]));
 
     assert_eq!(buffer, [0x02, 0x10, 0x01]);
 }
@@ -40,7 +40,7 @@ fn parse_ack_frame() {
         0xe1, 0x8f,
     ];
 
-    let frame = Frame::new(&frame).unwrap();
+    let frame = DataFrame::new(&frame).unwrap();
 
     let fc = frame.frame_control();
     assert_eq!(fc.frame_type(), FrameType::Ack);
@@ -103,7 +103,7 @@ fn emit_ack_frame() {
         .unwrap();
 
     let mut buffer = vec![0; frame.buffer_len()];
-    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+    frame.emit(&mut DataFrame::new_unchecked(&mut buffer[..]));
 
     assert_eq!(
         buffer,
@@ -121,7 +121,7 @@ fn parse_data_frame() {
         0x2b, 0x00, 0x00, 0x00,
     ];
 
-    let frame = Frame::new(&frame).unwrap();
+    let frame = DataFrame::new(&frame).unwrap();
 
     let fc = frame.frame_control();
     assert_eq!(fc.frame_type(), FrameType::Data);
@@ -167,7 +167,7 @@ fn emit_data_frame() {
 
     let mut buffer = vec![0; frame.buffer_len()];
 
-    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+    frame.emit(&mut DataFrame::new_unchecked(&mut buffer[..]));
 
     assert_eq!(
         buffer,
@@ -186,7 +186,7 @@ fn parse_enhanced_beacon() {
         0xc8, 0x00, 0x01, 0x1b, 0x00,
     ];
 
-    let frame = Frame::new(&frame).unwrap();
+    let frame = DataFrame::new(&frame).unwrap();
     let fc = frame.frame_control();
     assert_eq!(fc.frame_type(), FrameType::Beacon);
     assert!(!fc.security_enabled());
@@ -328,7 +328,7 @@ fn emit_enhanced_beacon() {
     };
 
     let mut buffer = vec![0; frame.buffer_len()];
-    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+    frame.emit(&mut DataFrame::new_unchecked(&mut buffer[..]));
 
     assert_eq!(
         buffer,
@@ -357,7 +357,7 @@ fn issue29() {
 
     let mut buffer = vec![0; frame.buffer_len()];
 
-    frame.emit(&mut Frame::new_unchecked(&mut buffer[..]));
+    frame.emit(&mut DataFrame::new_unchecked(&mut buffer[..]));
 
     println!("{:?}", frame);
     println!("packet = {:#04X?}", buffer);

@@ -186,7 +186,7 @@ extern crate std;
 mod tests;
 
 mod frames;
-pub use frames::Frame;
+pub use frames::DataFrame;
 
 mod time;
 

@@ -42,7 +42,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let data = hex::decode(args.input).unwrap();
-    let frame = Frame::new(&data[..]).unwrap();
+    let frame = DataFrame::new(&data[..]).unwrap();
 
     let mut w = Writer::new(0);
 

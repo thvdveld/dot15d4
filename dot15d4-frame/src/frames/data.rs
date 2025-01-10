@@ -6,13 +6,13 @@ use crate::{
 };
 use crate::{AddressingFieldsRepr, FrameControlRepr, InformationElementsRepr};
 
-/// A reader/writer for an IEEE 802.15.4 frame.
+/// A reader/writer for an IEEE 802.15.4 Data frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Frame<T: AsRef<[u8]>> {
+pub struct DataFrame<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> Frame<T> {
+impl<T: AsRef<[u8]>> DataFrame<T> {
     /// Create a new [`Frame`] reader/writer from a given buffer.
     ///
     /// # Errors
@@ -91,16 +91,6 @@ impl<T: AsRef<[u8]>> Frame<T> {
     pub fn addressing(&self) -> Option<AddressingFields<&'_ [u8], &'_ [u8]>> {
         let fc = self.frame_control();
 
-        if matches!(fc.frame_type(), FrameType::Ack)
-            && matches!(
-                fc.frame_version(),
-                FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006
-            )
-        {
-            // Immediate Acks don't have addressing fields.
-            return None;
-        }
-
         if fc.sequence_number_suppression() {
             AddressingFields::new(&self.buffer.as_ref()[2..], fc).ok()
         } else {
@@ -147,7 +137,7 @@ impl<T: AsRef<[u8]>> Frame<T> {
     }
 }
 
-impl<'f, T: AsRef<[u8]> + ?Sized> Frame<&'f T> {
+impl<'f, T: AsRef<[u8]> + ?Sized> DataFrame<&'f T> {
     /// Return the payload of the frame.
     pub fn payload(&self) -> Option<&'f [u8]> {
         let fc = self.frame_control();
@@ -181,7 +171,7 @@ impl<'f, T: AsRef<[u8]> + ?Sized> Frame<&'f T> {
     }
 }
 
-impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
+impl<T: AsRef<[u8]> + AsMut<[u8]>> DataFrame<T> {
     /// Set the Frame Control field values in the buffer, based on the given
     /// [`FrameControlRepr`].
     pub fn set_frame_control(&mut self, fc: &FrameControlRepr) {
@@ -270,7 +260,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> Frame<T> {
     }
 }
 
-impl<T: AsRef<[u8]> + ?Sized> core::fmt::Display for Frame<&T> {
+impl<T: AsRef<[u8]> + ?Sized> core::fmt::Display for DataFrame<&T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let fc = self.frame_control();
         write!(f, "{}", fc)?;
