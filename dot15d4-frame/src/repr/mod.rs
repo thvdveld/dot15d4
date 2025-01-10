@@ -1,6 +1,6 @@
 use crate::FrameType;
 
-use super::{Error, DataFrame, Result};
+use super::{DataFrame, Error, Result};
 
 mod addressing;
 pub use addressing::AddressingFieldsRepr;

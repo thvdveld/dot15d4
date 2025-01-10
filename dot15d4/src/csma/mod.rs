@@ -27,7 +27,9 @@ use crate::{
     },
     time::Duration,
 };
-use dot15d4_frame::{Address, AddressingFieldsRepr, DataFrame, FrameBuilder, FrameType, FrameVersion};
+use dot15d4_frame::{
+    Address, AddressingFieldsRepr, DataFrame, FrameBuilder, FrameType, FrameVersion,
+};
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
@@ -317,8 +319,8 @@ where
         let mut frame =
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
         let frame_len = frame.data().len() as u8;
-        let mut frame =
-            DataFrame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
+        let mut frame = DataFrame::new(frame.data_mut())
+            .map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
 
         // Only Data and MAC Commands should be able to get an ACK
         let frame_type = frame.frame_control().frame_type();
@@ -355,8 +357,8 @@ where
     {
         let mut frame =
             RadioFrame::new_checked(buffer).map_err(TransmissionTaskError::InvalidDeviceFrame)?;
-        let mut frame =
-            DataFrame::new(frame.data_mut()).map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
+        let mut frame = DataFrame::new(frame.data_mut())
+            .map_err(|_err| TransmissionTaskError::InvalidIEEEFrame)?;
 
         let Some(mut addr) = frame
             .addressing()
@@ -755,7 +757,8 @@ pub mod tests {
                     inner.last_transmitted.map(|frame| {
                         let frame = TestRadioFrame::new_checked(frame)
                             .expect("The frame should be a valid TestTxFrame");
-                        let frame = DataFrame::new(frame.data()).expect("Should be a valid IEEE frame");
+                        let frame =
+                            DataFrame::new(frame.data()).expect("Should be a valid IEEE frame");
 
                         frame.frame_control().frame_type()
                     }),
