@@ -115,160 +115,6 @@ impl<'f, T: AsRef<[u8]> + ?Sized> BeaconFrame<&'f T> {
         Some(&self.buffer.as_ref()[offset..])
     }
 }
-/// A reader/writer for an IEEE 802.15.4 Enhanced Beacon frame.
-pub struct EnhancedBeaconFrame<T: AsRef<[u8]>> {
-    buffer: T,
-}
-
-impl<T: AsRef<[u8]>> EnhancedBeaconFrame<T> {
-    pub fn new(buffer: T) -> Result<Self> {
-        let b = Self::new_unchecked(buffer);
-
-        if !b.check_len() {
-            return Err(Error);
-        }
-
-        let fc = b.frame_control();
-
-        if fc.security_enabled() {
-            return Err(Error);
-        }
-
-        if fc.frame_type() == FrameType::Unknown {
-            return Err(Error);
-        }
-
-        if fc.frame_version() == FrameVersion::Unknown {
-            return Err(Error);
-        }
-
-        if fc.dst_addressing_mode() == AddressingMode::Unknown {
-            return Err(Error);
-        }
-
-        if fc.src_addressing_mode() == AddressingMode::Unknown {
-            return Err(Error);
-        }
-
-        Ok(b)
-    }
-
-    fn check_len(&self) -> bool {
-        let buffer = self.buffer.as_ref();
-
-        if buffer.len() < 2 || buffer.len() > 127 {
-            return false;
-        }
-
-        let fc = self.frame_control();
-
-        if !fc.sequence_number_suppression() && buffer.len() < 3 {
-            return false;
-        }
-
-        true
-    }
-
-    pub fn new_unchecked(buffer: T) -> Self {
-        Self { buffer }
-    }
-
-    /// Return a [`FrameControl`] reader.
-    pub fn frame_control(&self) -> FrameControl<&'_ [u8]> {
-        FrameControl::new_unchecked(&self.buffer.as_ref()[..2])
-    }
-
-    /// Return the sequence number of the frame.
-    pub fn sequence_number(&self) -> Option<u8> {
-        if self.frame_control().sequence_number_suppression() {
-            None
-        } else {
-            Some(self.buffer.as_ref()[2])
-        }
-    }
-
-    /// Return an [`AddressingFields`] reader.
-    pub fn addressing(&self) -> Option<AddressingFields<&'_ [u8], &'_ [u8]>> {
-        let fc = self.frame_control();
-
-        if fc.sequence_number_suppression() {
-            AddressingFields::new(&self.buffer.as_ref()[2..], fc).ok()
-        } else {
-            AddressingFields::new(&self.buffer.as_ref()[3..], fc).ok()
-        }
-    }
-
-    pub fn auxiliary_security_header(&self) -> Option<AuxiliarySecurityHeader<&'_ [u8]>> {
-        let fc = self.frame_control();
-
-        if fc.security_enabled() {
-            let mut offset = 2;
-
-            offset += !fc.sequence_number_suppression() as usize;
-
-            if let Some(af) = self.addressing() {
-                offset += af.len();
-            }
-
-            Some(AuxiliarySecurityHeader::new(
-                &self.buffer.as_ref()[offset..],
-            ))
-        } else {
-            None
-        }
-    }
-
-    /// Return an [`InformationElements`] reader.
-    pub fn information_elements(&self) -> Option<InformationElements<&'_ [u8]>> {
-        let fc = self.frame_control();
-        if fc.information_elements_present() {
-            let mut offset = 2;
-            offset += !fc.sequence_number_suppression() as usize;
-
-            if let Some(af) = self.addressing() {
-                offset += af.len();
-            }
-
-            Some(InformationElements::new(&self.buffer.as_ref()[offset..]).ok()?)
-        } else {
-            None
-        }
-    }
-}
-
-impl<'f, T: AsRef<[u8]> + ?Sized> EnhancedBeaconFrame<&'f T> {
-    /// Return the payload of the frame.
-    pub fn payload(&self) -> Option<&'f [u8]> {
-        let fc = self.frame_control();
-
-        let mut offset = 0;
-        offset += 2;
-
-        if !fc.sequence_number_suppression() {
-            offset += 1;
-        }
-
-        if let Some(af) = self.addressing() {
-            offset += af.len();
-        }
-
-        if fc.security_enabled() {
-            offset += self.auxiliary_security_header().unwrap().len();
-        }
-
-        if fc.information_elements_present() {
-            if let Some(ie) = self.information_elements() {
-                offset += ie.len();
-            }
-        }
-
-        if self.buffer.as_ref().len() <= offset {
-            return None;
-        }
-
-        Some(&self.buffer.as_ref()[offset..])
-    }
-}
 
 #[frame]
 #[derive(Debug)]
@@ -596,6 +442,161 @@ impl Iterator for PendingAddressIterator<'_> {
             self.terminated = true;
             None
         }
+    }
+}
+
+/// A reader/writer for an IEEE 802.15.4 Enhanced Beacon frame.
+pub struct EnhancedBeaconFrame<T: AsRef<[u8]>> {
+    buffer: T,
+}
+
+impl<T: AsRef<[u8]>> EnhancedBeaconFrame<T> {
+    pub fn new(buffer: T) -> Result<Self> {
+        let b = Self::new_unchecked(buffer);
+
+        if !b.check_len() {
+            return Err(Error);
+        }
+
+        let fc = b.frame_control();
+
+        if fc.security_enabled() {
+            return Err(Error);
+        }
+
+        if fc.frame_type() == FrameType::Unknown {
+            return Err(Error);
+        }
+
+        if fc.frame_version() == FrameVersion::Unknown {
+            return Err(Error);
+        }
+
+        if fc.dst_addressing_mode() == AddressingMode::Unknown {
+            return Err(Error);
+        }
+
+        if fc.src_addressing_mode() == AddressingMode::Unknown {
+            return Err(Error);
+        }
+
+        Ok(b)
+    }
+
+    fn check_len(&self) -> bool {
+        let buffer = self.buffer.as_ref();
+
+        if buffer.len() < 2 || buffer.len() > 127 {
+            return false;
+        }
+
+        let fc = self.frame_control();
+
+        if !fc.sequence_number_suppression() && buffer.len() < 3 {
+            return false;
+        }
+
+        true
+    }
+
+    pub fn new_unchecked(buffer: T) -> Self {
+        Self { buffer }
+    }
+
+    /// Return a [`FrameControl`] reader.
+    pub fn frame_control(&self) -> FrameControl<&'_ [u8]> {
+        FrameControl::new_unchecked(&self.buffer.as_ref()[..2])
+    }
+
+    /// Return the sequence number of the frame.
+    pub fn sequence_number(&self) -> Option<u8> {
+        if self.frame_control().sequence_number_suppression() {
+            None
+        } else {
+            Some(self.buffer.as_ref()[2])
+        }
+    }
+
+    /// Return an [`AddressingFields`] reader.
+    pub fn addressing(&self) -> Option<AddressingFields<&'_ [u8], &'_ [u8]>> {
+        let fc = self.frame_control();
+
+        if fc.sequence_number_suppression() {
+            AddressingFields::new(&self.buffer.as_ref()[2..], fc).ok()
+        } else {
+            AddressingFields::new(&self.buffer.as_ref()[3..], fc).ok()
+        }
+    }
+
+    pub fn auxiliary_security_header(&self) -> Option<AuxiliarySecurityHeader<&'_ [u8]>> {
+        let fc = self.frame_control();
+
+        if fc.security_enabled() {
+            let mut offset = 2;
+
+            offset += !fc.sequence_number_suppression() as usize;
+
+            if let Some(af) = self.addressing() {
+                offset += af.len();
+            }
+
+            Some(AuxiliarySecurityHeader::new(
+                &self.buffer.as_ref()[offset..],
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Return an [`InformationElements`] reader.
+    pub fn information_elements(&self) -> Option<InformationElements<&'_ [u8]>> {
+        let fc = self.frame_control();
+        if fc.information_elements_present() {
+            let mut offset = 2;
+            offset += !fc.sequence_number_suppression() as usize;
+
+            if let Some(af) = self.addressing() {
+                offset += af.len();
+            }
+
+            Some(InformationElements::new(&self.buffer.as_ref()[offset..]).ok()?)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'f, T: AsRef<[u8]> + ?Sized> EnhancedBeaconFrame<&'f T> {
+    /// Return the payload of the frame.
+    pub fn payload(&self) -> Option<&'f [u8]> {
+        let fc = self.frame_control();
+
+        let mut offset = 0;
+        offset += 2;
+
+        if !fc.sequence_number_suppression() {
+            offset += 1;
+        }
+
+        if let Some(af) = self.addressing() {
+            offset += af.len();
+        }
+
+        if fc.security_enabled() {
+            offset += self.auxiliary_security_header().unwrap().len();
+        }
+
+        if fc.information_elements_present() {
+            if let Some(ie) = self.information_elements() {
+                offset += ie.len();
+            }
+        }
+
+        if self.buffer.as_ref().len() <= offset {
+            return None;
+        }
+
+        Some(&self.buffer.as_ref()[offset..])
     }
 }
 
