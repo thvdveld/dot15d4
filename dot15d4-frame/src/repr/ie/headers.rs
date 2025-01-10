@@ -24,7 +24,14 @@ impl HeaderInformationElementRepr {
             )),
             HeaderElementId::HeaderTermination1 => Self::HeaderTermination1,
             HeaderElementId::HeaderTermination2 => Self::HeaderTermination2,
-            _ => return Err(Error),
+            _id => {
+                #[cfg(feature = "panic")]
+                {
+                    panic!("unsupported Header Information Element: {_id:?}");
+                }
+                #[allow(unreachable_code)]
+                return Err(Error);
+            }
         })
     }
 

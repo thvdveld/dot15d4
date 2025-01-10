@@ -24,3 +24,9 @@ log = "0.4.21"
 [features]
 std = []
 fuzz = ["arbitrary"]
+
+# Enable this to panic when unkown types are encountered.
+# This is useful when implementing new functionality.
+# Instead of returning Err(Error), the program panics at the place
+# where the unknown type is encountered.
+panic = []

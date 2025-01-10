@@ -36,7 +36,14 @@ impl NestedInformationElementRepr {
             NestedSubId::Long(NestedSubIdLong::ChannelHopping) => Self::ChannelHopping(
                 ChannelHoppingRepr::parse(&ChannelHopping::new(ie.content())?),
             ),
-            _ => return Err(Error),
+            _id => {
+                #[cfg(feature = "panic")]
+                {
+                    panic!("unsupported Nested Information Element: {_id:?}");
+                }
+                #[allow(unreachable_code)]
+                return Err(Error);
+            }
         })
     }
 
