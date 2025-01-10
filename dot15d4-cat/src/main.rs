@@ -2,6 +2,11 @@ use clap::Parser;
 use colored::*;
 use dot15d4_frame::*;
 
+// Examples:
+// dot15d4-cat 40ebcdabffff0100010001000100003f1188061a0e0000000000011c0001c800011b00
+// dot15d4-cat 022e37cdab0200020002000200020fe18f
+// dot15d4-cat 41d801cdabffffc7d9b514004b12002b000000
+
 struct Writer {
     indent: usize,
 }

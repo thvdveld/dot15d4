@@ -259,39 +259,3 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> DataFrame<T> {
         self.buffer.as_mut()[offset..].copy_from_slice(payload);
     }
 }
-
-impl<T: AsRef<[u8]> + ?Sized> core::fmt::Display for DataFrame<&T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let fc = self.frame_control();
-        write!(f, "{}", fc)?;
-        if !fc.sequence_number_suppression() {
-            writeln!(f, "Sequence number: {}", self.sequence_number().unwrap())?;
-        }
-
-        if let Some(af) = self.addressing() {
-            write!(f, "{af}")?;
-        }
-
-        if fc.security_enabled() {
-            todo!();
-        }
-
-        if let Some(ie) = self.information_elements() {
-            writeln!(f, "Information Elements")?;
-            for header_ie in ie.header_information_elements() {
-                writeln!(f, "  {}", header_ie)?;
-            }
-
-            for payload_ie in ie.payload_information_elements() {
-                writeln!(f, "  {}", payload_ie)?;
-            }
-        }
-
-        if let Some(payload) = self.payload() {
-            writeln!(f, "Payload")?;
-            writeln!(f, "  {:0x?}", payload)?;
-        }
-
-        Ok(())
-    }
-}
