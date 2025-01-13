@@ -66,6 +66,7 @@ impl From<u8> for FrameVersion {
 }
 
 /// A reader/writer for the IEEE 802.15.4 Frame Control field.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct FrameControl<T: AsRef<[u8]>> {
     buffer: T,
 }

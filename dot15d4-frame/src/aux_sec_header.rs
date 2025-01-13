@@ -4,7 +4,7 @@
 #![allow(missing_docs)]
 
 /// A reader/writer for the IEEE 802.15.4 Auxiliary Security Header.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct AuxiliarySecurityHeader<T: AsRef<[u8]>> {
     buffer: T,
 }

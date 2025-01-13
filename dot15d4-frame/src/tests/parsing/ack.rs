@@ -1,25 +1,25 @@
-use crate::*;
-
 use crate::frames::ack::*;
+use crate::time::Duration;
+use crate::*;
 
 #[test]
 fn parse_imm_ack() {
     let frame = [0x02, 0x10, 0x01];
-
     let frame = AckFrame::new(&frame).unwrap();
 
-    let fc = frame.frame_control();
-    assert_eq!(fc.frame_type(), FrameType::Ack);
-    assert!(!fc.security_enabled());
-    assert!(!fc.frame_pending());
-    assert!(!fc.ack_request());
-    assert!(!fc.pan_id_compression());
-    assert!(!fc.sequence_number_suppression());
-    assert!(!fc.information_elements_present());
-    assert!(fc.dst_addressing_mode() == AddressingMode::Absent);
-    assert!(fc.frame_version() == FrameVersion::Ieee802154_2006);
-    assert!(fc.src_addressing_mode() == AddressingMode::Absent);
-    assert!(frame.sequence_number() == 1);
+    test!(
+        frame.frame_control().frame_type() => FrameType::Ack,
+        frame.frame_control().security_enabled() => false,
+        frame.frame_control().frame_pending() => false,
+        frame.frame_control().ack_request() => false,
+        frame.frame_control().pan_id_compression() => false,
+        frame.frame_control().sequence_number_suppression() => false,
+        frame.frame_control().information_elements_present() => false,
+        frame.frame_control().dst_addressing_mode() => AddressingMode::Absent,
+        frame.frame_control().frame_version() => FrameVersion::Ieee802154_2006,
+        frame.frame_control().src_addressing_mode() => AddressingMode::Absent,
+        frame.sequence_number() => 1
+    );
 }
 
 #[test]
@@ -31,45 +31,42 @@ fn parse_enhanced_ack() {
 
     let frame = EnhancedAckFrame::new(&frame).unwrap();
 
-    let fc = frame.frame_control();
-    assert_eq!(fc.frame_type(), FrameType::Ack);
-    assert!(!fc.security_enabled());
-    assert!(!fc.frame_pending());
-    assert!(!fc.ack_request());
-    assert!(!fc.pan_id_compression());
-    assert!(!fc.sequence_number_suppression());
-    assert!(fc.information_elements_present());
-    assert!(fc.dst_addressing_mode() == AddressingMode::Extended);
-    assert!(fc.frame_version() == FrameVersion::Ieee802154_2020);
-    assert!(fc.src_addressing_mode() == AddressingMode::Absent);
-
-    assert!(frame.sequence_number() == Some(55));
-
-    let addressing = frame.addressing().unwrap();
-    assert_eq!(addressing.dst_pan_id(), Some(0xabcd));
-    assert_eq!(
-        addressing.dst_address(),
-        Some(Address::Extended([
-            0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02
-        ]))
+    test!(
+        frame.frame_control().frame_type() => FrameType::Ack,
+        frame.frame_control().security_enabled() => false,
+        frame.frame_control().frame_pending() => false,
+        frame.frame_control().ack_request() => false,
+        frame.frame_control().pan_id_compression() => false,
+        frame.frame_control().sequence_number_suppression() => false,
+        frame.frame_control().information_elements_present() => true,
+        frame.frame_control().dst_addressing_mode() => AddressingMode::Extended,
+        frame.frame_control().frame_version() => FrameVersion::Ieee802154_2020,
+        frame.frame_control().src_addressing_mode() => AddressingMode::Absent,
+        frame.sequence_number() => Some(55),
+        frame.addressing().unwrap().dst_pan_id() => Some(0xabcd),
+        frame.addressing().unwrap().dst_address() => Some(Address::Extended([0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02])),
+        frame.addressing().unwrap().src_pan_id() => None,
+        frame.addressing().unwrap().src_address() => Some(Address::Absent),
+        frame.auxiliary_security_header() => None,
     );
-    assert_eq!(addressing.src_pan_id(), None);
-    assert_eq!(addressing.src_address(), Some(Address::Absent));
 
     let ie = frame.information_elements().unwrap();
     let mut headers = ie.header_information_elements();
 
-    let time_correction = headers.next().unwrap();
-    assert_eq!(
-        time_correction.element_id(),
-        HeaderElementId::TimeCorrection
+    test_sub_element!(
+        headers.next().unwrap(),
+        |ie| {
+            test!(
+                ie.element_id() => HeaderElementId::TimeCorrection,
+            );
+            TimeCorrection::new(ie.content()).unwrap()
+        },
+        |time_correction| {
+            test!(
+                time_correction.len() => 2,
+                time_correction.time_correction() => Duration::from_us(-31),
+                time_correction.nack() => true
+            );
+        }
     );
-
-    let time_correction = TimeCorrection::new(time_correction.content()).unwrap();
-    assert_eq!(time_correction.len(), 2);
-    assert_eq!(
-        time_correction.time_correction(),
-        crate::time::Duration::from_us(-31)
-    );
-    assert!(time_correction.nack());
 }

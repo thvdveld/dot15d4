@@ -220,6 +220,7 @@ impl<T: AsRef<[u8]>> GtsInfo<T> {
 
 /// Guaranteed Timeslot Descriptor
 #[frame(no_constructor)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct GtsSlot {
     /// Short address of the intended device.
     #[bytes(2)]

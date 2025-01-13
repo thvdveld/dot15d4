@@ -177,6 +177,7 @@
 #![no_std]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
+#![allow(unused)]
 
 #[cfg(any(feature = "std", test))]
 #[macro_use]

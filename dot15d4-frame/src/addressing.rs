@@ -194,6 +194,7 @@ impl From<u8> for AddressingMode {
 }
 
 /// A reader/writer for the IEEE 802.15.4 Addressing Fields.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct AddressingFields<T: AsRef<[u8]>, FC: AsRef<[u8]>> {
     buffer: T,
     fc: FrameControl<FC>,

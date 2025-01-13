@@ -2,6 +2,47 @@ use super::*;
 
 mod parsing;
 
+#[macro_export]
+#[allow(missing_docs)]
+macro_rules! test {
+    (
+        $($getter:expr => $value:expr),* $(,)?
+    ) => {
+        $(
+            assert_eq!($getter, $value);
+        )*
+    };
+}
+
+/// Example
+/// ```rust
+/// test_information_element!(
+///     slots.next().unwrap(),
+///     |slot| { GtsDirection::Receive(slot) },
+///     |slot| {
+///         test!(
+///             slot.short_address() => Address::Short([0x78, 0x56]),
+///             slot.starting_slot() => 4,
+///             slot.length() => 1,
+///             slot.direction() => GtsDirection::Receive,
+///         );
+///     }
+/// );
+/// ```
+#[macro_export]
+#[allow(missing_docs)]
+macro_rules! test_sub_element {
+    (
+        $element:expr,
+        |$name:ident| $constructor:block,
+        |$name2:ident| $block:block
+    ) => {
+        let $name = $element;
+        let $name2 = $constructor;
+        $block;
+    };
+}
+
 #[test]
 fn emit_imm_ack() {
     let imm_ack = FrameBuilder::new_imm_ack(1).finalize().unwrap();

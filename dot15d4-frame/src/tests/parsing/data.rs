@@ -9,31 +9,23 @@ fn parse_data_frame() {
 
     let frame = DataFrame::new(&frame).unwrap();
 
-    let fc = frame.frame_control();
-    assert_eq!(fc.frame_type(), FrameType::Data);
-    assert!(!fc.security_enabled());
-    assert!(!fc.frame_pending());
-    assert!(!fc.ack_request());
-    assert!(fc.pan_id_compression());
-
-    assert!(fc.dst_addressing_mode() == AddressingMode::Short);
-    assert!(fc.frame_version() == FrameVersion::Ieee802154_2006);
-    assert!(fc.src_addressing_mode() == AddressingMode::Extended);
-
-    assert!(frame.sequence_number() == Some(1));
-
-    let addressing = frame.addressing().unwrap();
-    assert_eq!(addressing.dst_pan_id(), Some(0xabcd));
-    assert_eq!(addressing.dst_address(), Some(Address::BROADCAST));
-    assert_eq!(addressing.src_pan_id(), None);
-    assert_eq!(
-        addressing.src_address(),
-        Some(Address::Extended([
-            0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7
-        ]))
+    test!(
+        frame.frame_control().frame_type() => FrameType::Data,
+        frame.frame_control().security_enabled() => false,
+        frame.frame_control().frame_pending() => false,
+        frame.frame_control().ack_request() => false,
+        frame.frame_control().pan_id_compression() => true,
+        frame.frame_control().sequence_number_suppression() => false,
+        frame.frame_control().information_elements_present() => false,
+        frame.frame_control().dst_addressing_mode() => AddressingMode::Short,
+        frame.frame_control().frame_version() => FrameVersion::Ieee802154_2006,
+        frame.frame_control().src_addressing_mode() => AddressingMode::Extended,
+        frame.sequence_number() => Some(1),
+        frame.addressing().unwrap().dst_pan_id() => Some(0xabcd),
+        frame.addressing().unwrap().dst_address() => Some(Address::BROADCAST),
+        frame.addressing().unwrap().src_pan_id() => None,
+        frame.addressing().unwrap().src_address() => Some(Address::Extended([0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd9, 0xc7])),
+        frame.information_elements() => None,
+        frame.payload() => Some(&[0x2b, 0x00, 0x00, 0x00][..]),
     );
-
-    assert!(frame.information_elements().is_none());
-
-    assert!(frame.payload() == Some(&[0x2b, 0x00, 0x00, 0x00][..]));
 }
