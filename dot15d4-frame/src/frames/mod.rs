@@ -2,8 +2,9 @@ use crate::{Error, Result};
 
 use crate::{FrameControl, FrameType, FrameVersion};
 
+pub(crate) mod ack;
 pub(crate) mod beacon;
-mod data;
+pub(crate) mod data;
 
 pub use beacon::BeaconFrame;
 pub use beacon::EnhancedBeaconFrame;
