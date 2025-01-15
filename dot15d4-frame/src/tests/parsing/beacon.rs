@@ -87,7 +87,7 @@ fn parse_enhanced_beacon() {
         0xc8, 0x00, 0x01, 0x1b, 0x00,
     ];
 
-    let frame = EnhancedBeaconFrame::new(&frame).unwrap();
+    let frame = EnhancedBeacon::new(&frame).unwrap();
 
     test!(
         frame.frame_control().frame_type() => FrameType::Beacon,

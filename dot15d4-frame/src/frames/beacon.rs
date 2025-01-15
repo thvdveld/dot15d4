@@ -10,11 +10,11 @@ use crate::{
 };
 
 /// A reader/writer for an IEEE 802.15.4 Beacon frame.
-pub struct BeaconFrame<T: AsRef<[u8]>> {
+pub struct Beacon<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> BeaconFrame<T> {
+impl<T: AsRef<[u8]>> Beacon<T> {
     #[allow(unused)]
     pub fn new(buffer: T) -> Result<Self> {
         todo!();
@@ -98,7 +98,7 @@ impl<T: AsRef<[u8]>> BeaconFrame<T> {
     }
 }
 
-impl<'f, T: AsRef<[u8]> + ?Sized> BeaconFrame<&'f T> {
+impl<'f, T: AsRef<[u8]> + ?Sized> Beacon<&'f T> {
     /// Return the payload of the frame.
     pub fn payload(&self) -> Option<&'f [u8]> {
         let mut offset = 3;
@@ -447,11 +447,11 @@ impl Iterator for PendingAddressIterator<'_> {
 }
 
 /// A reader/writer for an IEEE 802.15.4 Enhanced Beacon frame.
-pub struct EnhancedBeaconFrame<T: AsRef<[u8]>> {
+pub struct EnhancedBeacon<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> EnhancedBeaconFrame<T> {
+impl<T: AsRef<[u8]>> EnhancedBeacon<T> {
     pub fn new(buffer: T) -> Result<Self> {
         let b = Self::new_unchecked(buffer);
 
@@ -567,7 +567,7 @@ impl<T: AsRef<[u8]>> EnhancedBeaconFrame<T> {
     }
 }
 
-impl<'f, T: AsRef<[u8]> + ?Sized> EnhancedBeaconFrame<&'f T> {
+impl<'f, T: AsRef<[u8]> + ?Sized> EnhancedBeacon<&'f T> {
     /// Return the payload of the frame.
     pub fn payload(&self) -> Option<&'f [u8]> {
         let fc = self.frame_control();

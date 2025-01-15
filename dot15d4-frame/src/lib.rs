@@ -20,7 +20,7 @@
 //! For an incoming frame, use the [`Frame`] structure to read its content.
 //! ```
 //! # use dot15d4_frame::{
-//! #   EnhancedBeaconFrame,
+//! #   EnhancedBeacon,
 //! #   FrameControl,
 //! #   FrameType,
 //! #   AddressingFields,
@@ -35,7 +35,7 @@
 //! #     0x00, 0x3f, 0x11, 0x88, 0x06, 0x1a, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1c,
 //! #     0x00, 0x01, 0xc8, 0x00, 0x01, 0x1b, 0x00,
 //! # ];
-//! let frame = EnhancedBeaconFrame::new(&frame).unwrap();
+//! let frame = EnhancedBeacon::new(&frame).unwrap();
 //! let fc = frame.frame_control();
 //! let src_addr = frame.addressing().unwrap().src_address();
 //! let dst_addr = frame.addressing().unwrap().dst_address();
@@ -187,9 +187,9 @@ extern crate std;
 mod tests;
 
 mod frames;
-pub use frames::BeaconFrame;
+pub use frames::Beacon;
 pub use frames::DataFrame;
-pub use frames::EnhancedBeaconFrame;
+pub use frames::EnhancedBeacon;
 pub use frames::Frame;
 
 mod time;
