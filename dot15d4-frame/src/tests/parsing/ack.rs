@@ -5,7 +5,7 @@ use crate::*;
 #[test]
 fn parse_imm_ack() {
     let frame = [0x02, 0x10, 0x01];
-    let frame = AckFrame::new(&frame).unwrap();
+    let frame = Ack::new(&frame).unwrap();
 
     test!(
         frame.frame_control().frame_type() => FrameType::Ack,
@@ -29,7 +29,7 @@ fn parse_enhanced_ack() {
         0xe1, 0x8f,
     ];
 
-    let frame = EnhancedAckFrame::new(&frame).unwrap();
+    let frame = EnhancedAck::new(&frame).unwrap();
 
     test!(
         frame.frame_control().frame_type() => FrameType::Ack,

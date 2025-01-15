@@ -5,11 +5,11 @@ use crate::{
     FrameVersion, InformationElements,
 };
 
-pub struct AckFrame<T: AsRef<[u8]>> {
+pub struct Ack<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> AckFrame<T> {
+impl<T: AsRef<[u8]>> Ack<T> {
     pub fn new(buffer: T) -> Result<Self> {
         let ack = Self::new_unchecked(buffer);
 
@@ -43,11 +43,11 @@ impl<T: AsRef<[u8]>> AckFrame<T> {
     }
 }
 
-pub struct EnhancedAckFrame<T: AsRef<[u8]>> {
+pub struct EnhancedAck<T: AsRef<[u8]>> {
     buffer: T,
 }
 
-impl<T: AsRef<[u8]>> EnhancedAckFrame<T> {
+impl<T: AsRef<[u8]>> EnhancedAck<T> {
     pub fn new(buffer: T) -> Result<Self> {
         let ack = Self::new_unchecked(buffer);
 
@@ -131,7 +131,7 @@ impl<T: AsRef<[u8]>> EnhancedAckFrame<T> {
     }
 }
 
-impl<T: AsRef<[u8]> + ?Sized> EnhancedAckFrame<&T> {
+impl<T: AsRef<[u8]> + ?Sized> EnhancedAck<&T> {
     pub fn payload(&self) -> Option<&'_ [u8]> {
         let fc = self.frame_control();
 

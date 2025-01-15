@@ -6,6 +6,8 @@ pub(crate) mod ack;
 pub(crate) mod beacon;
 pub(crate) mod data;
 
+pub use ack::Ack;
+pub use ack::EnhancedAck;
 pub use beacon::Beacon;
 pub use beacon::EnhancedBeacon;
 pub use data::DataFrame;
