@@ -933,7 +933,7 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
             return false;
         }
 
-        len > 4 + (self.links() as usize * LinkDescriptor::<&[u8]>::len())
+        len >= 4 + (self.links() as usize * LinkDescriptor::<&[u8]>::len())
     }
 
     /// Create a new [`SlotframeDescriptor`] reader/writer from a given buffer
