@@ -503,6 +503,12 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
         if self.id() == Self::DEFAULT_ID {
             TschTimeslotTimings::default()
         } else {
+            // Length in bytes of the last two timing values
+            let last_values_len = match self.data.as_ref().len() {
+                25 => 2,
+                _ => 3,
+            };
+
             TschTimeslotTimings {
                 id: self.id(),
                 cca_offset: Duration::from_us({
@@ -546,24 +552,27 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
                     u16::from_le_bytes([b[0], b[1]]) as i64
                 }),
                 max_tx: Duration::from_us({
-                    let len = if self.data.as_ref().len() == 25 { 2 } else { 3 };
-                    let b = &self.data.as_ref()[21..][..len];
-                    // TODO: handle the case where a 3 byte length is used.
-                    u16::from_le_bytes([b[0], b[1]]) as i64
+                    let b = &self.data.as_ref()[21..][..last_values_len];
+                    match last_values_len {
+                        2 => u16::from_le_bytes([b[0], b[1]]) as i64,
+                        _ => u32::from_le_bytes([b[0], b[1], b[2], 0x00]) as i64,
+                    }
                 }),
                 timeslot_length: Duration::from_us({
-                    let offset = if self.data.as_ref().len() == 25 {
-                        23
-                    } else {
-                        24
-                    };
-                    let len = if self.data.as_ref().len() == 25 { 2 } else { 3 };
-                    let b = &self.data.as_ref()[offset..][..len];
-                    // TODO: handle the case where a 3 byte length is used.
-                    u16::from_le_bytes([b[0], b[1]]) as i64
+                    let offset = 21 + last_values_len;
+                    let b = &self.data.as_ref()[offset..][..last_values_len];
+                    match last_values_len {
+                        2 => u16::from_le_bytes([b[0], b[1]]) as i64,
+                        _ => u32::from_le_bytes([b[0], b[1], b[2], 0x00]) as i64,
+                    }
                 }),
             }
         }
+    }
+
+    /// Returns `true` if timing fields are present.
+    pub fn has_timeslot_timings(&self) -> bool {
+        self.data.as_ref().len() > 1
     }
 }
 
@@ -571,6 +580,32 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TschTimeslot<T> {
     /// Set the TSCH timeslot ID field.
     pub fn set_timeslot_id(&mut self, id: u8) {
         self.data.as_mut()[0] = id;
+    }
+
+    /// Set timing fields in TSCH timeslot IE
+    pub fn set_timeslot_timings(&mut self, timings: &TschTimeslotTimings) {
+        let data = self.data.as_mut();
+        data[0] = timings.id();
+        data[1..][..2].copy_from_slice(&(timings.cca_offset.as_us() as u16).to_le_bytes());
+        data[3..][..2].copy_from_slice(&(timings.cca.as_us() as u16).to_le_bytes());
+        data[5..][..2].copy_from_slice(&(timings.tx_offset.as_us() as u16).to_le_bytes());
+        data[7..][..2].copy_from_slice(&(timings.rx_offset.as_us() as u16).to_le_bytes());
+        data[9..][..2].copy_from_slice(&(timings.rx_ack_delay.as_us() as u16).to_le_bytes());
+        data[11..][..2].copy_from_slice(&(timings.tx_ack_delay.as_us() as u16).to_le_bytes());
+        data[13..][..2].copy_from_slice(&(timings.rx_wait.as_us() as u16).to_le_bytes());
+        data[15..][..2].copy_from_slice(&(timings.ack_wait.as_us() as u16).to_le_bytes());
+        data[17..][..2].copy_from_slice(&(timings.rx_tx.as_us() as u16).to_le_bytes());
+        data[19..][..2].copy_from_slice(&(timings.max_ack.as_us() as u16).to_le_bytes());
+
+        let max_tx = timings.max_tx.as_us() as u32;
+        let timeslot_length = timings.timeslot_length.as_us() as u32;
+        if max_tx > 65535 || timeslot_length > 65535 {
+            data[21..][..3].copy_from_slice(&max_tx.to_le_bytes()[..3]);
+            data[24..][..3].copy_from_slice(&timeslot_length.to_le_bytes()[..3]);
+        } else {
+            data[21..][..2].copy_from_slice(&(max_tx as u16).to_le_bytes());
+            data[23..][..2].copy_from_slice(&(timeslot_length as u16).to_le_bytes());
+        }
     }
 }
 
@@ -653,6 +688,11 @@ impl TschTimeslotTimings {
             max_tx: Duration::from_us(4256),
             timeslot_length: Duration::from_us(10000),
         }
+    }
+
+    /// Return the Timeslot timing ID.
+    pub const fn id(&self) -> u8 {
+        self.id
     }
 
     /// Return the CCA offset in microseconds.
@@ -774,43 +814,20 @@ impl TschTimeslotTimings {
     pub fn set_timeslot_length(&mut self, timeslot_length: Duration) {
         self.timeslot_length = timeslot_length;
     }
+}
 
-    /// Emit the timeslot timings into a buffer.
-    pub fn emit(&self, buffer: &mut [u8]) {
-        buffer[0] = self.id;
-        buffer[1..][..2].copy_from_slice(&(self.cca_offset.as_us() as u16).to_le_bytes());
-        buffer[3..][..2].copy_from_slice(&(self.cca.as_us() as u16).to_le_bytes());
-        buffer[5..][..2].copy_from_slice(&(self.tx_offset.as_us() as u16).to_le_bytes());
-        buffer[7..][..2].copy_from_slice(&(self.rx_offset.as_us() as u16).to_le_bytes());
-        buffer[9..][..2].copy_from_slice(&(self.rx_ack_delay.as_us() as u16).to_le_bytes());
-        buffer[11..][..2].copy_from_slice(&(self.tx_ack_delay.as_us() as u16).to_le_bytes());
-        buffer[13..][..2].copy_from_slice(&(self.rx_wait.as_us() as u16).to_le_bytes());
-        buffer[15..][..2].copy_from_slice(&(self.ack_wait.as_us() as u16).to_le_bytes());
-        buffer[17..][..2].copy_from_slice(&(self.rx_tx.as_us() as u16).to_le_bytes());
-        buffer[19..][..2].copy_from_slice(&(self.max_ack.as_us() as u16).to_le_bytes());
-
-        // TODO: handle the case where the buffer is too small
-        buffer[21..][..2].copy_from_slice(&(self.max_tx.as_us() as u16).to_le_bytes());
-        // TODO: handle the case where the buffer is too small
-        buffer[23..][..2].copy_from_slice(&(self.timeslot_length.as_us() as u16).to_le_bytes());
-    }
-
-    fn fmt(&self, indent: usize, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        writeln!(f, "{:indent$}cca_offset: {}", "", self.cca_offset(),)?;
-        writeln!(f, "{:indent$}cca: {}", "", self.cca(), indent = indent)?;
+impl core::fmt::Display for TschTimeslotTimings {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let indent = f.width().unwrap_or(0);
+        writeln!(f, "cca_offset: {}", self.cca_offset(),)?;
+        writeln!(f, "{:indent$}cca: {}", "", self.cca())?;
         writeln!(f, "{:indent$}tx offset: {}", "", self.tx_offset(),)?;
         writeln!(f, "{:indent$}rx offset: {}", "", self.rx_offset(),)?;
-        writeln!(
-            f,
-            "{:indent$}tx ack delay: {}",
-            "",
-            self.tx_ack_delay(),
-            indent = indent
-        )?;
+        writeln!(f, "{:indent$}tx ack delay: {}", "", self.tx_ack_delay())?;
         writeln!(f, "{:indent$}rx ack delay: {}", "", self.rx_ack_delay(),)?;
         writeln!(f, "{:indent$}rx wait: {}", "", self.rx_wait(),)?;
         writeln!(f, "{:indent$}ack wait: {}", "", self.ack_wait(),)?;
-        writeln!(f, "{:indent$}rx/tx: {}", "", self.rx_tx(), indent = indent)?;
+        writeln!(f, "{:indent$}rx/tx: {}", "", self.rx_tx())?;
         writeln!(f, "{:indent$}max ack: {}", "", self.max_ack(),)?;
         writeln!(f, "{:indent$}max tx: {}", "", self.max_tx(),)?;
         writeln!(
@@ -819,12 +836,6 @@ impl TschTimeslotTimings {
             "",
             self.timeslot_length(),
         )
-    }
-}
-
-impl core::fmt::Display for TschTimeslotTimings {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        self.fmt(0, f)
     }
 }
 

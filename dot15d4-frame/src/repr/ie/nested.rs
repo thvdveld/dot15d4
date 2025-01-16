@@ -172,27 +172,82 @@ impl TschSlotframeAndLinkRepr {
 /// A high-level representation of a TSCH Timeslot Nested Information Element.
 #[derive(Debug)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
-pub struct TschTimeslotRepr {
-    /// The timeslot ID.
-    pub id: u8,
+/// A high-level representation of a TSCH Timeslot Nested Information Element.
+#[derive(Debug)]
+pub enum TschTimeslotRepr {
+    /// Default Timeslot Template with given ID. ID shall be 0.
+    Default(u8),
+    /// Custom Timeslot timings
+    Custom(TschTimeslotTimings),
 }
 
 impl TschTimeslotRepr {
     /// Parse a TSCH Timeslot Information Element.
     pub fn parse(ie: &TschTimeslot<&[u8]>) -> Self {
-        Self { id: ie.id() }
+        if ie.has_timeslot_timings() {
+            Self::Custom(ie.timeslot_timings())
+        } else {
+            Self::Default(ie.id())
+        }
     }
 
     /// The buffer length required to emit the TSCH Timeslot Information
     /// Element.
     pub fn buffer_len(&self) -> usize {
-        // TODO: allow to set other timeslots than the default one.
-        1
+        match self {
+            Self::Default(_id) => 1,
+            Self::Custom(timings) => {
+                let max_tx = timings.max_tx().as_us() as u32;
+                let timeslot_length = timings.timeslot_length().as_us() as u32;
+                if max_tx > 65535 || timeslot_length > 65535 {
+                    27
+                } else {
+                    25
+                }
+            }
+        }
     }
 
     /// Emit the TSCH Timeslot Information Element into a buffer.
     pub fn emit(&self, ie: &mut TschTimeslot<&mut [u8]>) {
-        ie.set_timeslot_id(self.id);
+        match self {
+            Self::Default(id) => {
+                ie.set_timeslot_id(*id);
+            }
+            Self::Custom(timings) => {
+                ie.set_timeslot_timings(timings);
+            }
+        }
+    }
+}
+
+#[cfg(feature = "fuzz")]
+impl arbitrary::Arbitrary<'_> for TschTimeslotRepr {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        match u.int_in_range(0..=1)? {
+            0 => Ok(Self::Default(0)),
+            _ => {
+                let mut timings =
+                    TschTimeslotTimings::new(u.int_in_range(1..=255)?, Duration::from_us(0));
+                // TODO: set random values that are coherent
+                let guard_time = Duration::from_us(u.int_in_range(2000..=2400)?);
+                let offset = Duration::from_us(u.int_in_range(2100..=2140)?);
+                timings.set_cca_offset(Duration::from_us(u.int_in_range(1750..=1850)?));
+                timings.set_cca(Duration::from_us(128));
+                timings.set_tx_offset(offset);
+                timings.set_rx_offset(offset - (guard_time / 2));
+                timings.set_rx_ack_delay(Duration::from_us(u.int_in_range(780..=820)?));
+                timings.set_tx_ack_delay(Duration::from_us(u.int_in_range(980..=1020)?));
+                timings.set_rx_wait(guard_time);
+                timings.set_ack_wait(Duration::from_us(u.int_in_range(380..=420)?));
+                timings.set_rx_tx(Duration::from_us(u.int_in_range(190..=194)?));
+                timings.set_max_ack(Duration::from_us(u.int_in_range(2350..=2450)?));
+                timings.set_max_tx(Duration::from_us(u.int_in_range(4200..=4300)?));
+                timings
+                    .set_timeslot_length(Duration::from_us(10000 + 1000 * u.int_in_range(0..=10)?));
+                Ok(Self::Custom(timings))
+            }
+        }
     }
 }
 
