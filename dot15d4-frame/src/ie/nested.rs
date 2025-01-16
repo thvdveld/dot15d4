@@ -897,12 +897,31 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
             &self.data.as_ref()[1..],
         )
     }
+
+    /// Return the length of TSCH Slotframe and Link IE in bytes.
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        let slotframe_descriptors_len =
+            self.slotframe_descriptors().map(|d| d.len()).sum::<usize>();
+        1 + slotframe_descriptors_len
+    }
+
+    /// Return the content of the TSCH slotframe and link IE.
+    pub fn content(&self) -> &[u8] {
+        // TODO: check if we should set end index
+        &self.data.as_ref()[1..self.len()]
+    }
 }
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> TschSlotframeAndLink<T> {
     /// Set the number of slotframes field.
     pub fn set_number_of_slotframes(&mut self, number_of_slotframes: u8) {
         self.data.as_mut()[0] = number_of_slotframes;
+    }
+
+    /// Return the content of the TSCH slotframe and link IE.
+    pub fn content_mut(&mut self) -> &mut [u8] {
+        &mut self.data.as_mut()[1..]
     }
 }
 
@@ -981,6 +1000,44 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
             &self.data.as_ref()[4..][..(self.links() as usize * LinkInformation::<&[u8]>::len())],
         )
     }
+
+    /// Return the content of the Slotframe descriptor.
+    pub fn content(&self) -> &[u8] {
+        &self.data.as_ref()[4..self.len()]
+    }
+}
+
+impl<T: AsRef<[u8]> + AsMut<[u8]>> SlotframeDescriptor<T> {
+    /// Set slotframe handle.
+    pub fn set_handle(&mut self, handle: u8) {
+        self.data.as_mut()[0] = handle;
+    }
+
+    /// Set slotframe size.
+    pub fn set_size(&mut self, size: u16) {
+        self.data.as_mut()[1..3].copy_from_slice(&size.to_le_bytes());
+    }
+
+    /// Set number of links in sloframe.
+    pub fn set_number_of_links(&mut self, number_of_links: u8) {
+        self.data.as_mut()[3] = number_of_links;
+    }
+
+    /// Return a mutable reference to the content of the Slotframe descriptor.
+    pub fn content_mut(&mut self) -> &mut [u8] {
+        &mut self.data.as_mut()[4..]
+    }
+}
+
+impl<T: AsRef<[u8]>> core::fmt::Display for SlotframeDescriptor<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "Slotframe Handle: {}, #links: {}",
+            self.handle(),
+            self.links()
+        )
+    }
 }
 
 /// An [`Iterator`] over [`SlotframeDescriptor`].
@@ -1053,6 +1110,12 @@ impl<T: AsRef<[u8]>> LinkInformation<T> {
         5
     }
 
+    /// Create a new [`LinkInformation`] reader/writer from a given buffer
+    /// without length checking.
+    pub fn new_unchecked(data: T) -> Self {
+        Self { data }
+    }
+
     /// Return the timeslot field.
     pub fn timeslot(&self) -> u16 {
         let b = &self.data.as_ref()[0..][..2];
@@ -1068,6 +1131,35 @@ impl<T: AsRef<[u8]>> LinkInformation<T> {
     /// Return the link options field.
     pub fn link_options(&self) -> TschLinkOption {
         TschLinkOption::from_bits_truncate(self.data.as_ref()[4])
+    }
+}
+
+impl<T: AsRef<[u8]> + AsMut<[u8]>> LinkInformation<T> {
+    /// Set the timeslot
+    pub fn set_timeslot(&mut self, timeslot: u16) {
+        self.data.as_mut()[0..2].copy_from_slice(&timeslot.to_le_bytes());
+    }
+
+    /// Set the channel offset
+    pub fn set_channel_offset(&mut self, channel_offset: u16) {
+        self.data.as_mut()[2..4].copy_from_slice(&channel_offset.to_le_bytes());
+    }
+
+    /// Set the Link Options
+    pub fn set_link_options(&mut self, link_options: TschLinkOption) {
+        self.data.as_mut()[4] = link_options.bits();
+    }
+}
+
+impl<T: AsRef<[u8]>> core::fmt::Display for LinkInformation<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "Timeslot: {}, Channel Offset: {}, Link Options: {}",
+            self.timeslot(),
+            self.channel_offset(),
+            self.link_options()
+        )
     }
 }
 
@@ -1129,6 +1221,12 @@ bitflags! {
 }
 
 impl core::fmt::Debug for TschLinkOption {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        bitflags::parser::to_writer(self, f)
+    }
+}
+
+impl core::fmt::Display for TschLinkOption {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         bitflags::parser::to_writer(self, f)
     }

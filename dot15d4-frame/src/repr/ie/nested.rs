@@ -1,8 +1,13 @@
+use crate::time::Duration;
+
 use super::super::super::{
-    ChannelHopping, NestedInformationElement, NestedSubId, NestedSubIdLong, NestedSubIdShort,
-    TschSlotframeAndLink, TschSynchronization, TschTimeslot,
+    ChannelHopping, LinkInformation, NestedInformationElement, NestedSubId, NestedSubIdLong,
+    NestedSubIdShort, SlotframeDescriptor, TschLinkOption, TschSlotframeAndLink,
+    TschSynchronization, TschTimeslot, TschTimeslotTimings,
 };
 use super::super::super::{Error, Result};
+
+use heapless::Vec;
 
 /// A high-level representation of a MLME Payload Information Element.
 #[derive(Debug)]
@@ -143,35 +148,197 @@ impl TschSynchronizationRepr {
 /// A high-level representation of a TSCH Slotframe and Link Nested Information
 /// Element.
 #[derive(Debug)]
-#[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschSlotframeAndLinkRepr {
-    /// The number of slotframes.
-    pub number_of_slotframes: u8,
+    /// The slotframe descriptors.
+    pub slotframe_descriptors: Vec<SlotframeDescriptorRepr, 3>,
 }
 
 impl TschSlotframeAndLinkRepr {
     /// Parse a TSCH Slotframe and Link Information Element.
     pub fn parse(ie: &TschSlotframeAndLink<&[u8]>) -> Self {
+        let mut slotframe_descriptors = Vec::new();
+
+        for sd in ie.slotframe_descriptors() {
+            slotframe_descriptors.push(SlotframeDescriptorRepr::parse(&sd));
+        }
+
         Self {
-            number_of_slotframes: ie.number_of_slotframes(),
+            slotframe_descriptors,
         }
     }
 
     /// The buffer length required to emit the TSCH Slotframe and Link
     /// Information Element.
     pub fn buffer_len(&self) -> usize {
-        1
+        1 + self
+            .slotframe_descriptors
+            .iter()
+            .map(|d| d.buffer_len())
+            .sum::<usize>()
     }
 
     /// Emit the TSCH Slotframe and Link Information Element into a buffer.
     pub fn emit(&self, ie: &mut TschSlotframeAndLink<&mut [u8]>) {
-        ie.set_number_of_slotframes(self.number_of_slotframes);
+        ie.set_number_of_slotframes(self.slotframe_descriptors.len() as u8);
+
+        let mut offset = 0;
+
+        let buffer = ie.content_mut();
+
+        for sd_repr in self.slotframe_descriptors.iter() {
+            sd_repr.emit(&mut SlotframeDescriptor::new_unchecked(
+                &mut buffer[offset..][..sd_repr.buffer_len()],
+            ));
+            offset += sd_repr.buffer_len();
+        }
     }
 }
 
-/// A high-level representation of a TSCH Timeslot Nested Information Element.
+#[cfg(feature = "fuzz")]
+impl arbitrary::Arbitrary<'_> for TschSlotframeAndLinkRepr {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        let mut slotframe_descriptors = Vec::new();
+
+        // Generate maximum 2 slotframes
+        for _ in 0..u.int_in_range(0..=2)? {
+            slotframe_descriptors
+                .push(SlotframeDescriptorRepr::arbitrary(u)?)
+                .map_err(|_| arbitrary::Error::IncorrectFormat)?;
+        }
+        Ok(Self {
+            slotframe_descriptors,
+        })
+    }
+}
+
+/// A high-level representation of a Slotframe Descriptor present inside of a
+/// TSCH Synchronization Nested Information Element.
+#[derive(Debug)]
+pub struct SlotframeDescriptorRepr {
+    /// The Slotframe Handle.
+    pub handle: u8,
+    /// The size of the slotframe in number of timeslots.
+    pub size: u16,
+    /// Number of links that belong to the slotframe identified by the
+    /// Slotframe Handle.
+    pub links: Vec<LinkInformationRepr, 4>,
+}
+
+impl SlotframeDescriptorRepr {
+    /// Parse a Slotframe Descriptor present in a TSCH Slotframe and Link
+    /// Information Element.
+    pub fn parse(ie: &SlotframeDescriptor<&[u8]>) -> Self {
+        let mut links = Vec::new();
+
+        for link_information in ie.link_informations() {
+            if links
+                .push(LinkInformationRepr::parse(&link_information))
+                .is_err()
+            {
+                break;
+            }
+        }
+
+        Self {
+            handle: ie.handle(),
+            size: ie.size(),
+            links,
+        }
+    }
+
+    /// The buffer length required to emit the TSCH Slotframe and Link
+    /// Information Element.
+    pub fn buffer_len(&self) -> usize {
+        4 + self.links.len() * 5
+    }
+
+    /// Emit the TSCH Slotframe and Link Information Element into a buffer.
+    pub fn emit(&self, buffer: &mut SlotframeDescriptor<&mut [u8]>) {
+        buffer.set_handle(self.handle);
+        buffer.set_size(self.size);
+        buffer.set_number_of_links(self.links.len() as u8);
+        let mut offset = 0;
+        for link_repr in self.links.iter() {
+            link_repr.emit(&mut LinkInformation::new_unchecked(
+                &mut buffer.content_mut()[offset..][..link_repr.buffer_len()],
+            ));
+            offset += link_repr.buffer_len();
+        }
+    }
+}
+
+#[cfg(feature = "fuzz")]
+impl arbitrary::Arbitrary<'_> for SlotframeDescriptorRepr {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        let mut links = Vec::new();
+
+        // Generate maximum 4 links
+        for _ in 0..u.int_in_range(0..=4)? {
+            links
+                .push(LinkInformationRepr::arbitrary(u)?)
+                .map_err(|_| arbitrary::Error::IncorrectFormat)?;
+        }
+
+        Ok(Self {
+            handle: u.int_in_range(0..=8)?,
+            size: u.int_in_range(0..=255)?,
+            links,
+        })
+    }
+}
+
+/// A high-level representation of a Link Information present inside of a
+/// TSCH Synchronization Nested Information Element.
 #[derive(Debug)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
+pub struct LinkInformationRepr {
+    /// The timeslot
+    pub timeslot: u16,
+    /// Channel offset
+    pub channel_offset: u16,
+    /// Link options represented as a bitmap
+    pub link_options: TschLinkOptionRepr,
+}
+
+impl LinkInformationRepr {
+    /// Parse a Link Information from a Slotframe descriptor.
+    pub fn parse(ie: &LinkInformation<&[u8]>) -> Self {
+        Self {
+            timeslot: ie.timeslot(),
+            channel_offset: ie.channel_offset(),
+            link_options: TschLinkOptionRepr(ie.link_options()),
+        }
+    }
+
+    /// The buffer length required to emit the Link Information.
+    pub fn buffer_len(&self) -> usize {
+        5
+    }
+
+    /// Emit the Link Information field.
+    pub fn emit(&self, buffer: &mut LinkInformation<&mut [u8]>) {
+        buffer.set_timeslot(self.timeslot);
+        buffer.set_channel_offset(self.channel_offset);
+        buffer.set_link_options(self.link_options.0);
+    }
+}
+
+/// A high-level representation of a Link Option found in TSCH Timeslot Nested
+/// Information Element.
+#[derive(Debug)]
+pub struct TschLinkOptionRepr(pub TschLinkOption);
+
+#[cfg(feature = "fuzz")]
+impl arbitrary::Arbitrary<'_> for TschLinkOptionRepr {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        if let Some(option) = TschLinkOption::from_bits(u8::arbitrary(u)?) {
+            Ok(Self(option))
+        } else {
+            Err(arbitrary::Error::IncorrectFormat)
+        }
+    }
+}
+
 /// A high-level representation of a TSCH Timeslot Nested Information Element.
 #[derive(Debug)]
 pub enum TschTimeslotRepr {
