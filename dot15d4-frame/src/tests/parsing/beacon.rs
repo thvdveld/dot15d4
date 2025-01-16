@@ -180,7 +180,7 @@ fn parse_enhanced_beacon() {
         },
         |slotframe| {
             test!(
-                slotframe.number_of_slot_frames() => 0,
+                slotframe.number_of_slotframes() => 0,
             );
         }
     );
