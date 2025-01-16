@@ -175,7 +175,7 @@ impl From<BeaconOrder> for u8 {
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 #[repr(u8)]
-///  The lenght of the active portion of the superframe.
+///  The length of the active portion of the superframe.
 pub enum SuperframeOrder {
     /// The superframe duration is calculated with:
     /// `base_super_frame_duration * 2^{superframe_order}`

@@ -37,7 +37,7 @@ impl<F: FnOnce()> Drop for OnDrop<F> {
 
 /// Convenience Future around transmitting through the radio. This future first
 /// prepares the radio, then transmits before succeeding. This future, upon
-/// canceling, stops the radio from transmitting and puts the radio in an IDLE
+/// cancelling, stops the radio from transmitting and puts the radio in an IDLE
 /// state.
 #[allow(clippy::await_holding_refcell_ref)]
 pub async fn transmit<'task, T: AsMut<[u8]>, R: Radio>(
@@ -61,7 +61,7 @@ pub async fn transmit<'task, T: AsMut<[u8]>, R: Radio>(
 
 /// Convenience Future around receiving through the radio. This future first
 /// prepares the radio, then receives before succeeding. This future, upon
-/// canceling, stops the radio from receiving and puts the radio in an IDLE
+/// cancelling, stops the radio from receiving and puts the radio in an IDLE
 /// state.
 #[allow(clippy::await_holding_refcell_ref)]
 pub async fn receive<'task, R: Radio>(
