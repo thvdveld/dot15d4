@@ -551,7 +551,7 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
                     // TODO: handle the case where a 3 byte length is used.
                     u16::from_le_bytes([b[0], b[1]]) as i64
                 }),
-                time_slot_length: Duration::from_us({
+                timeslot_length: Duration::from_us({
                     let offset = if self.data.as_ref().len() == 25 {
                         23
                     } else {
@@ -569,7 +569,7 @@ impl<T: AsRef<[u8]>> TschTimeslot<T> {
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> TschTimeslot<T> {
     /// Set the TSCH timeslot ID field.
-    pub fn set_time_slot_id(&mut self, id: u8) {
+    pub fn set_timeslot_id(&mut self, id: u8) {
         self.data.as_mut()[0] = id;
     }
 }
@@ -580,19 +580,19 @@ impl<T: AsRef<[u8]>> core::fmt::Display for TschTimeslot<T> {
     }
 }
 
-/// A TSCH time slot timings (figure 6-30 in IEEE 802.15.4-2020).
+/// A TSCH timeslot timings (figure 6-30 in IEEE 802.15.4-2020).
 ///
-/// If the time slot ID is 0, the default timings are used.
+/// If the timeslot ID is 0, the default timings are used.
 ///
 /// ```notrust
 /// +----+------------+-----+-----------+-----------+--------------+--------------+---------+----------+-------+---------+--------+------------------+
-/// | ID | CCA offset | CCA | TX offset | RX offset | RX ACK delay | TX ACK delay | RX wait | ACK wait | RX/TX | Max ACK | Max TX | Time slot length |
+/// | ID | CCA offset | CCA | TX offset | RX offset | RX ACK delay | TX ACK delay | RX wait | ACK wait | RX/TX | Max ACK | Max TX | Timeslot length |
 /// +----+------------+-----+-----------+-----------+--------------+--------------+---------+----------+-------+---------+--------+------------------+
 /// ```
 #[derive(Debug)]
 pub struct TschTimeslotTimings {
     id: u8,
-    /// Offset from the start of the time slot to the start of the CCA in
+    /// Offset from the start of the timeslot to the start of the CCA in
     /// microseconds.
     cca_offset: Duration,
     /// Duration of the CCA in microseconds.
@@ -600,7 +600,7 @@ pub struct TschTimeslotTimings {
     /// Radio turnaround time in microseconds.
     rx_tx: Duration,
 
-    /// Offset from the start of the time slot to the start of the TX in
+    /// Offset from the start of the timeslot to the start of the TX in
     /// microseconds.
     tx_offset: Duration,
     /// Maximum transmission time for a frame in microseconds.
@@ -611,7 +611,7 @@ pub struct TschTimeslotTimings {
     /// Maximum time to wait for receiving an ACK.
     ack_wait: Duration,
 
-    /// Offset from the start of the time slot to the start of the RX in
+    /// Offset from the start of the timeslot to the start of the RX in
     /// microseconds.
     rx_offset: Duration,
     /// Maximum time to wait for receiving a frame.
@@ -622,8 +622,8 @@ pub struct TschTimeslotTimings {
     /// Maximum transmission time for an ACK in microseconds.
     max_ack: Duration,
 
-    /// Length of the time slot in microseconds.
-    time_slot_length: Duration,
+    /// Length of the timeslot in microseconds.
+    timeslot_length: Duration,
 }
 
 impl Default for TschTimeslotTimings {
@@ -636,7 +636,7 @@ impl TschTimeslotTimings {
     /// The default guard time (2200us) in microseconds.
     pub const DEFAULT_GUARD_TIME: Duration = Duration::from_us(2200);
 
-    /// Create a new set of time slot timings.
+    /// Create a new set of timeslot timings.
     pub fn new(id: u8, guard_time: Duration) -> Self {
         Self {
             id,
@@ -651,7 +651,7 @@ impl TschTimeslotTimings {
             rx_tx: Duration::from_us(192),
             max_ack: Duration::from_us(2400),
             max_tx: Duration::from_us(4256),
-            time_slot_length: Duration::from_us(10000),
+            timeslot_length: Duration::from_us(10000),
         }
     }
 
@@ -765,17 +765,17 @@ impl TschTimeslotTimings {
         self.max_tx = max_tx;
     }
 
-    /// Return the time slot length in microseconds.
-    pub const fn time_slot_length(&self) -> Duration {
-        self.time_slot_length
+    /// Return the timeslot length in microseconds.
+    pub const fn timeslot_length(&self) -> Duration {
+        self.timeslot_length
     }
 
-    /// Set the time slot length in microseconds.
-    pub fn set_time_slot_length(&mut self, time_slot_length: Duration) {
-        self.time_slot_length = time_slot_length;
+    /// Set the timeslot length in microseconds.
+    pub fn set_timeslot_length(&mut self, timeslot_length: Duration) {
+        self.timeslot_length = timeslot_length;
     }
 
-    /// Emit the time slot timings into a buffer.
+    /// Emit the timeslot timings into a buffer.
     pub fn emit(&self, buffer: &mut [u8]) {
         buffer[0] = self.id;
         buffer[1..][..2].copy_from_slice(&(self.cca_offset.as_us() as u16).to_le_bytes());
@@ -792,7 +792,7 @@ impl TschTimeslotTimings {
         // TODO: handle the case where the buffer is too small
         buffer[21..][..2].copy_from_slice(&(self.max_tx.as_us() as u16).to_le_bytes());
         // TODO: handle the case where the buffer is too small
-        buffer[23..][..2].copy_from_slice(&(self.time_slot_length.as_us() as u16).to_le_bytes());
+        buffer[23..][..2].copy_from_slice(&(self.timeslot_length.as_us() as u16).to_le_bytes());
     }
 
     fn fmt(&self, indent: usize, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -815,9 +815,9 @@ impl TschTimeslotTimings {
         writeln!(f, "{:indent$}max tx: {}", "", self.max_tx(),)?;
         writeln!(
             f,
-            "{:indent$}time slot length: {}",
+            "{:indent$}timeslot length: {}",
             "",
-            self.time_slot_length(),
+            self.timeslot_length(),
         )
     }
 }
