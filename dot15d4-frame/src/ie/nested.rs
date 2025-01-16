@@ -904,7 +904,7 @@ impl<T: AsRef<[u8]>> core::fmt::Display for TschSlotframeAndLink<T> {
 /// A reader/writer for the Slotframe Descriptor.
 /// ```notrust
 /// +--------+------+-------+---------------------+
-/// | Handle | Size | Links | Link descriptors... |
+/// | Handle | Size | Links | Link informations... |
 /// +--------+------+-------+---------------------+
 /// 0        1      3       4
 /// ```
@@ -933,7 +933,7 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
             return false;
         }
 
-        len >= 4 + (self.links() as usize * LinkDescriptor::<&[u8]>::len())
+        len >= 4 + (self.links() as usize * LinkInformation::<&[u8]>::len())
     }
 
     /// Create a new [`SlotframeDescriptor`] reader/writer from a given buffer
@@ -964,10 +964,10 @@ impl<T: AsRef<[u8]>> SlotframeDescriptor<T> {
         self.data.as_ref()[3]
     }
 
-    /// Return the link descriptors.
-    pub fn link_descriptors(&self) -> LinkDescriptorIterator {
-        LinkDescriptorIterator::new(
-            &self.data.as_ref()[4..][..(self.links() as usize * LinkDescriptor::<&[u8]>::len())],
+    /// Return the link informations.
+    pub fn link_informations(&self) -> LinkInformationIterator {
+        LinkInformationIterator::new(
+            &self.data.as_ref()[4..][..(self.links() as usize * LinkInformation::<&[u8]>::len())],
         )
     }
 }
@@ -1020,24 +1020,24 @@ impl<'f> Iterator for SlotframeDescriptorIterator<'f> {
     }
 }
 
-/// A reader/writer for the Link Descriptor.
+/// A reader/writer for the Link Information field.
 /// ```notrust
 /// +----------+----------------+--------------+
 /// | Timeslot | Channel offset | Link options |
 /// +----------+----------------+--------------+
 /// 0          2                4
 /// ```
-pub struct LinkDescriptor<T: AsRef<[u8]>> {
+pub struct LinkInformation<T: AsRef<[u8]>> {
     data: T,
 }
 
-impl<T: AsRef<[u8]>> LinkDescriptor<T> {
-    /// Create a new [`LinkDescriptor`] reader/writer from a given buffer.
+impl<T: AsRef<[u8]>> LinkInformation<T> {
+    /// Create a new [`LinkInformation`] reader/writer from a given buffer.
     pub fn new(data: T) -> Self {
         Self { data }
     }
 
-    /// Return the length of the Link Descriptor in bytes.
+    /// Return the length of the Link Information in bytes.
     pub const fn len() -> usize {
         5
     }
@@ -1060,15 +1060,15 @@ impl<T: AsRef<[u8]>> LinkDescriptor<T> {
     }
 }
 
-/// An [`Iterator`] over [`LinkDescriptor`].
-pub struct LinkDescriptorIterator<'f> {
+/// An [`Iterator`] over [`LinkInformation`].
+pub struct LinkInformationIterator<'f> {
     data: &'f [u8],
     offset: usize,
     terminated: bool,
 }
 
-impl<'f> LinkDescriptorIterator<'f> {
-    /// Create a new [`LinkDescriptorIterator`].
+impl<'f> LinkInformationIterator<'f> {
+    /// Create a new [`LinkInformationIterator`].
     pub fn new(data: &'f [u8]) -> Self {
         Self {
             data,
@@ -1078,20 +1078,20 @@ impl<'f> LinkDescriptorIterator<'f> {
     }
 }
 
-impl<'f> Iterator for LinkDescriptorIterator<'f> {
-    type Item = LinkDescriptor<&'f [u8]>;
+impl<'f> Iterator for LinkInformationIterator<'f> {
+    type Item = LinkInformation<&'f [u8]>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.terminated {
             return None;
         }
 
-        let descriptor = LinkDescriptor::new(&self.data[self.offset..]);
+        let information = LinkInformation::new(&self.data[self.offset..]);
 
-        self.offset += LinkDescriptor::<&[u8]>::len();
+        self.offset += LinkInformation::<&[u8]>::len();
         self.terminated = self.offset >= self.data.as_ref().len();
 
-        Some(descriptor)
+        Some(information)
     }
 }
 
