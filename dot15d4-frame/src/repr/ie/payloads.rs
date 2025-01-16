@@ -91,7 +91,7 @@ impl PayloadInformationElementRepr {
                 let mut offset = 0;
                 for ie in nested_ies.iter() {
                     ie.emit(&mut NestedInformationElement::new_unchecked(
-                        &mut buffer[offset..],
+                        &mut buffer[offset..][..ie.buffer_len()],
                     ));
                     offset += ie.buffer_len();
                 }
