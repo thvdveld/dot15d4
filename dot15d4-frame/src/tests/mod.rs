@@ -1,3 +1,5 @@
+use crate::time::Duration;
+
 use super::*;
 
 mod parsing;
@@ -137,15 +139,40 @@ fn emit_enhanced_beacon() {
             payload_information_elements: heapless::Vec::from_iter([
                 PayloadInformationElementRepr::Mlme(heapless::Vec::from_iter([
                     NestedInformationElementRepr::TschSynchronization(TschSynchronizationRepr {
-                        absolute_slot_number: 14,
+                        absolute_slot_number: 17,
                         join_metric: 0,
                     }),
-                    NestedInformationElementRepr::TschTimeslot(TschTimeslotRepr { id: 0 }),
+                    NestedInformationElementRepr::TschTimeslot(TschTimeslotRepr::Custom(
+                        TschTimeslotTimings::new(1, Duration::from_us(2200)),
+                    )),
                     NestedInformationElementRepr::ChannelHopping(ChannelHoppingRepr {
                         hopping_sequence_id: 0,
                     }),
                     NestedInformationElementRepr::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
-                        number_of_slotframes: 0,
+                        slotframe_descriptors: heapless::Vec::from_iter([
+                            SlotframeDescriptorRepr {
+                                handle: 0,
+                                size: 17,
+                                links: heapless::Vec::from_iter([
+                                    LinkInformationRepr {
+                                        timeslot: 0,
+                                        channel_offset: 1,
+                                        link_options: TschLinkOptionRepr(
+                                            TschLinkOption::Rx | TschLinkOption::Shared,
+                                        ),
+                                    },
+                                    LinkInformationRepr {
+                                        timeslot: 1,
+                                        channel_offset: 2,
+                                        link_options: TschLinkOptionRepr(
+                                            TschLinkOption::Tx
+                                                | TschLinkOption::Rx
+                                                | TschLinkOption::Shared,
+                                        ),
+                                    },
+                                ]),
+                            },
+                        ]),
                     }),
                 ])),
             ]),
@@ -159,10 +186,11 @@ fn emit_enhanced_beacon() {
     assert_eq!(
         buffer,
         [
-            0x40, 0xeb, 0xcd, 0xab, 0xff, 0xff, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00,
-            0x00, 0x3f, 0x11, 0x88, 0x06, 0x1a, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1c,
-            0x00, 0x01, 0xc8, 0x00, 0x01, 0x1b, 0x00
-        ],
+            64, 235, 205, 171, 255, 255, 1, 0, 1, 0, 1, 0, 1, 0, 0, 63, 55, 136, 6, 26, 17, 0, 0,
+            0, 0, 0, 25, 28, 1, 8, 7, 128, 0, 72, 8, 252, 3, 32, 3, 232, 3, 152, 8, 144, 1, 192, 0,
+            96, 9, 160, 16, 16, 39, 1, 200, 0, 15, 27, 1, 0, 17, 0, 2, 0, 0, 1, 0, 6, 1, 0, 2, 0,
+            7
+        ]
     );
 }
 
