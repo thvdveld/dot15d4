@@ -14,6 +14,10 @@ pub use data::DataFrame;
 
 /// A high-level representation of an IEEE 802.15.4 frame.
 pub enum Frame<T: AsRef<[u8]>> {
+    /// An acknowledgment frame.
+    Ack(Ack<T>),
+    /// An enhanced acknowledgment frame.
+    EnhancedAck(EnhancedAck<T>),
     /// A beacon frame.
     Beacon(Beacon<T>),
     /// An enhanced beacon frame.
@@ -32,6 +36,13 @@ impl<T: AsRef<[u8]>> Frame<T> {
         let frame_control = FrameControl::new(&buffer.as_ref()[..2])?;
 
         match frame_control.frame_type() {
+            FrameType::Ack => match frame_control.frame_version() {
+                FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006 => {
+                    Ok(Frame::Ack(Ack::new(buffer)?))
+                }
+                FrameVersion::Ieee802154_2020 => Ok(Frame::EnhancedAck(EnhancedAck::new(buffer)?)),
+                FrameVersion::Unknown => Err(Error),
+            },
             FrameType::Beacon => match frame_control.frame_version() {
                 FrameVersion::Ieee802154_2003 | FrameVersion::Ieee802154_2006 => {
                     Ok(Frame::Beacon(Beacon::new(buffer)?))
@@ -43,6 +54,28 @@ impl<T: AsRef<[u8]>> Frame<T> {
             },
             FrameType::Data => Ok(Frame::Data(DataFrame::new(buffer)?)),
             _ => Err(Error),
+        }
+    }
+
+    /// Convert the [`Frame`] into an [`Ack`].
+    ///
+    /// # Panics
+    /// Panics if the frame is not an ack.
+    pub fn into_ack(self) -> Ack<T> {
+        match self {
+            Frame::Ack(frame) => frame,
+            _ => panic!("not an ack"),
+        }
+    }
+
+    /// Convert the [`Frame`] into an [`EnhancedAck`].
+    ///
+    /// # Panics
+    /// Panics if the frame is not an enhanced ack.
+    pub fn into_enhanced_ack(self) -> EnhancedAck<T> {
+        match self {
+            Frame::EnhancedAck(frame) => frame,
+            _ => panic!("not an enhanced ack"),
         }
     }
 
