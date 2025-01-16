@@ -186,13 +186,13 @@ impl TschTimeslotRepr {
     /// The buffer length required to emit the TSCH Timeslot Information
     /// Element.
     pub fn buffer_len(&self) -> usize {
-        // TODO: allow to set other time slots than the default one.
+        // TODO: allow to set other timeslots than the default one.
         1
     }
 
     /// Emit the TSCH Timeslot Information Element into a buffer.
     pub fn emit(&self, ie: &mut TschTimeslot<&mut [u8]>) {
-        ie.set_time_slot_id(self.id);
+        ie.set_timeslot_id(self.id);
     }
 }
 

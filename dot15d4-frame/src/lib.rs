@@ -49,8 +49,8 @@
 //!         for nested in payload.nested_information_elements() {
 //!              match nested.sub_id() {
 //!                  NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-//!                      let time_slot = TschTimeslot::new(nested.content()).unwrap();
-//!                      assert_eq!(time_slot.id(), 0);
+//!                      let timeslot = TschTimeslot::new(nested.content()).unwrap();
+//!                      assert_eq!(timeslot.id(), 0);
 //!                  }
 //!                  _ => (),
 //!              }
