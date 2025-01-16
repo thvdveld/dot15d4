@@ -145,7 +145,7 @@ fn emit_enhanced_beacon() {
                         hopping_sequence_id: 0,
                     }),
                     NestedInformationElementRepr::TschSlotframeAndLink(TschSlotframeAndLinkRepr {
-                        number_of_slot_frames: 0,
+                        number_of_slotframes: 0,
                     }),
                 ])),
             ]),

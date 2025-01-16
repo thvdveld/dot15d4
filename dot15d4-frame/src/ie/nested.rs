@@ -861,7 +861,7 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
             return false;
         }
 
-        let _number_of_slot_frames = self.number_of_slot_frames() as usize;
+        let _number_of_slotframes = self.number_of_slotframes() as usize;
         let slotframe_descriptors_len =
             self.slotframe_descriptors().map(|d| d.len()).sum::<usize>();
 
@@ -875,14 +875,14 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
     }
 
     /// Return the number of slotframes field.
-    pub fn number_of_slot_frames(&self) -> u8 {
+    pub fn number_of_slotframes(&self) -> u8 {
         self.data.as_ref()[0]
     }
 
     /// Returns an [`Iterator`] over the [`SlotframeDescriptor`]s.
     pub fn slotframe_descriptors(&self) -> SlotframeDescriptorIterator {
         SlotframeDescriptorIterator::new(
-            self.number_of_slot_frames() as usize,
+            self.number_of_slotframes() as usize,
             &self.data.as_ref()[1..],
         )
     }
@@ -890,14 +890,14 @@ impl<T: AsRef<[u8]>> TschSlotframeAndLink<T> {
 
 impl<T: AsRef<[u8]> + AsMut<[u8]>> TschSlotframeAndLink<T> {
     /// Set the number of slotframes field.
-    pub fn set_number_of_slot_frames(&mut self, number_of_slot_frames: u8) {
-        self.data.as_mut()[0] = number_of_slot_frames;
+    pub fn set_number_of_slotframes(&mut self, number_of_slotframes: u8) {
+        self.data.as_mut()[0] = number_of_slotframes;
     }
 }
 
 impl<T: AsRef<[u8]>> core::fmt::Display for TschSlotframeAndLink<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "#slot frames: {}", self.number_of_slot_frames())
+        write!(f, "#slotframes: {}", self.number_of_slotframes())
     }
 }
 

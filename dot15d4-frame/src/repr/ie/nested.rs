@@ -146,14 +146,14 @@ impl TschSynchronizationRepr {
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
 pub struct TschSlotframeAndLinkRepr {
     /// The number of slotframes.
-    pub number_of_slot_frames: u8,
+    pub number_of_slotframes: u8,
 }
 
 impl TschSlotframeAndLinkRepr {
     /// Parse a TSCH Slotframe and Link Information Element.
     pub fn parse(ie: &TschSlotframeAndLink<&[u8]>) -> Self {
         Self {
-            number_of_slot_frames: ie.number_of_slot_frames(),
+            number_of_slotframes: ie.number_of_slotframes(),
         }
     }
 
@@ -165,7 +165,7 @@ impl TschSlotframeAndLinkRepr {
 
     /// Emit the TSCH Slotframe and Link Information Element into a buffer.
     pub fn emit(&self, ie: &mut TschSlotframeAndLink<&mut [u8]>) {
-        ie.set_number_of_slot_frames(self.number_of_slot_frames);
+        ie.set_number_of_slotframes(self.number_of_slotframes);
     }
 }
 
