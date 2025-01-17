@@ -38,8 +38,7 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
     }
 
     /// Return the length field value.
-    #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self) -> usize {
+    pub fn length(&self) -> usize {
         let b = &self.data.as_ref()[0..2];
         u16::from_le_bytes([b[0], b[1]]) as usize & 0b1111111111
     }
@@ -53,7 +52,7 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
 
     /// Return the content of this Header Information Element.
     pub fn content(&self) -> &[u8] {
-        &self.data.as_ref()[2..][..self.len()]
+        &self.data.as_ref()[2..][..self.length()]
     }
 
     /// Returns [`NestedInformationElementsIterator`] [`Iterator`].
@@ -172,7 +171,7 @@ impl<'f> Iterator for PayloadInformationElementsIterator<'f> {
 
             self.terminated = matches!(ie.group_id(), PayloadGroupId::PayloadTermination);
 
-            self.offset += ie.len() + 2;
+            self.offset += ie.length() + 2;
 
             if self.offset >= self.data.len() {
                 self.terminated = true;
