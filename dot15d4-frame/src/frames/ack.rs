@@ -5,6 +5,7 @@ use crate::{
     FrameVersion, InformationElements,
 };
 
+/// A reader/writer for an IEEE 802.15.4 Acknowledgment frame.
 pub struct Ack<T: AsRef<[u8]>> {
     buffer: T,
 }
@@ -43,6 +44,7 @@ impl<T: AsRef<[u8]>> Ack<T> {
     }
 }
 
+/// A reader/writer for an IEEE 802.15.4 Enhanced Acknowledgment frame.
 pub struct EnhancedAck<T: AsRef<[u8]>> {
     buffer: T,
 }

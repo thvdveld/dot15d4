@@ -160,15 +160,15 @@
 //! - [ ] `VendorSpecificNested`
 //! - [x] [`ChannelHopping`]
 //!
-//! [`new`]: Frame::new
-//! [`check_len`]: Frame::check_len
-//! [`new_unchecked`]: Frame::new_unchecked
-//! [`frame_control`]: Frame::frame_control
-//! [`sequence_number`]: Frame::sequence_number
-//! [`addressing`]: Frame::addressing
-//! [`auxiliary_security_header`]: Frame::auxiliary_security_header
-//! [`information_elements`]: Frame::information_elements
-//! [`payload`]: Frame::payload
+//! [`new`]: DataFrame::new
+//! [`check_len`]: DataFrame::check_len
+//! [`new_unchecked`]: DataFrame::new_unchecked
+//! [`frame_control`]: DataFrame::frame_control
+//! [`sequence_number`]: DataFrame::sequence_number
+//! [`addressing`]: DataFrame::addressing
+//! [`auxiliary_security_header`]: DataFrame::auxiliary_security_header
+//! [`information_elements`]: DataFrame::information_elements
+//! [`payload`]: DataFrame::payload
 //! [`HeaderTermination1`]: HeaderElementId::HeaderTermination1
 //! [`HeaderTermination2`]: HeaderElementId::HeaderTermination2
 //! [`header_information_elements`]: InformationElements::header_information_elements
@@ -186,7 +186,7 @@ extern crate std;
 #[cfg(test)]
 mod tests;
 
-mod frames;
+pub mod frames;
 pub use frames::Beacon;
 pub use frames::DataFrame;
 pub use frames::EnhancedBeacon;

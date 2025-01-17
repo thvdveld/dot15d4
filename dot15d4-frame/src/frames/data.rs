@@ -13,7 +13,7 @@ pub struct DataFrame<T: AsRef<[u8]>> {
 }
 
 impl<T: AsRef<[u8]>> DataFrame<T> {
-    /// Create a new [`Frame`] reader/writer from a given buffer.
+    /// Create a new [`DataFrame`] reader/writer from a given buffer.
     ///
     /// # Errors
     ///
@@ -51,7 +51,7 @@ impl<T: AsRef<[u8]>> DataFrame<T> {
     }
 
     /// Returns `false` if the buffer is too short to contain a valid frame.
-    fn check_len(&self) -> bool {
+    pub fn check_len(&self) -> bool {
         let buffer = self.buffer.as_ref();
 
         if buffer.len() < 2 || buffer.len() > 127 {
@@ -67,7 +67,7 @@ impl<T: AsRef<[u8]>> DataFrame<T> {
         true
     }
 
-    /// Create a new [`Frame`] reader/writer from a given buffer without length
+    /// Create a new [`DataFrame`] reader/writer from a given buffer without length
     /// checking.
     pub fn new_unchecked(buffer: T) -> Self {
         Self { buffer }

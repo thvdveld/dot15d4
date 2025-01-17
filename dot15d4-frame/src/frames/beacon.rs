@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+//! IEEE 802.15.4 Beacon frame and Enhanced Beacon frame.
 
 use dot15d4_macros::frame;
 

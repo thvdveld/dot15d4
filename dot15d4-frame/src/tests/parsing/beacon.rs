@@ -119,7 +119,7 @@ fn parse_enhanced_beacon() {
     let mut payloads = ie.payload_information_elements();
     let mlme = payloads.next().unwrap();
     assert_eq!(mlme.group_id(), PayloadGroupId::Mlme);
-    assert_eq!(mlme.len() + 2, 19);
+    assert_eq!(mlme.length() + 2, 19);
     assert_eq!(payloads.next(), None);
 
     let mut nested_iterator = NestedInformationElementsIterator::new(mlme.content());

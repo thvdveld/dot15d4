@@ -1,6 +1,8 @@
+//! High-level representation of IEEE 802.15.4 frames.
+
 use crate::{Error, Result};
 
-use crate::{FrameControl, FrameType, FrameVersion};
+use crate::{AddressingFields, AuxiliarySecurityHeader, FrameControl, FrameType, FrameVersion};
 
 pub(crate) mod ack;
 pub(crate) mod beacon;
@@ -79,7 +81,7 @@ impl<T: AsRef<[u8]>> Frame<T> {
         }
     }
 
-    /// Convert the [`Frame`] into a [`BeaconFrame`].
+    /// Convert the [`Frame`] into a [`Beacon`].
     ///
     /// # Panics
     /// Panics if the frame is not a beacon frame.
@@ -90,7 +92,7 @@ impl<T: AsRef<[u8]>> Frame<T> {
         }
     }
 
-    /// Convert the [`Frame`] into an [`EnhancedBeaconFrame`].
+    /// Convert the [`Frame`] into an [`EnhancedBeacon`].
     ///
     /// # Panics
     /// Panics if the frame is not an enhanced beacon frame.
