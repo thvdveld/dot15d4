@@ -58,7 +58,7 @@ impl<T: AsRef<[u8]>> NestedInformationElement<T> {
         Self { data }
     }
 
-    /// Return the length of the Nested Information Element in bytes.
+    /// Return the length field value (which is the length of the content field).
     pub fn length(&self) -> usize {
         let b = &self.data.as_ref()[0..];
         if self.is_long() {

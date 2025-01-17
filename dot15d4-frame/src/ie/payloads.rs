@@ -37,7 +37,7 @@ impl<T: AsRef<[u8]>> PayloadInformationElement<T> {
         Self { data }
     }
 
-    /// Return the length field value.
+    /// Return the length field value (which is the lenght of the content field).
     pub fn length(&self) -> usize {
         let b = &self.data.as_ref()[0..2];
         u16::from_le_bytes([b[0], b[1]]) as usize & 0b1111111111
