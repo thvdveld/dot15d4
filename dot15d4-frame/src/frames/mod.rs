@@ -8,11 +8,9 @@ pub(crate) mod ack;
 pub(crate) mod beacon;
 pub(crate) mod data;
 
-pub use ack::Ack;
-pub use ack::EnhancedAck;
-pub use beacon::Beacon;
-pub use beacon::EnhancedBeacon;
-pub use data::DataFrame;
+pub use ack::*;
+pub use beacon::*;
+pub use data::*;
 
 /// A high-level representation of an IEEE 802.15.4 frame.
 pub enum Frame<T: AsRef<[u8]>> {
@@ -111,6 +109,74 @@ impl<T: AsRef<[u8]>> Frame<T> {
         match self {
             Frame::Data(frame) => frame,
             _ => panic!("not a data frame"),
+        }
+    }
+
+    /// Return the frame control field of the frame.
+    pub fn frame_control(&self) -> FrameControl<&'_ [u8]> {
+        match self {
+            Frame::Ack(frame) => frame.frame_control(),
+            Frame::EnhancedAck(frame) => frame.frame_control(),
+            Frame::Beacon(frame) => frame.frame_control(),
+            Frame::EnhancedBeacon(frame) => frame.frame_control(),
+            Frame::Data(frame) => frame.frame_control(),
+        }
+    }
+
+    /// Return the sequence number of the frame.
+    pub fn sequence_number(&self) -> Option<u8> {
+        match self {
+            Frame::Ack(frame) => Some(frame.sequence_number()),
+            Frame::EnhancedAck(frame) => frame.sequence_number(),
+            Frame::Beacon(frame) => Some(frame.sequence_number()),
+            Frame::EnhancedBeacon(frame) => frame.sequence_number(),
+            Frame::Data(frame) => frame.sequence_number(),
+        }
+    }
+
+    /// Return the addressing field of the frame.
+    pub fn addressing(&self) -> Option<AddressingFields<&'_ [u8], &'_ [u8]>> {
+        match self {
+            Frame::Ack(frame) => None,
+            Frame::EnhancedAck(frame) => frame.addressing(),
+            Frame::Beacon(frame) => Some(frame.addressing()),
+            Frame::EnhancedBeacon(frame) => frame.addressing(),
+            Frame::Data(frame) => frame.addressing(),
+        }
+    }
+
+    /// Return the auxiliary security header of the frame.
+    pub fn auxiliary_security_header(&self) -> Option<AuxiliarySecurityHeader<&'_ [u8]>> {
+        match self {
+            Frame::Ack(_) => None,
+            Frame::EnhancedAck(frame) => frame.auxiliary_security_header(),
+            Frame::Beacon(frame) => frame.auxiliary_security_header(),
+            Frame::EnhancedBeacon(frame) => frame.auxiliary_security_header(),
+            Frame::Data(frame) => frame.auxiliary_security_header(),
+        }
+    }
+
+    /// Return the information elements of the frame.
+    pub fn information_elements(&self) -> Option<crate::InformationElements<&'_ [u8]>> {
+        match self {
+            Frame::Ack(_) => None,
+            Frame::EnhancedAck(frame) => frame.information_elements(),
+            Frame::Beacon(frame) => None,
+            Frame::EnhancedBeacon(frame) => frame.information_elements(),
+            Frame::Data(frame) => frame.information_elements(),
+        }
+    }
+}
+
+impl<T: AsRef<[u8]> + ?Sized> Frame<&'_ T> {
+    /// Return the payload of the frame.
+    pub fn payload(&self) -> Option<&[u8]> {
+        match self {
+            Frame::Ack(frame) => None,
+            Frame::EnhancedAck(frame) => frame.payload(),
+            Frame::Beacon(frame) => frame.payload(),
+            Frame::EnhancedBeacon(frame) => frame.payload(),
+            Frame::Data(frame) => frame.payload(),
         }
     }
 }
