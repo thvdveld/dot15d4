@@ -9,9 +9,12 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 dot15d4-frame = { path = "../dot15d4-frame" }
 
-colored = "2"
+colored = "3"
 clap = { version = "4.5.1", features = ["derive"] }
 hex = "0.4.3"
+
+[dev-dependencies]
+strip-ansi-escapes = "0.2.1"
 
 [[bin]]
 name = "dot15d4"
