@@ -93,7 +93,7 @@ impl<T: AsRef<[u8]>> Beacon<T> {
         }
 
         offset += 2; // Superframe specification
-        offset += self.gts_info().len();
+        offset += self.gts_info().length();
 
         PendingAddress::new_unchecked(&self.buffer.as_ref()[offset..])
     }
@@ -110,8 +110,8 @@ impl<'f, T: AsRef<[u8]> + ?Sized> Beacon<&'f T> {
         }
 
         offset += 2; // Superframe specification
-        offset += self.gts_info().len();
-        offset += self.pending_address().len();
+        offset += self.gts_info().length();
+        offset += self.pending_address().length();
 
         Some(&self.buffer.as_ref()[offset..])
     }
@@ -213,7 +213,7 @@ pub struct GtsInfo {
 }
 
 impl<T: AsRef<[u8]>> GtsInfo<T> {
-    pub fn len(&self) -> usize {
+    pub fn length(&self) -> usize {
         // TODO: check auto-generated code
         1 + self.gts_spec().unwrap().descriptor_count() as usize * GtsSlot::<T>::size()
     }
@@ -364,7 +364,7 @@ pub struct PendingAddress {
 }
 
 impl<T: AsRef<[u8]>> PendingAddress<T> {
-    pub fn len(&self) -> usize {
+    pub fn length(&self) -> usize {
         let spec = self.pending_address_spec().unwrap();
         1 + spec.short_address_pending() as usize * 2 + spec.extended_address_pending() as usize * 8
     }
@@ -372,7 +372,7 @@ impl<T: AsRef<[u8]>> PendingAddress<T> {
     pub fn pending_addresses(&self) -> PendingAddressIterator {
         let spec = self.pending_address_spec().unwrap();
         PendingAddressIterator::new(
-            &self.buffer.as_ref()[1..][..self.len() - 1],
+            &self.buffer.as_ref()[1..][..self.length() - 1],
             spec.short_address_pending(),
             spec.extended_address_pending(),
         )
