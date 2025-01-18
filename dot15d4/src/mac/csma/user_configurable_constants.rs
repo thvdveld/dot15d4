@@ -4,7 +4,7 @@ pub use constants::*;
 #[cfg(test)]
 mod constants {
     #![allow(dead_code)]
-    use crate::csma::{SYMBOL_RATE_INV_US, UNIT_BACKOFF_PERIOD};
+    use crate::mac::csma::{SYMBOL_RATE_INV_US, UNIT_BACKOFF_PERIOD};
     use crate::time::Duration;
 
     // XXX These are just random numbers I picked by fair dice roll; what should

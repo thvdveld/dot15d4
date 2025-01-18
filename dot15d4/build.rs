@@ -40,7 +40,7 @@ fn main() {
     writeln!(data, "use crate::time::Duration;").unwrap();
     writeln!(
         data,
-        "use crate::csma::{{SYMBOL_RATE_INV_US, UNIT_BACKOFF_PERIOD}};"
+        "use crate::mac::csma::{{SYMBOL_RATE_INV_US, UNIT_BACKOFF_PERIOD}};"
     )
     .unwrap();
 
