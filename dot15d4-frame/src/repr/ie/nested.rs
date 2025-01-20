@@ -149,6 +149,7 @@ impl TschSynchronizationRepr {
 /// Element.
 #[derive(Debug)]
 pub struct TschSlotframeAndLinkRepr {
+    // TODO: provide configurable capacity for Vec.
     /// The slotframe descriptors.
     pub slotframe_descriptors: Vec<SlotframeDescriptorRepr, 3>,
 }
@@ -219,6 +220,7 @@ pub struct SlotframeDescriptorRepr {
     pub handle: u8,
     /// The size of the slotframe in number of timeslots.
     pub size: u16,
+    // TODO: provide configurable capacity for Vec.
     /// Number of links that belong to the slotframe identified by the
     /// Slotframe Handle.
     pub links: Vec<LinkInformationRepr, 4>,
@@ -235,6 +237,7 @@ impl SlotframeDescriptorRepr {
                 .push(LinkInformationRepr::parse(&link_information))
                 .is_err()
             {
+                // TODO: log/handle error
                 break;
             }
         }

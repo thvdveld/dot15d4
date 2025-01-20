@@ -918,7 +918,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TschSlotframeAndLink<T> {
     pub fn set_number_of_slotframes(&mut self, number_of_slotframes: u8) {
         self.data.as_mut()[0] = number_of_slotframes;
     }
+}
 
+impl<T: AsRef<[u8]> + AsMut<[u8]> + ?Sized> TschSlotframeAndLink<&mut T> {
     /// Return the content of the TSCH slotframe and link IE.
     pub fn content_mut(&mut self) -> &mut [u8] {
         &mut self.data.as_mut()[1..]
@@ -1022,7 +1024,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> SlotframeDescriptor<T> {
     pub fn set_number_of_links(&mut self, number_of_links: u8) {
         self.data.as_mut()[3] = number_of_links;
     }
+}
 
+impl<T: AsRef<[u8]> + AsMut<[u8]> + ?Sized> SlotframeDescriptor<&mut T> {
     /// Return a mutable reference to the content of the Slotframe descriptor.
     pub fn content_mut(&mut self) -> &mut [u8] {
         &mut self.data.as_mut()[4..]
