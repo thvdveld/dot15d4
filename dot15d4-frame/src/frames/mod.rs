@@ -180,3 +180,40 @@ impl<T: AsRef<[u8]> + ?Sized> Frame<&'_ T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(missing_docs)]
+    macro_rules! test {
+        (
+            $data:expr, $expected:pat, $into:ident
+        ) => {{
+            let data = hex::decode($data).unwrap();
+            let frame = Frame::new(data).unwrap();
+            assert!(matches!(frame, $expected));
+            frame.$into()
+        }};
+    }
+
+    #[test]
+    fn high_level_parsing() {
+        test!("021001", Frame::Ack(_), into_ack);
+        test!(
+            "022e37cdab02000200020002000200020fe18f",
+            Frame::EnhancedAck(_),
+            into_enhanced_ack
+        );
+        test!(
+            "40ebcdabffff0100010001000100003f1188061a0e0000000000011c0001c800011b00",
+            Frame::EnhancedBeacon(_),
+            into_enhanced_beacon
+        );
+        test!(
+            "41d801cdabffffc7d9b514004b12002b000000",
+            Frame::Data(_),
+            into_data
+        );
+    }
+}
