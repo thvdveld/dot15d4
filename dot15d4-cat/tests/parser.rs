@@ -41,6 +41,59 @@ Information Elements
 }
 
 #[test]
+fn enhanced_beacon_with_slotframes() {
+    let input = "40ebcdabffff0100010001000100003f3788061a110000000000191c01080780004808fc032003e80398089001c0006009a010102701c8000f1b010011000200000100060100020007";
+    let output = String::from_utf8(strip(FrameParser::parse_hex(input).unwrap())).unwrap();
+    assert_eq!(
+        output,
+        "Frame Control
+  frame type: Enhanced Beacon
+  security: 0
+  frame pending: 0
+  ack request: 0
+  pan id compression: 1
+  sequence number suppression: 1
+  information elements present: 1
+  dst addressing mode: Short
+  src addressing mode: Extended
+  frame version: 2 (Ieee802154_2020)
+Addressing
+  dst pan id: abcd
+  dst addr: ff:ff (broadcast)
+  src addr: 00:01:00:01:00:01:00:01
+Information Elements
+  Header Information Elements
+    HeaderTermination1
+  Payload Information Elements
+    MLME
+      TschSynchronization
+        ASN: 17, join metric: 0
+      TschTimeslot
+        slot ID: 1
+        cca_offset: 1.80ms
+        cca: 0.13ms
+        tx offset: 2.12ms
+        rx offset: 1.02ms
+        tx ack delay: 1.00ms
+        rx ack delay: 0.80ms
+        rx wait: 2.20ms
+        ack wait: 0.40ms
+        rx/tx: 0.19ms
+        max ack: 2.40ms
+        max tx: 4.26ms
+        timeslot length: 10.00ms
+      ChannelHopping
+        sequence ID: 0
+      TschSlotframeAndLink
+        #slotframes: 1
+        Slotframe Handle: 0, #links: 2
+          Timeslot: 0, Channel Offset: 1, Link Options: Rx | Shared
+          Timeslot: 1, Channel Offset: 2, Link Options: Tx | Rx | Shared
+"
+    );
+}
+
+#[test]
 fn enhanced_ack() {
     let input = "022e37cdab0200020002000200020fe18f";
     let output = String::from_utf8(strip(FrameParser::parse_hex(input).unwrap())).unwrap();
