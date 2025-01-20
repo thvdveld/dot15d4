@@ -191,6 +191,7 @@ pub use frames::Beacon;
 pub use frames::DataFrame;
 pub use frames::EnhancedBeacon;
 pub use frames::Frame;
+pub use frames::FrameWithFcs;
 
 mod time;
 

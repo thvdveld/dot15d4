@@ -12,6 +12,67 @@ pub use ack::*;
 pub use beacon::*;
 pub use data::*;
 
+/// A high-level representation of an IEEE 802.15.4 frame with a Frame Check Sequence (FCS).
+pub struct FrameWithFcs<T: AsRef<[u8]>> {
+    buffer: T,
+}
+
+impl<T: AsRef<[u8]>> FrameWithFcs<T> {
+    /// Create a new [`FrameWithFcs`] from a given buffer.
+    pub fn new(buffer: T) -> Result<Self> {
+        let mut frame = Self::new_unchecked(buffer);
+
+        if !frame.check_len() {
+            return Err(Error);
+        }
+
+        if !frame.check_fcs() {
+            return Err(Error);
+        }
+
+        Ok(frame)
+    }
+
+    /// Check the length of the frame.
+    pub fn check_len(&self) -> bool {
+        if self.buffer.as_ref().len() < 2 {
+            return false;
+        }
+
+        true
+    }
+
+    /// Check the Frame Check Sequence (FCS) of the frame.
+    pub fn check_fcs(&self) -> bool {
+        // The FCS field contains a 16-bit ITU-T CRC, which is
+        // calculated over the entire frame, excluding the FCS field itself.
+        // The CRC-16-IBM/SDLC polynomial is used.
+        let crc = crc::Crc::<u16>::new(&crc::CRC_16_IBM_SDLC);
+        crc.checksum(self.content()) == self.fcs()
+    }
+
+    /// Create a new [`FrameWithFcs`] from a given buffer without checking the FCS.
+    pub fn new_unchecked(buffer: T) -> Self {
+        Self { buffer }
+    }
+
+    /// Return the content of the frame, excluding the FCS.
+    pub fn content(&self) -> &[u8] {
+        &self.buffer.as_ref()[..self.buffer.as_ref().len() - 2]
+    }
+
+    /// Return the Frame Check Sequence (FCS) of the frame.
+    pub fn fcs(&self) -> u16 {
+        let len = self.buffer.as_ref().len();
+        u16::from_le_bytes([self.buffer.as_ref()[len - 2], self.buffer.as_ref()[len - 1]])
+    }
+
+    /// Return a high-level representation of the frame, excluding the FCS.
+    pub fn frame(&self) -> Result<Frame<&'_ [u8]>> {
+        Frame::new(self.content())
+    }
+}
+
 /// A high-level representation of an IEEE 802.15.4 frame.
 pub enum Frame<T: AsRef<[u8]>> {
     /// An acknowledgment frame.
