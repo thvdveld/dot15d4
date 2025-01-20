@@ -28,18 +28,18 @@ impl NestedInformationElementRepr {
     pub fn parse(ie: &NestedInformationElement<&[u8]>) -> Result<Self> {
         Ok(match ie.sub_id() {
             NestedSubId::Short(NestedSubIdShort::TschSynchronization) => Self::TschSynchronization(
-                TschSynchronizationRepr::parse(&TschSynchronization::new(ie.content())?),
+                TschSynchronizationRepr::parse(&TschSynchronization::new(ie.content())?)?,
             ),
             NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
-                Self::TschTimeslot(TschTimeslotRepr::parse(&TschTimeslot::new(ie.content())?))
+                Self::TschTimeslot(TschTimeslotRepr::parse(&TschTimeslot::new(ie.content())?)?)
             }
             NestedSubId::Short(NestedSubIdShort::TschSlotframeAndLink) => {
                 Self::TschSlotframeAndLink(TschSlotframeAndLinkRepr::parse(
                     &TschSlotframeAndLink::new(ie.content())?,
-                ))
+                )?)
             }
             NestedSubId::Long(NestedSubIdLong::ChannelHopping) => Self::ChannelHopping(
-                ChannelHoppingRepr::parse(&ChannelHopping::new(ie.content())?),
+                ChannelHoppingRepr::parse(&ChannelHopping::new(ie.content())?)?,
             ),
             _id => {
                 #[cfg(feature = "panic")]
@@ -125,11 +125,11 @@ pub struct TschSynchronizationRepr {
 
 impl TschSynchronizationRepr {
     /// Parse a TSCH Synchronization Information Element.
-    pub fn parse(ie: &TschSynchronization<&[u8]>) -> Self {
-        Self {
+    pub fn parse(ie: &TschSynchronization<&[u8]>) -> Result<Self> {
+        Ok(Self {
             absolute_slot_number: ie.absolute_slot_number(),
             join_metric: ie.join_metric(),
-        }
+        })
     }
 
     /// The buffer length required to emit the TSCH Synchronization Information
@@ -156,16 +156,25 @@ pub struct TschSlotframeAndLinkRepr {
 
 impl TschSlotframeAndLinkRepr {
     /// Parse a TSCH Slotframe and Link Information Element.
-    pub fn parse(ie: &TschSlotframeAndLink<&[u8]>) -> Self {
+    pub fn parse(ie: &TschSlotframeAndLink<&[u8]>) -> Result<Self> {
         let mut slotframe_descriptors = Vec::new();
 
         for sd in ie.slotframe_descriptors() {
-            slotframe_descriptors.push(SlotframeDescriptorRepr::parse(&sd));
+            if slotframe_descriptors
+                .push(SlotframeDescriptorRepr::parse(&sd)?)
+                .is_err()
+            {
+                #[cfg(feature = "panic")]
+                {
+                    panic!("Exceeded Vec capacity: too many Slotframe Descriptors in frame");
+                }
+                return Err(Error);
+            }
         }
 
-        Self {
+        Ok(Self {
             slotframe_descriptors,
-        }
+        })
     }
 
     /// The buffer length required to emit the TSCH Slotframe and Link
@@ -229,24 +238,27 @@ pub struct SlotframeDescriptorRepr {
 impl SlotframeDescriptorRepr {
     /// Parse a Slotframe Descriptor present in a TSCH Slotframe and Link
     /// Information Element.
-    pub fn parse(ie: &SlotframeDescriptor<&[u8]>) -> Self {
+    pub fn parse(ie: &SlotframeDescriptor<&[u8]>) -> Result<Self> {
         let mut links = Vec::new();
 
         for link_information in ie.link_informations() {
             if links
-                .push(LinkInformationRepr::parse(&link_information))
+                .push(LinkInformationRepr::parse(&link_information)?)
                 .is_err()
             {
-                // TODO: log/handle error
-                break;
+                #[cfg(feature = "panic")]
+                {
+                    panic!("Exceeded Vec capacity: too many Link Informations in slotframe");
+                }
+                return Err(Error);
             }
         }
 
-        Self {
+        Ok(Self {
             handle: ie.handle(),
             size: ie.size(),
             links,
-        }
+        })
     }
 
     /// The buffer length required to emit the TSCH Slotframe and Link
@@ -305,12 +317,12 @@ pub struct LinkInformationRepr {
 
 impl LinkInformationRepr {
     /// Parse a Link Information from a Slotframe descriptor.
-    pub fn parse(ie: &LinkInformation<&[u8]>) -> Self {
-        Self {
+    pub fn parse(ie: &LinkInformation<&[u8]>) -> Result<Self> {
+        Ok(Self {
             timeslot: ie.timeslot(),
             channel_offset: ie.channel_offset(),
             link_options: TschLinkOptionRepr(ie.link_options()),
-        }
+        })
     }
 
     /// The buffer length required to emit the Link Information.
@@ -353,11 +365,11 @@ pub enum TschTimeslotRepr {
 
 impl TschTimeslotRepr {
     /// Parse a TSCH Timeslot Information Element.
-    pub fn parse(ie: &TschTimeslot<&[u8]>) -> Self {
+    pub fn parse(ie: &TschTimeslot<&[u8]>) -> Result<Self> {
         if ie.has_timeslot_timings() {
-            Self::Custom(ie.timeslot_timings())
+            Ok(Self::Custom(ie.timeslot_timings()))
         } else {
-            Self::Default(ie.id())
+            Ok(Self::Default(ie.id()))
         }
     }
 
@@ -431,10 +443,10 @@ pub struct ChannelHoppingRepr {
 
 impl ChannelHoppingRepr {
     /// Parse a Channel Hopping Information Element.
-    pub fn parse(ie: &ChannelHopping<&[u8]>) -> Self {
-        Self {
+    pub fn parse(ie: &ChannelHopping<&[u8]>) -> Result<Self> {
+        Ok(Self {
             hopping_sequence_id: ie.hopping_sequence_id(),
-        }
+        })
     }
 
     /// The buffer length required to emit the Channel Hopping Information
