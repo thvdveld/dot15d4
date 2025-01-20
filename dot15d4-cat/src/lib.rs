@@ -263,6 +263,13 @@ impl FrameParser {
                                     NestedSubId::Short(NestedSubIdShort::TschTimeslot) => {
                                         if let Ok(timeslot) = TschTimeslot::new(nested.content()) {
                                             w.writeln(format!("{timeslot}"));
+                                            if timeslot.has_timeslot_timings() {
+                                                w.write(format!(
+                                                    "{:indent$}",
+                                                    timeslot.timeslot_timings(),
+                                                    indent = w.indent
+                                                ));
+                                            }
                                         } else {
                                             w.writeln("invalid".to_string());
                                         }
@@ -272,6 +279,21 @@ impl FrameParser {
                                             TschSlotframeAndLink::new(nested.content())
                                         {
                                             w.writeln(format!("{slotframe_and_link}"));
+                                            for slotframe_descriptor in
+                                                slotframe_and_link.slotframe_descriptors()
+                                            {
+                                                w.writeln(format!(
+                                                    "{}",
+                                                    format!("{slotframe_descriptor}").italic()
+                                                ));
+                                                w.increase_indent();
+                                                for link_information in
+                                                    slotframe_descriptor.link_informations()
+                                                {
+                                                    w.writeln(format!("{link_information}"));
+                                                }
+                                                w.decrease_indent();
+                                            }
                                         } else {
                                             w.writeln("invalid".to_string());
                                         }
