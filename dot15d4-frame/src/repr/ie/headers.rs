@@ -21,7 +21,7 @@ impl HeaderInformationElementRepr {
         Ok(match ie.element_id() {
             HeaderElementId::TimeCorrection => Self::TimeCorrection(TimeCorrectionRepr::parse(
                 &TimeCorrection::new(ie.content())?,
-            )),
+            )?),
             HeaderElementId::HeaderTermination1 => Self::HeaderTermination1,
             HeaderElementId::HeaderTermination2 => Self::HeaderTermination2,
             _id => {
@@ -90,11 +90,11 @@ pub struct TimeCorrectionRepr {
 
 impl TimeCorrectionRepr {
     /// Parse a Time Correction Header Information Element.
-    pub fn parse(tc: &TimeCorrection<&'_ [u8]>) -> Self {
-        Self {
+    pub fn parse(tc: &TimeCorrection<&'_ [u8]>) -> Result<Self> {
+        Ok(Self {
             time_correction: tc.time_correction(),
             nack: tc.nack(),
-        }
+        })
     }
 
     /// The buffer length required to emit the Time Correction Header
