@@ -142,6 +142,20 @@ impl From<Address> for AddressingMode {
     }
 }
 
+impl core::fmt::Display for Address {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Address::Absent => write!(f, "absent"),
+            Address::Short(value) => write!(f, "{:02x}:{:02x}", value[0], value[1]),
+            Address::Extended(value) => write!(
+                f,
+                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7]
+            ),
+        }
+    }
+}
+
 /// IEEE 802.15.4 addressing mode.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "fuzz", derive(arbitrary::Arbitrary))]
@@ -405,6 +419,30 @@ impl<T: AsRef<[u8]>, FC: AsRef<[u8]>> AddressingFields<T, FC> {
         } else {
             None
         }
+    }
+}
+
+impl<T: AsRef<[u8]>, FC: AsRef<[u8]>> core::fmt::Display for AddressingFields<T, FC> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "Addressing Fields")?;
+
+        if let Some(id) = self.dst_pan_id() {
+            writeln!(f, "  dst pan id: {:0x}", id)?;
+        }
+
+        if let Some(addr) = self.dst_address() {
+            writeln!(f, "  dst address: {}", addr)?;
+        }
+
+        if let Some(id) = self.src_pan_id() {
+            writeln!(f, "  src pan id: {:0x}", id)?;
+        }
+
+        if let Some(addr) = self.src_address() {
+            writeln!(f, "  src address: {}", addr)?;
+        }
+
+        Ok(())
     }
 }
 
