@@ -98,23 +98,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> PayloadInformationElement<T> {
     }
 }
 
-impl<T: AsRef<[u8]>> core::fmt::Display for PayloadInformationElement<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self.group_id() {
-            PayloadGroupId::Mlme => {
-                writeln!(f, "{:?}", self.group_id())?;
-
-                for nested in self.nested_information_elements() {
-                    writeln!(f, "  {}", nested)?;
-                }
-
-                Ok(())
-            }
-            id => write!(f, "{:?}({:0x?})", id, self.content()),
-        }
-    }
-}
-
 /// Payload Information Element ID.
 #[derive(Debug, Eq, PartialEq)]
 pub enum PayloadGroupId {

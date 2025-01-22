@@ -98,32 +98,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> HeaderInformationElement<T> {
     }
 }
 
-impl<T: AsRef<[u8]>> core::fmt::Display for HeaderInformationElement<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let id = self.element_id();
-        match id {
-            HeaderElementId::HeaderTermination1 | HeaderElementId::HeaderTermination2 => {
-                write!(f, "{:?}", id)
-            }
-            HeaderElementId::SimplifiedSuperframeSpecification => {
-                write!(
-                    f,
-                    "{} {:?}",
-                    id,
-                    SimplifiedSuperframeSpecification::new(self.content())
-                )
-            }
-            HeaderElementId::TimeCorrection => {
-                let Ok(tc) = TimeCorrection::new(self.content()) else {
-                    return write!(f, "{:?}({:0x?})", id, self.content());
-                };
-                write!(f, "{} {}", id, tc)
-            }
-            id => write!(f, "{:?}({:0x?})", id, self.content()),
-        }
-    }
-}
-
 /// Header Information Element ID.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum HeaderElementId {
@@ -189,15 +163,6 @@ impl From<u8> for HeaderElementId {
             0x7e => Self::HeaderTermination1,
             0x7f => Self::HeaderTermination2,
             _ => Self::Unkown,
-        }
-    }
-}
-
-impl core::fmt::Display for HeaderElementId {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::TimeCorrection => write!(f, "Time Correction"),
-            _ => write!(f, "{:?}", self),
         }
     }
 }
@@ -406,17 +371,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TimeCorrection<T> {
         } else {
             b[0..2].copy_from_slice(&((value & 0x7fff) as u16).to_le_bytes());
         }
-    }
-}
-
-impl<T: AsRef<[u8]>> core::fmt::Display for TimeCorrection<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{}, nack: {}",
-            self.time_correction(),
-            self.nack() as usize
-        )
     }
 }
 

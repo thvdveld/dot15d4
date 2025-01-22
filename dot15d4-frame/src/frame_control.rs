@@ -250,39 +250,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> FrameControl<T> {
     }
 }
 
-impl<T: AsRef<[u8]>> core::fmt::Display for FrameControl<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        writeln!(f, "Frame Control")?;
-        writeln!(f, "  type: {:?}", self.frame_type())?;
-        writeln!(
-            f,
-            "  security enabled: {}",
-            self.security_enabled() as usize
-        )?;
-        writeln!(f, "  frame pending: {}", self.frame_pending() as usize)?;
-        writeln!(f, "  ack request: {}", self.ack_request() as usize)?;
-        writeln!(
-            f,
-            "  pan id compression: {}",
-            self.pan_id_compression() as usize
-        )?;
-        writeln!(
-            f,
-            "  sequence number suppression: {}",
-            self.sequence_number_suppression() as usize
-        )?;
-        writeln!(
-            f,
-            "  information elements present: {}",
-            self.information_elements_present() as usize
-        )?;
-        writeln!(f, "  dst addressing mode: {:?}", self.dst_addressing_mode())?;
-        writeln!(f, "  src addressing mode: {:?}", self.src_addressing_mode())?;
-        writeln!(f, "  frame version: {:?}", self.frame_version())?;
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,26 +338,5 @@ mod tests {
         assert_eq!(FrameVersion::from(0b01), FrameVersion::Ieee802154_2006);
         assert_eq!(FrameVersion::from(0b10), FrameVersion::Ieee802154_2020);
         assert_eq!(FrameVersion::from(0b11), FrameVersion::Unknown);
-    }
-
-    #[test]
-    fn formatting() {
-        let fc = [0b0010_1001, 0b1010_1010];
-        let fc = FrameControl::new(&fc).unwrap();
-        assert_eq!(
-            format!("{}", fc),
-            r"Frame Control
-  type: Data
-  security enabled: 1
-  frame pending: 0
-  ack request: 1
-  pan id compression: 0
-  sequence number suppression: 0
-  information elements present: 1
-  dst addressing mode: Short
-  src addressing mode: Short
-  frame version: Ieee802154_2020
-"
-        );
     }
 }
