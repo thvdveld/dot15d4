@@ -1,6 +1,6 @@
 use core::future::Future;
 
-use crate::mac::Error;
+use crate::mac;
 use crate::phy::FrameBuffer;
 
 /// This traits provides interactions with upper layer. It allows to abstract
@@ -13,7 +13,7 @@ pub trait UpperLayer {
     /// is received successfully by upper layer.
     fn received_frame(&self, buffer: FrameBuffer) -> impl Future<Output = ()>;
     /// Notifies upper layer of an error while transmitting a frame.
-    fn error(&self, error: Error) -> impl Future<Output = ()>;
+    fn error(&self, error: mac::Error) -> impl Future<Output = ()>;
 }
 
 #[cfg(test)]
@@ -32,7 +32,7 @@ pub mod tests {
     pub struct TestUpperLayerChannel {
         pub tx: Channel<FrameBuffer>,
         pub rx: Channel<FrameBuffer>,
-        pub errors: Channel<Error>,
+        pub errors: Channel<mac::Error>,
     }
 
     impl TestUpperLayerChannel {
@@ -66,13 +66,13 @@ pub mod tests {
     pub struct TestUpperLayerMonitor<'a> {
         pub tx: Sender<'a, FrameBuffer>,
         pub rx: Receiver<'a, FrameBuffer>,
-        pub errors: Receiver<'a, Error>,
+        pub errors: Receiver<'a, mac::Error>,
     }
 
     pub struct TestUpperLayer<'a> {
         tx: Receiver<'a, FrameBuffer>,
         rx: Sender<'a, FrameBuffer>,
-        errors: Sender<'a, Error>,
+        errors: Sender<'a, mac::Error>,
     }
 
     impl UpperLayer for TestUpperLayer<'_> {
@@ -84,7 +84,7 @@ pub mod tests {
             self.rx.send(buffer);
         }
 
-        async fn error(&self, error: Error) {
+        async fn error(&self, error: mac::Error) {
             self.errors.send(error);
         }
     }

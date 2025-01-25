@@ -449,13 +449,15 @@ where
                     // Invalid IEEE frame encountered
                     #[cfg(feature = "defmt")]
                     defmt::trace!("INVALID frame TX incoming buffer IEEE");
-                    self.driver.error(driver::Error::InvalidIEEEStructure).await;
+                    self.upper_layer
+                        .error(mac::Error::InvalidIEEEStructure)
+                        .await;
                 }
                 #[allow(unused_variables)]
                 Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
                     // Invalid device frame encountered
-                    self.driver
-                        .error(driver::Error::InvalidDeviceStructure)
+                    self.upper_layer
+                        .error(mac::Error::InvalidDeviceStructure)
                         .await;
                 }
             }
@@ -465,13 +467,15 @@ where
                     // Invalid IEEE frame encountered
                     #[cfg(feature = "defmt")]
                     defmt::trace!("INVALID frame TX incoming buffer IEEE");
-                    self.driver.error(driver::Error::InvalidIEEEStructure).await;
+                    self.upper_layer
+                        .error(mac::Error::InvalidIEEEStructure)
+                        .await;
                 }
                 #[allow(unused_variables)]
                 Err(TransmissionTaskError::InvalidDeviceFrame(err)) => {
                     // Invalid device frame encountered
-                    self.driver
-                        .error(driver::Error::InvalidDeviceStructure)
+                    self.upper_layer
+                        .error(mac::Error::InvalidDeviceStructure)
                         .await;
                 }
             }
@@ -497,7 +501,7 @@ where
                     Ok(()) => {}
                     Err(_err) => {
                         // Transmission failed
-                        self.driver.error(driver::Error::CcaFailed).await;
+                        self.upper_layer.error(mac::Error::CcaFailed).await;
                         break 'ack;
                     }
                 }
@@ -552,10 +556,10 @@ where
                 // Was this the last attempt?
                 if i_ack == MAC_MAX_FRAME_RETIES {
                     // Fail transmission
-                    self.driver.error(driver::Error::AckFailed).await;
+                    self.upper_layer.error(mac::Error::AckFailed).await;
                     break 'ack;
                 } else {
-                    self.driver.error(driver::Error::AckRetry(i_ack)).await;
+                    self.upper_layer.error(mac::Error::AckRetry(i_ack)).await;
                 }
             }
         }
@@ -942,7 +946,7 @@ pub mod tests {
             assert!(
                 matches!(
                     monitor.errors.receive().await,
-                    driver::Error::CcaFailed | driver::Error::CcaBackoff(_), // CCA has failed, so we propagate an error up
+                    mac::Error::CcaFailed | mac::Error::CcaBackoff(_), // CCA has failed, so we propagate an error up
                 ),
                 "Packet transmission should fail due to CCA"
             );
@@ -1018,7 +1022,7 @@ pub mod tests {
             assert!(
                 matches!(
                     monitor.errors.receive().await,
-                    driver::Error::AckFailed | driver::Error::AckRetry(_), // ACK has failed, so we propagate an error up
+                    mac::Error::AckFailed | mac::Error::AckRetry(_), // ACK has failed, so we propagate an error up
                 ),
                 "Packet transmission should fail due to ACK not received after to many times"
             );

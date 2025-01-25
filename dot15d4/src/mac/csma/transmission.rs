@@ -69,7 +69,7 @@ where
             // Perform backoff and report current status to upper_layer
             join(
                 backoff_strategy.perform_backoff(timer),
-                driver.error(driver::Error::CcaBackoff(number_of_backoffs)),
+                upper_layer.error(Error::CcaBackoff(number_of_backoffs)),
             )
             .await;
         }

@@ -6,6 +6,17 @@
 pub mod config;
 pub mod radio;
 
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Error {
+    /// Ack failed, after to many retransmissions
+    AckFailed,
+    /// The buffer did not follow the correct device structure
+    InvalidDeviceStructure,
+    /// Something went wrong in the radio
+    RadioError,
+}
+
 /// A buffer that is used to store 1 frame.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, PartialEq)]
