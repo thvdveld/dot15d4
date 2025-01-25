@@ -16,6 +16,7 @@ use crate::{
             futures::{receive, transmit},
             Radio, RadioFrame, RadioFrameMut, TxToken,
         },
+        FrameBuffer,
     },
     sync::{
         channel::{Channel, Receiver, Sender},
