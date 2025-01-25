@@ -4,17 +4,20 @@ use rand_core::RngCore;
 use super::user_configurable_constants::*;
 use super::utils;
 
-use crate::phy::config;
-use crate::phy::config::TxConfig;
-use crate::phy::driver;
-use crate::phy::driver::Driver;
-use crate::phy::driver::FrameBuffer;
-use crate::phy::radio::futures::transmit;
-use crate::phy::radio::Radio;
-use crate::sync::channel::Sender;
-use crate::sync::join::join;
-use crate::sync::mutex::Mutex;
-use crate::sync::mutex::MutexGuard;
+use crate::{
+    mac::Error,
+    phy::{
+        config::{self, TxConfig},
+        radio::{futures::transmit, Radio},
+        FrameBuffer,
+    },
+    sync::{
+        channel::Sender,
+        join::join,
+        mutex::{Mutex, MutexGuard},
+    },
+    upper::UpperLayer,
+};
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
