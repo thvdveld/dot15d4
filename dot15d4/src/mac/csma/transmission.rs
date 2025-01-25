@@ -23,7 +23,7 @@ pub enum TransmissionError {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn transmit_cca<'m, R, TIMER, Rng, D>(
+pub async fn transmit_cca<'m, R, TIMER, Rng, U>(
     radio: &'m Mutex<R>,
     radio_guard: &mut Option<MutexGuard<'m, R>>,
     channel: config::Channel,
@@ -31,13 +31,13 @@ pub async fn transmit_cca<'m, R, TIMER, Rng, D>(
     tx_frame: &mut FrameBuffer,
     timer: &mut TIMER,
     mut backoff_strategy: CCABackoffStrategy<'_, Rng>,
-    driver: &D,
+    upper_layer: &U,
 ) -> Result<(), TransmissionError>
 where
     R: Radio,
     TIMER: DelayNs,
     Rng: RngCore,
-    D: Driver,
+    U: UpperLayer,
 {
     'cca: for number_of_backoffs in 1..MAC_MAX_CSMA_BACKOFFS + 1 {
         // try to transmit
@@ -66,7 +66,7 @@ where
         if number_of_backoffs == MAC_MAX_CSMA_BACKOFFS {
             return Err(TransmissionError::CcaError); // Fail transmission
         } else {
-            // Perform backoff and report current status to driver
+            // Perform backoff and report current status to upper_layer
             join(
                 backoff_strategy.perform_backoff(timer),
                 driver.error(driver::Error::CcaBackoff(number_of_backoffs)),

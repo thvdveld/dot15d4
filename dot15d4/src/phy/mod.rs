@@ -4,5 +4,4 @@
 //! for transmitting and recieving frames, [Device].
 
 pub mod config;
-pub mod driver;
 pub mod radio;

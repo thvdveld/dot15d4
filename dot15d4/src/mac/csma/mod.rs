@@ -9,9 +9,9 @@ use rand_core::RngCore;
 use user_configurable_constants::*;
 
 use crate::{
+    mac,
     phy::{
         config::{self, RxConfig, TxConfig},
-        driver::{self, Driver, FrameBuffer},
         radio::{
             futures::{receive, transmit},
             Radio, RadioFrame, RadioFrameMut, TxToken,
@@ -26,6 +26,7 @@ use crate::{
         Either,
     },
     time::Duration,
+    upper::UpperLayer,
 };
 use dot15d4_frame::{
     Address, AddressingFieldsRepr, DataFrame, FrameBuilder, FrameType, FrameVersion,
@@ -78,28 +79,28 @@ impl Default for CsmaConfig {
 }
 
 /// Structure that setups the CSMA futures
-pub struct CsmaDevice<R: Radio, Rng, D: Driver, TIMER> {
+pub struct CsmaDevice<R: Radio, Rng, U: UpperLayer, TIMER> {
     radio: Mutex<R>,
     rng: Mutex<Rng>,
-    driver: D,
+    upper_layer: U,
     timer: TIMER,
     hardware_address: [u8; 8],
     config: CsmaConfig,
 }
 
-impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
+impl<R, Rng, U, TIMER> CsmaDevice<R, Rng, U, TIMER>
 where
     R: Radio,
     Rng: RngCore,
-    D: Driver,
+    U: UpperLayer,
 {
     /// Creates a new CSMA object that is ready to be run
-    pub fn new(radio: R, rng: Rng, driver: D, timer: TIMER, config: CsmaConfig) -> Self {
+    pub fn new(radio: R, rng: Rng, upper_layer: U, timer: TIMER, config: CsmaConfig) -> Self {
         let hardware_address = radio.ieee802154_address();
         CsmaDevice {
             radio: Mutex::new(radio),
             rng: Mutex::new(rng),
-            driver,
+            upper_layer,
             timer,
             hardware_address,
             config,
@@ -107,13 +108,13 @@ where
     }
 }
 
-impl<R, Rng, D, TIMER> CsmaDevice<R, Rng, D, TIMER>
+impl<R, Rng, U, TIMER> CsmaDevice<R, Rng, U, TIMER>
 where
     R: Radio,
     for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
     for<'a> R::TxToken<'a>: From<&'a mut [u8]>,
     Rng: RngCore,
-    D: Driver,
+    U: UpperLayer,
     TIMER: DelayNs + Clone,
 {
     /// Run the CSMA module. This should be run in its own task and polled
@@ -298,7 +299,7 @@ where
                         radio_guard = None;
                     }
                 },
-                self.driver.received(core::mem::take(&mut rx)),
+                self.upper_layer.received_frame(core::mem::take(&mut rx)),
             )
             .await;
             rx.dirty = false; // Reset for the following iteration
@@ -428,14 +429,14 @@ where
         R: Radio,
         for<'a> R::RadioFrame<&'a mut [u8]>: RadioFrameMut<&'a mut [u8]>,
         Rng: RngCore,
-        D: Driver,
+        U: UpperLayer,
     {
         let mut ack_rx = FrameBuffer::default();
         let mut timer = self.timer.clone();
 
         'outer: loop {
             // Wait until we have a frame to send
-            let mut tx = self.driver.transmit().await;
+            let mut tx = self.upper_layer.frame_to_transmit().await;
 
             yield_now().await;
 
@@ -488,7 +489,7 @@ where
                     &mut tx,
                     &mut timer,
                     backoff_strategy,
-                    &self.driver,
+                    &self.upper_layer,
                 )
                 .await
                 {
@@ -562,7 +563,7 @@ where
 
 #[cfg(test)]
 pub mod tests {
-    use self::driver::tests::*;
+    use crate::upper::tests::*;
     use crate::{phy::radio::tests::*, phy::radio::*, sync::tests::*, sync::*};
 
     use super::*;
@@ -570,12 +571,12 @@ pub mod tests {
     #[pollster::test]
     pub async fn test_happy_path_transmit_no_ack() {
         let radio = TestRadio::default();
-        let mut channel = TestDriverChannel::new();
-        let (driver, monitor) = channel.split();
+        let mut channel = TestUpperLayerChannel::new();
+        let (upper_layer, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
             rand::thread_rng(),
-            driver,
+            upper_layer,
             Delay::default(),
             CsmaConfig::default(),
         );
@@ -609,7 +610,7 @@ pub mod tests {
     #[pollster::test]
     pub async fn test_happy_path_transmit_with_ack() {
         let radio = TestRadio::default();
-        let mut channel = TestDriverChannel::new();
+        let mut channel = TestUpperLayerChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
@@ -715,7 +716,7 @@ pub mod tests {
             )
         });
 
-        let mut channel = TestDriverChannel::new();
+        let mut channel = TestUpperLayerChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
@@ -785,7 +786,7 @@ pub mod tests {
             )
         });
 
-        let mut channel = TestDriverChannel::new();
+        let mut channel = TestUpperLayerChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
@@ -835,7 +836,7 @@ pub mod tests {
     #[pollster::test]
     pub async fn test_wait_for_ack_but_receive_garbage_and_cca_issues() {
         let radio = TestRadio::default();
-        let mut channel = TestDriverChannel::new();
+        let mut channel = TestUpperLayerChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
@@ -951,7 +952,7 @@ pub mod tests {
     #[pollster::test]
     pub async fn test_transmit_no_ack_received() {
         let radio = TestRadio::default();
-        let mut channel = TestDriverChannel::new();
+        let mut channel = TestUpperLayerChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
@@ -1039,7 +1040,7 @@ pub mod tests {
             )
         });
 
-        let mut channel = TestDriverChannel::new();
+        let mut channel = TestUpperLayerChannel::new();
         let (driver, monitor) = channel.split();
         let mut csma = CsmaDevice::new(
             radio.clone(),
