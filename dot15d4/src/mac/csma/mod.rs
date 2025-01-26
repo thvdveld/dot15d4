@@ -1,8 +1,8 @@
 pub mod constants;
 pub mod transmission;
 pub mod user_configurable_constants;
-mod utils;
 
+use super::utils;
 use constants::*;
 use embedded_hal_async::delay::DelayNs;
 use rand_core::RngCore;

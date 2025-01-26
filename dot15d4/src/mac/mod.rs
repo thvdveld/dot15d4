@@ -1,4 +1,5 @@
 pub mod csma;
+pub mod utils;
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, PartialEq, Clone, Copy)]
