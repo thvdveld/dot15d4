@@ -13,12 +13,12 @@ fn main() {
             "MAC_UNIT_BACKOFF_DURATION",
             (
                 "Duration",
-                "Duration::from_us((UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64)",
+                "Duration::from_us((super::UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64)",
             ),
         ),
         ("MAC_MAX_FRAME_RETIES", ("u16", "3")),
         (
-            "CSMA_INTER_FRAME_TIME",
+            "MAC_INTER_FRAME_TIME",
             ("Duration", "Duration::from_us(1000)"),
         ),
         ("MAC_AIFS_PERIOD", ("Duration", "Duration::from_us(1000)")),
@@ -37,10 +37,9 @@ fn main() {
     // Collect environment variables
     let mut data = String::new();
     // Write preamble
-    writeln!(data, "use crate::time::Duration;").unwrap();
     writeln!(
         data,
-        "use crate::mac::csma::{{SYMBOL_RATE_INV_US, UNIT_BACKOFF_PERIOD}};"
+        "use crate::{{phy::constants::SYMBOL_RATE_INV_US, time::Duration}};"
     )
     .unwrap();
 

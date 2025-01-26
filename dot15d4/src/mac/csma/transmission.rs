@@ -1,11 +1,10 @@
 use embedded_hal_async::delay::DelayNs;
 use rand_core::RngCore;
 
-use super::user_configurable_constants::*;
 use super::utils;
 
 use crate::{
-    mac::Error,
+    mac::{constants::*, Error},
     phy::{
         config::{self, TxConfig},
         radio::{futures::transmit, Radio},

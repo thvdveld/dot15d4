@@ -4,6 +4,7 @@
 //! for transmitting and recieving frames, [Device].
 
 pub mod config;
+pub mod constants;
 pub mod radio;
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

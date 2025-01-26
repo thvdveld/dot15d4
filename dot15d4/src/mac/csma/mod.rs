@@ -1,17 +1,15 @@
-pub mod constants;
 pub mod transmission;
-pub mod user_configurable_constants;
 
+use super::constants::*;
 use super::utils;
-use constants::*;
 use embedded_hal_async::delay::DelayNs;
 use rand_core::RngCore;
-use user_configurable_constants::*;
 
 use crate::{
     mac,
     phy::{
         config::{self, RxConfig, TxConfig},
+        constants::{SYMBOL_RATE_INV_US, TURNAROUND_TIME},
         radio::{
             futures::{receive, transmit},
             Radio, RadioFrame, RadioFrameMut, TxToken,
