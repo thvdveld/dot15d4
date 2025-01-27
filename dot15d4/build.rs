@@ -6,9 +6,9 @@ use std::path::PathBuf;
 fn main() {
     // (Variable, Type, Default value)
     let mut configs: HashMap<&str, (&str, &str)> = HashMap::from([
-        ("MAC_MIN_BE", ("u16", "0")),
-        ("MAC_MAX_BE", ("u16", "8")),
-        ("MAC_MAX_CSMA_BACKOFFS", ("u16", "16")),
+        ("MAC_MIN_BE", ("u8", "0")),
+        ("MAC_MAX_BE", ("u8", "8")),
+        ("MAC_MAX_CSMA_BACKOFFS", ("u8", "16")),
         (
             "MAC_UNIT_BACKOFF_DURATION",
             (
@@ -16,7 +16,7 @@ fn main() {
                 "Duration::from_us((super::UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64)",
             ),
         ),
-        ("MAC_MAX_FRAME_RETIES", ("u16", "3")),
+        ("MAC_MAX_FRAME_RETIES", ("u8", "3")),
         (
             "MAC_INTER_FRAME_TIME",
             ("Duration", "Duration::from_us(1000)"),

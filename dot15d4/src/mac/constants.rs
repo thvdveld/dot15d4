@@ -42,12 +42,12 @@ mod customizable {
 
     // XXX These are just random numbers I picked by fair dice roll; what should
     // they be?
-    pub const MAC_MIN_BE: u16 = 0;
-    pub const MAC_MAX_BE: u16 = 8;
-    pub const MAC_MAX_CSMA_BACKOFFS: u16 = 16;
+    pub const MAC_MIN_BE: u8 = 0;
+    pub const MAC_MAX_BE: u8 = 8;
+    pub const MAC_MAX_CSMA_BACKOFFS: u8 = 16;
     pub const MAC_UNIT_BACKOFF_DURATION: Duration =
         Duration::from_us((super::UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64);
-    pub const MAC_MAX_FRAME_RETIES: u16 = 3; // 0-7
+    pub const MAC_MAX_FRAME_RETIES: u8 = 3; // 0-7
     pub const MAC_INTER_FRAME_TIME: Duration = Duration::from_us(1000); // TODO: XXX
     /// AIFS=1ms, for SUN PHY, LECIM PHY, TVWS PHY
     pub const MAC_AIFS_PERIOD: Duration = Duration::from_us(1000);

@@ -6,11 +6,11 @@ pub mod utils;
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Error {
     /// Cca failed, resulting in a backoff (nth try)
-    CcaBackoff(u16),
+    CcaBackoff(u8),
     /// Cca failed after to many fallbacks
     CcaFailed,
     /// Ack failed, resulting in a retry later (nth try)
-    AckRetry(u16),
+    AckRetry(u8),
     /// Ack failed, after to many retransmissions
     AckFailed,
     /// The buffer did not follow the correct device structure

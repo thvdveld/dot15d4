@@ -83,7 +83,7 @@ where
 pub enum CCABackoffStrategy<'r, Rng: RngCore> {
     None,
     ExponentialBackoff {
-        backoff_exponent: u16,
+        backoff_exponent: u8,
         rng: &'r Mutex<Rng>,
     },
 }
