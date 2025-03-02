@@ -1,18 +1,18 @@
 use core::future::Future;
 
-use crate::mac;
-use crate::phy::FrameBuffer;
+use crate::mac::command::MacIndication;
+use crate::mac::{self, MacRequest};
 
 /// This traits provides interactions with upper layer. It allows to abstract
 /// over channels in async executors. Should be given as an argument to the
 /// task that will run the network protocol.
 pub trait UpperLayer {
-    /// Waits for upper layer to provide a frame to transmit.
-    fn frame_to_transmit(&self) -> impl Future<Output = FrameBuffer>;
-    /// Notifies upper layer a frame has been received. Holds until the buffer
-    /// is received successfully by upper layer.
-    fn received_frame(&self, buffer: FrameBuffer) -> impl Future<Output = ()>;
-    /// Notifies upper layer of an error while transmitting a frame.
+    /// Waits for upper layer to provide a MAC request to handle.
+    fn mac_request(&self) -> impl Future<Output = MacRequest>;
+    /// Notifies upper layer a MAC indication has been received. Holds until
+    /// the indication is received successfully by upper layer.
+    fn received_mac_indication(&self, indication: MacIndication) -> impl Future<Output = ()>;
+    /// Notifies upper layer of an error while handling a MAC request.
     fn error(&self, error: mac::Error) -> impl Future<Output = ()>;
 }
 
@@ -30,8 +30,8 @@ pub mod tests {
 
     #[derive(Default)]
     pub struct TestUpperLayerChannel {
-        pub tx: Channel<FrameBuffer>,
-        pub rx: Channel<FrameBuffer>,
+        pub tx: Channel<MacRequest>,
+        pub rx: Channel<MacIndication>,
         pub errors: Channel<mac::Error>,
     }
 
@@ -64,24 +64,24 @@ pub mod tests {
     }
 
     pub struct TestUpperLayerMonitor<'a> {
-        pub tx: Sender<'a, FrameBuffer>,
-        pub rx: Receiver<'a, FrameBuffer>,
+        pub tx: Sender<'a, MacRequest>,
+        pub rx: Receiver<'a, MacIndication>,
         pub errors: Receiver<'a, mac::Error>,
     }
 
     pub struct TestUpperLayer<'a> {
-        tx: Receiver<'a, FrameBuffer>,
-        rx: Sender<'a, FrameBuffer>,
+        tx: Receiver<'a, MacRequest>,
+        rx: Sender<'a, MacIndication>,
         errors: Sender<'a, mac::Error>,
     }
 
     impl UpperLayer for TestUpperLayer<'_> {
-        async fn frame_to_transmit(&self) -> FrameBuffer {
+        async fn mac_request(&self) -> MacRequest {
             self.tx.receive().await
         }
 
-        async fn received_frame(&self, buffer: FrameBuffer) {
-            self.rx.send(buffer);
+        async fn received_mac_indication(&self, indication: MacIndication) {
+            self.rx.send(indication);
         }
 
         async fn error(&self, error: mac::Error) {
