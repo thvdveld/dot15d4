@@ -6,19 +6,19 @@ use std::path::PathBuf;
 fn main() {
     // (Variable, Type, Default value)
     let mut configs: HashMap<&str, (&str, &str)> = HashMap::from([
-        ("MAC_MIN_BE", ("u16", "0")),
-        ("MAC_MAX_BE", ("u16", "8")),
-        ("MAC_MAX_CSMA_BACKOFFS", ("u16", "16")),
+        ("MAC_MIN_BE", ("u8", "0")),
+        ("MAC_MAX_BE", ("u8", "8")),
+        ("MAC_MAX_CSMA_BACKOFFS", ("u8", "16")),
         (
             "MAC_UNIT_BACKOFF_DURATION",
             (
                 "Duration",
-                "Duration::from_us((UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64)",
+                "Duration::from_us((super::UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64)",
             ),
         ),
-        ("MAC_MAX_FRAME_RETIES", ("u16", "3")),
+        ("MAC_MAX_FRAME_RETIES", ("u8", "3")),
         (
-            "CSMA_INTER_FRAME_TIME",
+            "MAC_INTER_FRAME_TIME",
             ("Duration", "Duration::from_us(1000)"),
         ),
         ("MAC_AIFS_PERIOD", ("Duration", "Duration::from_us(1000)")),
@@ -37,10 +37,9 @@ fn main() {
     // Collect environment variables
     let mut data = String::new();
     // Write preamble
-    writeln!(data, "use crate::time::Duration;").unwrap();
     writeln!(
         data,
-        "use crate::csma::{{SYMBOL_RATE_INV_US, UNIT_BACKOFF_PERIOD}};"
+        "use crate::{{phy::constants::SYMBOL_RATE_INV_US, time::Duration}};"
     )
     .unwrap();
 

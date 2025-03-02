@@ -1,20 +1,8 @@
 #![allow(dead_code)]
+pub use customizable::*;
 
-// Constants from section 11.3, Table 11-1, PHY constants
-/// The maximum PSDU size (in octets) the PHY shall be able to receive.
-pub const MAX_PHY_PACKET_SIZE: u32 = 127;
-/// RX-to-TX or TX-to-RX turnaround time (in symbol periods), as defined in
-/// 10.2.2 and 10.2.3.
-pub const TURNAROUND_TIME: u32 = 12;
-/// The time required to perform CCA detection in symbol periods.
-pub const CCA_TIME: u32 = 8;
-
+use crate::phy::constants::{CCA_TIME, TURNAROUND_TIME};
 pub const BROADCAST_PAN_ID: u16 = 0xffff;
-
-// /// The delay between the start of the SFD and the LEIP, as described in
-// /// 18.6.
-// const A_LEIP_DELAY_TIME: u32 = 0.815 ms
-
 // Constants of section 8.4.2, Table 8-93, MAC constants
 /// The number of symbols forming a superframe slot when the superframe order is
 /// equal to zero, as described in 6.2.1.
@@ -47,18 +35,31 @@ pub const UNIT_BACKOFF_PERIOD: u32 = TURNAROUND_TIME + CCA_TIME;
 /// The number of symbols forming an RCCN superframe slot.
 pub const RCCN_BASE_SLOT_DURATION: u32 = 60;
 
-/// The symbol rate of IEEE 802.15.4 on 2.5 Ghz (symbols/s)
-// pub const SYMBOL_RATE: u32 = 250_000;
-pub const SYMBOL_RATE: u32 = 62_500;
-/// The symbol rate of IEEE 802.15.4 on 2.5 Ghz (µs/symbol)
-pub const SYMBOL_RATE_INV_US: u32 = 1_000_000 / SYMBOL_RATE;
-
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod customizable {
+    #![allow(dead_code)]
+    use crate::{phy::constants::SYMBOL_RATE_INV_US, time::Duration};
 
-    #[test]
-    fn inv_symbol_rate() {
-        assert_eq!(SYMBOL_RATE_INV_US, 16);
-    }
+    // XXX These are just random numbers I picked by fair dice roll; what should
+    // they be?
+    pub const MAC_MIN_BE: u8 = 0;
+    pub const MAC_MAX_BE: u8 = 8;
+    pub const MAC_MAX_CSMA_BACKOFFS: u8 = 16;
+    pub const MAC_UNIT_BACKOFF_DURATION: Duration =
+        Duration::from_us((super::UNIT_BACKOFF_PERIOD * SYMBOL_RATE_INV_US) as i64);
+    pub const MAC_MAX_FRAME_RETIES: u8 = 3; // 0-7
+    pub const MAC_INTER_FRAME_TIME: Duration = Duration::from_us(1000); // TODO: XXX
+    /// AIFS=1ms, for SUN PHY, LECIM PHY, TVWS PHY
+    pub const MAC_AIFS_PERIOD: Duration = Duration::from_us(1000);
+    pub const MAC_SIFS_PERIOD: Duration = Duration::from_us(1000); // TODO: SIFS=XXX
+    pub const MAC_LIFS_PERIOD: Duration = Duration::from_us(10_000); // TODO: LIFS=XXX
+                                                                     // PAN Id
+    pub const MAC_PAN_ID: u16 = 0xffff;
+    pub const MAC_IMPLICIT_BROADCAST: bool = false;
+}
+
+#[cfg(not(test))]
+mod customizable {
+    #![allow(unused)]
+    include!(concat!(env!("OUT_DIR"), "/config.rs"));
 }
