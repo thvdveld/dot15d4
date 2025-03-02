@@ -36,6 +36,32 @@ pub enum Channel {
     _26,
 }
 
+impl TryFrom<u8> for Channel {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            11 => Ok(Channel::_11),
+            12 => Ok(Channel::_12),
+            13 => Ok(Channel::_13),
+            14 => Ok(Channel::_14),
+            15 => Ok(Channel::_15),
+            16 => Ok(Channel::_16),
+            17 => Ok(Channel::_17),
+            18 => Ok(Channel::_18),
+            19 => Ok(Channel::_19),
+            20 => Ok(Channel::_20),
+            21 => Ok(Channel::_21),
+            22 => Ok(Channel::_22),
+            23 => Ok(Channel::_23),
+            24 => Ok(Channel::_24),
+            25 => Ok(Channel::_25),
+            26 => Ok(Channel::_26),
+            _ => Err(()),
+        }
+    }
+}
+
 impl TryFrom<i32> for Channel {
     type Error = ();
 
