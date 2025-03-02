@@ -90,11 +90,42 @@ impl FrameBuilder<'_, Beacon> {
             r#type: core::marker::PhantomData,
         }
     }
+
+    /// Create a new builder for a beacon request frame.
+    pub fn new_beacon_request() -> Self {
+        Self {
+            frame: FrameRepr {
+                frame_control: FrameControlRepr {
+                    frame_type: FrameType::Beacon,
+                    security_enabled: false,
+                    frame_pending: false,
+                    ack_request: false,
+                    pan_id_compression: true,
+                    sequence_number_suppression: true,
+                    information_elements_present: true,
+                    dst_addressing_mode: AddressingMode::Short,
+                    src_addressing_mode: AddressingMode::Absent,
+                    frame_version: FrameVersion::Ieee802154_2006,
+                },
+                sequence_number: None,
+                addressing_fields: Some(AddressingFieldsRepr {
+                    // TODO: use constant for broadcast PAN id ?
+                    dst_pan_id: Some(0xffff),
+                    src_pan_id: None,
+                    dst_address: Some(Address::BROADCAST),
+                    src_address: None,
+                }),
+                information_elements: None,
+                payload: None,
+            },
+            r#type: core::marker::PhantomData,
+        }
+    }
 }
 
 impl FrameBuilder<'_, EnhancedBeacon> {
-    /// Create a new builder for an enhanced beacon frame.
-    pub fn new_enhanced_beacon() -> Self {
+    /// Create a new builder for an enhanced beacon request frame.
+    pub fn new_enhanced_beacon_request() -> Self {
         Self {
             frame: FrameRepr {
                 frame_control: FrameControlRepr {
